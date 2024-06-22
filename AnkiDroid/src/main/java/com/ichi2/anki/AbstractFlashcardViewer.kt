@@ -996,8 +996,8 @@ abstract class AbstractFlashcardViewer :
             scrollBarStyle = View.SCROLLBARS_OUTSIDE_OVERLAY
             with(settings) {
                 displayZoomControls = false
-                builtInZoomControls = true
-                setSupportZoom(true)
+                builtInZoomControls = false
+                setSupportZoom(false)
                 loadWithOverviewMode = true
                 javaScriptEnabled = true
                 allowFileAccess = true
