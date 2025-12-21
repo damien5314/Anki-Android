@@ -16,29 +16,12 @@
 
 package com.ichi2.anki.utils.ext
 
-import anki.notetypes.StockNotetype.OriginalStockKind.ORIGINAL_STOCK_KIND_IMAGE_OCCLUSION_VALUE
-import com.ichi2.anki.utils.CardTemplateJson
-import com.ichi2.libanki.NotetypeJson
-import com.ichi2.utils.jsonObjectIterable
-import org.json.JSONException
-
-/**
- * @throws JSONException if the mapping doesn't exist or cannot be coerced to an int.
- */
-val NotetypeJson.isImageOcclusion: Boolean
-    get() = try {
-        getInt("originalStockKind") == ORIGINAL_STOCK_KIND_IMAGE_OCCLUSION_VALUE
-    } catch (e: JSONException) {
-        false
-    }
+import com.ichi2.anki.libanki.NotetypeJson
 
 /**
  * Regular expression pattern for extracting cloze text fields.
  */
 private val clozeRegex = "\\{\\{(?:.*?:)?cloze:([^}]*)\\}\\}".toRegex()
-
-val NotetypeJson.templates: List<CardTemplateJson>
-    get() = getJSONArray("tmpls").jsonObjectIterable().map { CardTemplateJson(it) }
 
 fun NotetypeJson.getAllClozeTextFields(): List<String> {
     if (!this.isCloze) {

@@ -19,11 +19,15 @@ package com.ichi2.anki.reviewer
 import android.view.View
 import android.widget.ImageView
 import androidx.annotation.DrawableRes
+import androidx.core.view.isVisible
 import com.ichi2.anki.Flag
 import com.ichi2.anki.R
 
 /** Handles the star and flag marker for the card viewer  */
-class CardMarker(private val markView: ImageView, private val flagView: ImageView) {
+class CardMarker(
+    private val markView: ImageView,
+    private val flagView: ImageView,
+) {
     /** Sets the mark icon on a card (the star)  */
     fun displayMark(markStatus: Boolean) {
         if (markStatus) {
@@ -36,7 +40,7 @@ class CardMarker(private val markView: ImageView, private val flagView: ImageVie
 
     /** Whether the mark icon is visible on the toolbar */
     val isDisplayingMark: Boolean
-        get() = markView.visibility == View.VISIBLE
+        get() = markView.isVisible
 
     /** Sets the flag icon on the card  */
     fun displayFlag(flag: Flag) {
@@ -48,7 +52,9 @@ class CardMarker(private val markView: ImageView, private val flagView: ImageVie
         }
     }
 
-    private fun setFlagView(@DrawableRes drawableId: Int) {
+    private fun setFlagView(
+        @DrawableRes drawableId: Int,
+    ) {
         // set the resource before to ensure we display the correct icon.
         flagView.setImageResource(drawableId)
         flagView.visibility = View.VISIBLE

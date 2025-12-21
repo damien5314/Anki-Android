@@ -19,7 +19,7 @@ import android.content.ContentResolver
 import android.database.Cursor
 import android.database.sqlite.SQLiteException
 import android.net.Uri
-import android.webkit.MimeTypeMap
+import androidx.core.net.toUri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ichi2.testutils.EmptyApplication
 import com.ichi2.utils.ContentResolverUtil.getFileName
@@ -30,16 +30,14 @@ import org.junit.runner.RunWith
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.whenever
-import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 
 @RunWith(AndroidJUnit4::class) // needs a URI instance
 @Config(application = EmptyApplication::class)
 class ContentResolverUtilTest {
-
     @Test
     fun testViaQueryWorking() {
-        val uri = Uri.parse("http://example.com/test.jpeg")
+        val uri = "http://example.com/test.jpeg".toUri()
         val mock = mock(ContentResolver::class.java)
 
         setQueryReturning(mock, cursorReturning("filename_from_cursor.jpg"))
@@ -61,13 +59,11 @@ class ContentResolverUtilTest {
             mock,
             SQLiteException(
                 "no such column: _display_name (code 1 SQLITE_ERROR[1]): , " +
-                    "while compiling: SELECT _display_name FROM ClipboardImageTable WHERE (id=855) ORDER BY _data"
-            )
+                    "while compiling: SELECT _display_name FROM ClipboardImageTable WHERE (id=855) ORDER BY _data",
+            ),
         )
 
         whenever(mock.getType(any())).thenReturn("image/gif")
-        // required for Robolectric
-        Shadows.shadowOf(MimeTypeMap.getSingleton()).addExtensionMimeTypeMapping("gif", "image/gif")
 
         val filename = getFileName(mock, uri)
 
@@ -75,17 +71,25 @@ class ContentResolverUtilTest {
         assertThat(filename, equalTo("image.gif"))
     }
 
-    private fun cursorReturning(@Suppress("SameParameterValue") value: String): Cursor {
+    private fun cursorReturning(
+        @Suppress("SameParameterValue") value: String,
+    ): Cursor {
         val cursor = mock(Cursor::class.java)
         whenever(cursor.getString(0)).thenReturn(value)
         return cursor
     }
 
-    private fun setQueryReturning(mock: ContentResolver, cursorToReturn: Cursor?) {
+    private fun setQueryReturning(
+        mock: ContentResolver,
+        cursorToReturn: Cursor?,
+    ) {
         whenever(mock.query(any(), any(), any(), any(), any())).thenReturn(cursorToReturn)
     }
 
-    private fun setQueryThrowing(mock: ContentResolver, ex: Throwable?) {
+    private fun setQueryThrowing(
+        mock: ContentResolver,
+        ex: Throwable?,
+    ) {
         whenever(mock.query(any(), any(), any(), any(), any())).thenThrow(ex)
     }
 }

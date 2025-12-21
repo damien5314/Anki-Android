@@ -18,20 +18,27 @@ package com.ichi2.anki.previewer
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ichi2.anki.NotetypeFile
 import com.ichi2.testutils.JvmTest
+import io.mockk.coEvery
+import io.mockk.spyk
 import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
-import org.mockito.kotlin.mock
 import kotlin.test.assertNotEquals
 
 @RunWith(AndroidJUnit4::class)
 class TemplatePreviewerViewModelTest : JvmTest() {
-
     @get:Rule
     val tempDirectory = TemporaryFolder()
+
+    private fun createViewModel(arguments: TemplatePreviewerArguments): TemplatePreviewerViewModel =
+        spyk(TemplatePreviewerViewModel(arguments)).apply {
+            // the default implementation requires the Collection media directory,
+            // which needs a Robolectric setup with CollectionStorageMode.IN_MEMORY_WITH_MEDIA or ON_DISK
+            coEvery { prepareCardTextForDisplay(any()) } answers { firstArg() }
+        }
 
     @Test
     fun `getCurrentTabIndex returns the correct tab if the first cloze isn't 1 and ord isn't 0`() =
@@ -48,8 +55,23 @@ class TemplatePreviewerViewModelTest : JvmTest() {
         }
 
     @Test
+    fun `empty front field detected correctly for tab badge`() =
+        runOptionalReversedTest(
+            fields =
+                mutableListOf(
+                    "we have two normal fields",
+                    "and purposefully leave the third blank",
+                    "",
+                ),
+        ) {
+            onPageFinished(false)
+            assertThat(this.cardsWithEmptyFronts!!.await()[0], equalTo(false))
+            assertThat(this.cardsWithEmptyFronts.await()[1], equalTo(true))
+        }
+
+    @Test
     fun `card ords are changed`() {
-        runClozeTest(fields = mutableListOf("{{c1::one}} {{c2::bar}}")) {
+        runClozeTest(tempDirectory = tempDirectory, fields = mutableListOf("{{c1::one}} {{c2::bar}}")) {
             onPageFinished(false)
             val ord1 = currentCard.await().ord
             onTabSelected(1)
@@ -58,15 +80,44 @@ class TemplatePreviewerViewModelTest : JvmTest() {
         }
     }
 
-    private fun runClozeTest(ord: Int = 0, fields: MutableList<String>? = null, block: suspend TemplatePreviewerViewModel.() -> Unit) = runTest {
+    private fun runClozeTest(
+        ord: Int = 0,
+        fields: MutableList<String>? = null,
+        block: suspend TemplatePreviewerViewModel.() -> Unit,
+    ) = runClozeTest(ord, tempDirectory, fields, block)
+
+    private fun runOptionalReversedTest(
+        ord: Int = 0,
+        fields: MutableList<String>? = null,
+        block: suspend TemplatePreviewerViewModel.() -> Unit,
+    ) = runTest {
+        val notetype = col.notetypes.byName("Basic (optional reversed card)")!!
+        val arguments =
+            TemplatePreviewerArguments(
+                notetypeFile = NotetypeFile(tempDirectory.root, notetype),
+                fields = fields ?: mutableListOf("question text", "answer text", "y"),
+                tags = mutableListOf(),
+                ord = ord,
+            )
+        val viewModel = createViewModel(arguments)
+        block(viewModel)
+    }
+
+    private fun runClozeTest(
+        ord: Int = 0,
+        tempDirectory: TemporaryFolder,
+        fields: MutableList<String>? = null,
+        block: suspend TemplatePreviewerViewModel.() -> Unit,
+    ) = runTest {
         val notetype = col.notetypes.byName("Cloze")!!
-        val arguments = TemplatePreviewerArguments(
-            notetypeFile = NotetypeFile(tempDirectory.root, notetype),
-            fields = fields ?: mutableListOf("{{c1::foo}} {{c2::bar}}", "anki"),
-            tags = mutableListOf(),
-            ord = ord
-        )
-        val viewModel = TemplatePreviewerViewModel(arguments, mock())
+        val arguments =
+            TemplatePreviewerArguments(
+                notetypeFile = NotetypeFile(tempDirectory.root, notetype),
+                fields = fields ?: mutableListOf("{{c1::foo}} {{c2::bar}}", "anki"),
+                tags = mutableListOf(),
+                ord = ord,
+            )
+        val viewModel = createViewModel(arguments)
         block(viewModel)
     }
 }

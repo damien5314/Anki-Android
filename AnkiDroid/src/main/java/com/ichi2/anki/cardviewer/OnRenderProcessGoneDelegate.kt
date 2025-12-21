@@ -15,7 +15,6 @@
  */
 package com.ichi2.anki.cardviewer
 
-import android.annotation.TargetApi
 import android.os.Build
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebView
@@ -24,9 +23,13 @@ import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.Lifecycle
 import com.ichi2.anki.AbstractFlashcardViewer
 import com.ichi2.anki.R
+import com.ichi2.anki.libanki.CardId
 import com.ichi2.anki.showThemedToast
-import com.ichi2.libanki.CardId
-import com.ichi2.utils.*
+import com.ichi2.utils.cancelable
+import com.ichi2.utils.message
+import com.ichi2.utils.positiveButton
+import com.ichi2.utils.show
+import com.ichi2.utils.title
 import timber.log.Timber
 
 /**
@@ -34,7 +37,9 @@ import timber.log.Timber
  * #5780 - WebView Renderer OOM crashes reviewer
  * #8459 - WebView Renderer crash dialog displays when app is minimised (Android 11 - Google Pixel 3A)
  */
-open class OnRenderProcessGoneDelegate(val target: AbstractFlashcardViewer) {
+open class OnRenderProcessGoneDelegate(
+    val target: AbstractFlashcardViewer,
+) {
     lateinit var lifecycle: Lifecycle
 
     /**
@@ -45,7 +50,10 @@ open class OnRenderProcessGoneDelegate(val target: AbstractFlashcardViewer) {
 
     /** Fix: #5780 - WebView Renderer OOM crashes reviewer  */
     @RequiresApi(api = Build.VERSION_CODES.O)
-    fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+    fun onRenderProcessGone(
+        view: WebView,
+        detail: RenderProcessGoneDetail,
+    ): Boolean {
         Timber.i("Obtaining write lock for card")
         val writeLock = target.writeLock
         val cardWebView = target.webView
@@ -125,11 +133,21 @@ open class OnRenderProcessGoneDelegate(val target: AbstractFlashcardViewer) {
         return target.resources.getString(errorCauseId)
     }
 
-    @TargetApi(Build.VERSION_CODES.O)
-    protected open fun displayRenderLoopDialog(currentCardId: CardId, detail: RenderProcessGoneDetail) {
+    @RequiresApi(Build.VERSION_CODES.O)
+    protected open fun displayRenderLoopDialog(
+        currentCardId: CardId,
+        detail: RenderProcessGoneDetail,
+    ) {
         val cardInformation = currentCardId.toString()
         val res = target.resources
-        val errorDetails = if (detail.didCrash()) res.getString(R.string.webview_crash_unknwon_detailed) else res.getString(R.string.webview_crash_oom_details)
+        val errorDetails =
+            if (detail.didCrash()) {
+                res.getString(
+                    R.string.webview_crash_unknwon_detailed,
+                )
+            } else {
+                res.getString(R.string.webview_crash_oom_details)
+            }
         AlertDialog.Builder(target).show {
             title(R.string.webview_crash_loop_dialog_title)
             message(text = res.getString(R.string.webview_crash_loop_dialog_content, cardInformation, errorDetails))
@@ -154,8 +172,7 @@ open class OnRenderProcessGoneDelegate(val target: AbstractFlashcardViewer) {
         return !lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
     }
 
-    private fun webViewRendererLastCrashedOnCard(cardId: CardId): Boolean =
-        lastCrashingCardId != null && lastCrashingCardId == cardId
+    private fun webViewRendererLastCrashedOnCard(cardId: CardId): Boolean = lastCrashingCardId != null && lastCrashingCardId == cardId
 
     private fun canRecoverFromWebViewRendererCrash(): Boolean =
         // DEFECT

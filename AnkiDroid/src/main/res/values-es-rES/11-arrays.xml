@@ -46,19 +46,6 @@
     <string name="error_reporting_choice_always_report">Siempre enviar</string>
     <string name="error_reporting_choice_never_report">Nunca enviar</string>
     <string name="error_reporting_choice_ask_user">Preguntarme</string>
-    <!-- leech_action_labels -->
-    <!-- 01-core:menu_suspend_card -->
-    <!-- new_order_labels -->
-    <!-- cram_deck_conf_order_labels -->
-    <string name="cram_deck_conf_order_oldest_seen_first">Más antiguas primero</string>
-    <string name="cram_deck_conf_order_random">Aleatorio</string>
-    <string name="cram_deck_conf_order_increasing_intervals">Intervalos crecientes</string>
-    <string name="cram_deck_conf_order_decreasing_intervals">Intervalos decrecientes</string>
-    <string name="cram_deck_conf_order_most_lapsed">Más atrasadas</string>
-    <string name="cram_deck_conf_order_order_added">En el orden añadido</string>
-    <string name="cram_deck_conf_order_order_due">Orden programado</string>
-    <string name="cram_deck_conf_order_latest_added_first">Últimas añadidas primero</string>
-    <string name="cram_deck_conf_order_relative_overdueness">Sobreprogramación relativa</string>
     <!-- add_to_cur_labels -->
     <string name="add_to_deck_use_current_deck">Usar mazo actual</string>
     <string name="add_to_deck_decide_by_note_type">Decidir por tipo de nota</string>
@@ -79,27 +66,26 @@
     <string name="html_size_code_x_large">x-grande</string>
     <string name="html_size_code_xx_large">xx-grande</string>
     <!-- gestures_labels -->
-    <string name="answer_again">Responder de nuevo</string>
-    <string name="answer_hard">Respuesta difícil</string>
-    <string name="answer_good">Respuesta buena</string>
-    <string name="answer_easy">Respuesta fácil</string>
-    <string name="gesture_play">Reproducir multimedia</string>
-    <string name="gesture_abort_learning">Abandonar aprendizaje</string>
-    <string name="gesture_flag_red">Cambiar Bandera Roja</string>
-    <string name="gesture_flag_orange">Cambiar Bandera Naranja</string>
-    <string name="gesture_flag_green">Cambiar Bandera verde</string>
-    <string name="gesture_flag_blue">Cambiar Bandera Azul</string>
-    <string name="gesture_flag_pink">Cambiar Bandera Rosa</string>
-    <string name="gesture_flag_turquoise">Cambiar Bandera Turquesa</string>
-    <string name="gesture_flag_purple">Cambiar Bandera Morada</string>
-    <string name="gesture_flag_remove">Eliminar Bandera</string>
-    <string name="gesture_page_up">Página Arriba</string>
-    <string name="gesture_page_down">Página Abajo</string>
-    <string name="gesture_abort_sync">Abortar Aprendizaje y Sincronizar</string>
-    <string name="gesture_toggle_whiteboard">Alternar Pizarra</string>
-    <string name="gesture_show_hint">Mostrar Pista</string>
-    <string name="gesture_show_all_hints">Mostrar Todas Las Pistas</string>
-    <string name="record_voice">Grabar Voz</string>
-    <string name="replay_voice">Reproducir Voz</string>
-    <string name="save_voice">Guardar Grabación</string>
+    <string name="answer_again" maxLength="41">Responder de nuevo</string>
+    <string name="answer_hard" maxLength="41">Respuesta difícil</string>
+    <string name="answer_good" maxLength="41">Respuesta buena</string>
+    <string name="answer_easy" maxLength="41">Respuesta fácil</string>
+    <string name="gesture_abort_learning" maxLength="41">Cerrar pantalla de estudio</string>
+    <string name="gesture_flag_red" maxLength="41">Activar/desactivar marcador rojo</string>
+    <string name="gesture_flag_orange" maxLength="41">Activar/desactivar marcador naranja</string>
+    <string name="gesture_flag_green" maxLength="41">Activar/desactivar marcador verde</string>
+    <string name="gesture_flag_blue" maxLength="41">Activar/desactivar marcador azul</string>
+    <string name="gesture_flag_pink" maxLength="41">Activar/desactivar marcador rosa</string>
+    <string name="gesture_flag_turquoise" maxLength="41">Activar/desactivar marcador turquesa</string>
+    <string name="gesture_flag_purple" maxLength="41">Activar/desactivar marcador morado</string>
+    <string name="gesture_flag_remove" maxLength="41">Eliminar marcador</string>
+    <string name="gesture_page_up" maxLength="41">Page up</string>
+    <string name="gesture_page_down" maxLength="41">Page down</string>
+    <string name="gesture_toggle_whiteboard" maxLength="41">Activar/desactivar pizarra</string>
+    <string name="gesture_toggle_eraser" maxLength="41">Activar/desactivar borrador</string>
+    <string name="gesture_show_hint" maxLength="41">Mostrar pista</string>
+    <string name="gesture_show_all_hints" maxLength="41">Mostrar todas las pistas</string>
+    <string name="record_voice" maxLength="41">Grabar voz</string>
+    <string name="replay_voice" maxLength="41">Reproducir voz</string>
+    <string name="save_voice" maxLength="41">Guardar grabación</string>
 </resources>

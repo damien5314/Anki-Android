@@ -38,10 +38,13 @@ import org.w3c.dom.Node
 import java.lang.StringBuilder
 
 object StringFormatDetector {
-    fun addText(sb: StringBuilder, node: Node) {
+    fun addText(
+        sb: StringBuilder,
+        node: Node,
+    ) {
         val nodeType = node.nodeType
         if (nodeType == Node.TEXT_NODE || nodeType == Node.CDATA_SECTION_NODE) {
-            sb.append(stripQuotes(node.nodeValue.trim { it <= ' ' }))
+            sb.append(stripQuotes(node.nodeValue.trim()))
         } else {
             val childNodes = node.childNodes
             var i = 0
@@ -55,7 +58,7 @@ object StringFormatDetector {
 
     /**
      * Removes all the unescaped quotes. See [Escaping
- * apostrophes and quotes](http://developer.android.com/guide/topics/resources/string-resource.html#FormattingAndStyling)
+     * apostrophes and quotes](http://developer.android.com/guide/topics/resources/string-resource.html#FormattingAndStyling)
      */
     fun stripQuotes(s: String): String {
         val sb = StringBuilder()

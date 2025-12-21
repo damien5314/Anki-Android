@@ -15,105 +15,80 @@
  */
 package com.ichi2.anki.previewer
 
-import android.R
 import android.content.Context
-import android.content.Intent
-import com.google.android.material.color.MaterialColors
+import androidx.appcompat.widget.ThemeUtils
 import com.ichi2.anki.AnkiDroidApp
 import com.ichi2.anki.LanguageUtils
-import com.ichi2.anki.NoteEditor
 import com.ichi2.themes.Themes
 import com.ichi2.utils.toRGBHex
 import org.intellij.lang.annotations.Language
 
-class NoteEditorDestination(val cardId: Long) {
-    fun toIntent(context: Context): Intent =
-        Intent(context, NoteEditor::class.java).apply {
-            putExtra(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_PREVIEWER_EDIT)
-            putExtra(NoteEditor.EXTRA_EDIT_FROM_CARD_ID, cardId)
+/**
+ * Not exactly equal to anki's stdHtml. Some differences:
+ * * `ankidroid.css` and `ankidroid-cardviewer.js` are added
+ *
+ * Aimed to be used only for reviewing/previewing cards
+ *
+ * @param extraJsAssets paths of additional Javascript assets
+ * in the `android_assets` folder to be included
+ */
+@Language("HTML")
+fun stdHtml(
+    context: Context = AnkiDroidApp.instance,
+    extraJsAssets: List<String> = emptyList(),
+    nightMode: Boolean = false,
+): String {
+    val languageDirectionality = if (LanguageUtils.appLanguageIsRTL()) "rtl" else "ltr"
+    val baseTheme = if (nightMode) "dark" else "light"
+    val docClass = if (nightMode) "night-mode" else ""
+    val rootNightMode = if (nightMode) "[class*=night-mode]" else ""
+
+    val canvasColor = ThemeUtils.getThemeAttrColor(context, android.R.attr.colorBackground).toRGBHex()
+    val fgColor = ThemeUtils.getThemeAttrColor(context, android.R.attr.textColor).toRGBHex()
+    val colors = ":root$rootNightMode { --canvas: $canvasColor; --fg: $fgColor; }"
+
+    val jsAssets: List<String> =
+        listOf(
+            "backend/js/jquery.min.js",
+            "backend/js/mathjax.js",
+            "backend/js/vendor/mathjax/tex-chtml-full.js",
+            "backend/js/reviewer.js",
+            "scripts/ankidroid-cardviewer.js",
+        ) + extraJsAssets
+    val jsTxt =
+        jsAssets.joinToString("\n") {
+            """<script src="file:///android_asset/$it"></script>"""
         }
+
+    return """
+        <!DOCTYPE html>
+        <html class="$docClass" dir="$languageDirectionality" data-bs-theme="$baseTheme">
+        <head>
+            <title>AnkiDroid</title>
+                <link rel="stylesheet" type="text/css" href="file:///android_asset/backend/css/root-vars.css">
+                <link rel="stylesheet" type="text/css" href="file:///android_asset/backend/css/reviewer.css">
+                <link rel="stylesheet" type="text/css" href="file:///android_asset/ankidroid.css">
+            <style>
+                .night-mode button { --canvas: #606060; --fg: #eee; }
+                $colors
+            </style>
+        </head>
+        <body class="${bodyClass()}">
+            <div id="qa"></div>
+            $jsTxt
+        </body>
+        </html>
+        """.trimIndent()
 }
 
 /**
- * Not exactly equal to anki's stdHtml. Some differences:
- * * `ankidroid.css` is added
- * * `bridgeCommand()` is ignored
+ * "mathjax-rendered" is a legacy class kept only to support old note types.
  *
- * Aimed to be used only for reviewing/previewing cards
+ * @return body classes used when showing a card
  */
-fun stdHtml(
-    context: Context = AnkiDroidApp.instance,
-    nightMode: Boolean = false
-): String {
-    val languageDirectionality = if (LanguageUtils.appLanguageIsRTL()) "rtl" else "ltr"
-
-    val baseTheme: String
-    val docClass: String
-    if (nightMode) {
-        docClass = "night-mode"
-        baseTheme = "dark"
-    } else {
-        docClass = ""
-        baseTheme = "light"
-    }
-
-    val colors = if (!nightMode) {
-        val canvasColor = MaterialColors.getColor(
-            context,
-            R.attr.colorBackground,
-            R.color.white
-        ).toRGBHex()
-        val fgColor =
-            MaterialColors.getColor(context, R.attr.textColor, R.color.black).toRGBHex()
-        ":root { --canvas: $canvasColor ; --fg: $fgColor; }"
-    } else {
-        val canvasColor = MaterialColors.getColor(
-            context,
-            R.attr.colorBackground,
-            R.color.black
-        ).toRGBHex()
-        val fgColor =
-            MaterialColors.getColor(context, R.attr.textColor, R.color.white).toRGBHex()
-        ":root[class*=night-mode] { --canvas: $canvasColor; --fg: $fgColor; }"
-    }
-
-    @Suppress("UnnecessaryVariable") // necessary for the HTML notation
-    @Language("HTML")
-    val html = """
-                <!DOCTYPE html>
-                <html class="$docClass" dir="$languageDirectionality" data-bs-theme="$baseTheme">
-                <head>
-                    <title>AnkiDroid</title>
-                        <link rel="stylesheet" type="text/css" href="file:///android_asset/backend/web/root-vars.css">
-                        <link rel="stylesheet" type="text/css" href="file:///android_asset/backend/web/reviewer.css">
-                        <link rel="stylesheet" type="text/css" href="file:///android_asset/ankidroid.css">
-                    <style>
-                        .night-mode button { --canvas: #606060; --fg: #eee; }
-                        $colors
-                    </style>
-                </head>
-                <body class="${bodyClass()}">
-                    <div id="_mark" hidden>&#x2605;</div>
-                    <div id="_flag" hidden>&#x2691;</div>
-                    <div id="qa"></div>
-                    <script src="file:///android_asset/jquery.min.js"></script>
-                    <script src="file:///android_asset/mathjax/tex-chtml.js"></script>
-                    <script src="file:///android_asset/backend/web/reviewer.js"></script>
-                    <script>bridgeCommand = function(){};</script>
-                </body>
-                </html>
-    """.trimIndent()
-    return html
-}
-
-/** @return body classes used when showing a card */
 fun bodyClassForCardOrd(
     cardOrd: Int,
-    nightMode: Boolean = Themes.currentTheme.isNightMode
-): String {
-    return "card card${cardOrd + 1} ${bodyClass(nightMode)}"
-}
+    nightMode: Boolean = Themes.currentTheme.isNightMode,
+): String = "card card${cardOrd + 1} ${bodyClass(nightMode)} mathjax-rendered"
 
-private fun bodyClass(nightMode: Boolean = Themes.currentTheme.isNightMode): String {
-    return if (nightMode) "nightMode night_mode" else ""
-}
+private fun bodyClass(nightMode: Boolean = Themes.currentTheme.isNightMode): String = if (nightMode) "nightMode night_mode" else ""

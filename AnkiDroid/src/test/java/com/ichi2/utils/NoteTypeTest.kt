@@ -17,17 +17,19 @@
 
 package com.ichi2.utils
 
+import com.ichi2.anki.libanki.NotetypeJson
 import com.ichi2.anki.utils.ext.getAllClozeTextFields
-import com.ichi2.anki.utils.ext.templates
-import com.ichi2.libanki.NotetypeJson
 import junit.framework.TestCase.assertEquals
+import org.json.JSONObject
 import kotlin.test.Test
 
 // link to a method in `NoteType.kt` for navigation as it contains no classes
+
 /** Test of [NoteType][templates] */
 class NoteTypeTest {
-
-    private val noteType = """
+    private val noteType =
+        JSONObject(
+            """
         {
           "type":1,
           "tmpls":[
@@ -45,7 +47,8 @@ class NoteTypeTest {
               }
            ]
         }
-    """
+    """,
+        )
 
     @Test
     fun testQfmtField() {

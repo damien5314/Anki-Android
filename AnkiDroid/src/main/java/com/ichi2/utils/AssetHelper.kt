@@ -35,6 +35,7 @@
  */
 package com.ichi2.utils
 
+import android.annotation.SuppressLint
 import android.net.Uri
 import android.webkit.MimeTypeMap
 import java.io.File
@@ -46,13 +47,13 @@ object AssetHelper {
      Returns the extension of [path].
      It uses [MimeTypeMap.getFileExtensionFromUrl], with the path transformed into a Uri.
      */
-    fun getFileExtensionFromFilePath(path: String): String {
-        return MimeTypeMap.getFileExtensionFromUrl(
+    @SuppressLint("LocaleRootUsage")
+    fun getFileExtensionFromFilePath(path: String): String =
+        MimeTypeMap.getFileExtensionFromUrl(
             Uri.fromFile(File(path)).toString().lowercase(
-                Locale.ROOT
-            )
+                Locale.ROOT,
+            ),
         )
-    }
 
     /**
      * Use [MimeTypeMap.getMimeTypeFromExtension] to guess MIME type or return the
@@ -63,14 +64,13 @@ object AssetHelper {
      * @param path path of the file to guess its MIME type.
      * @return MIME type guessed from file extension or "text/plain".
      */
-    fun guessMimeType(path: String): String {
-        return when (val extension = getFileExtensionFromFilePath(path)) {
+    fun guessMimeType(path: String): String =
+        when (val extension = getFileExtensionFromFilePath(path)) {
             "js" -> "text/javascript"
             "mjs" -> "text/javascript"
             "json" -> "application/json"
             else -> MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: TEXT_PLAIN
         }
-    }
 
     /** Used for mime type or Intent type when sharing text via other applications **/
     const val TEXT_PLAIN = "text/plain"

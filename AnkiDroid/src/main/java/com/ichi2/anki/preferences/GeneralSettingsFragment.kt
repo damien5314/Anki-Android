@@ -20,10 +20,13 @@ import androidx.core.os.LocaleListCompat
 import androidx.preference.ListPreference
 import androidx.preference.SwitchPreferenceCompat
 import anki.config.ConfigKey
-import com.ichi2.anki.*
+import com.ichi2.anki.CollectionManager
 import com.ichi2.anki.CollectionManager.withCol
+import com.ichi2.anki.CrashReportService
+import com.ichi2.anki.R
 import com.ichi2.anki.contextmenu.AnkiCardContextMenu
 import com.ichi2.anki.contextmenu.CardBrowserContextMenu
+import com.ichi2.anki.launchCatchingTask
 import com.ichi2.utils.LanguageUtil
 import com.ichi2.utils.LanguageUtil.getStringByLocale
 import com.ichi2.utils.LanguageUtil.getSystemLocale
@@ -58,19 +61,23 @@ class GeneralSettingsFragment : SettingsFragment() {
         requirePreference<SwitchPreferenceCompat>(R.string.paste_png_key).apply {
             launchCatchingTask { isChecked = withCol { config.getBool(ConfigKey.Bool.PASTE_IMAGES_AS_PNG) } }
             setOnPreferenceChangeListener { newValue ->
-                launchCatchingTask { withCol { config.setBool(ConfigKey.Bool.PASTE_IMAGES_AS_PNG, newValue as Boolean) } }
+                launchCatchingTask { withCol { config.setBool(ConfigKey.Bool.PASTE_IMAGES_AS_PNG, newValue) } }
             }
         }
         // Error reporting mode
         requirePreference<ListPreference>(R.string.error_reporting_mode_key).setOnPreferenceChangeListener { newValue ->
-            CrashReportService.onPreferenceChanged(requireContext(), newValue as String)
+            CrashReportService.onPreferenceChanged(requireContext(), newValue)
         }
         // Anki card context menu
         requirePreference<SwitchPreferenceCompat>(R.string.anki_card_external_context_menu_key).apply {
             title = getString(R.string.card_browser_enable_external_context_menu, getString(R.string.context_menu_anki_card_label))
-            summary = getString(R.string.card_browser_enable_external_context_menu_summary, getString(R.string.context_menu_anki_card_label))
+            summary =
+                getString(
+                    R.string.card_browser_enable_external_context_menu_summary,
+                    getString(R.string.context_menu_anki_card_label),
+                )
             setOnPreferenceChangeListener { newValue ->
-                AnkiCardContextMenu.ensureConsistentStateWithPreferenceStatus(requireContext(), newValue as Boolean)
+                AnkiCardContextMenu.ensureConsistentStateWithPreferenceStatus(requireContext(), newValue)
             }
         }
         // Card browser context menu
@@ -78,7 +85,7 @@ class GeneralSettingsFragment : SettingsFragment() {
             title = getString(R.string.card_browser_enable_external_context_menu, getString(R.string.card_browser_context_menu))
             summary = getString(R.string.card_browser_enable_external_context_menu_summary, getString(R.string.card_browser_context_menu))
             setOnPreferenceChangeListener { newValue ->
-                CardBrowserContextMenu.ensureConsistentStateWithPreferenceStatus(requireContext(), newValue as Boolean)
+                CardBrowserContextMenu.ensureConsistentStateWithPreferenceStatus(requireContext(), newValue)
             }
         }
     }
@@ -90,14 +97,15 @@ class GeneralSettingsFragment : SettingsFragment() {
             entries = arrayOf(getStringByLocale(R.string.language_system, systemLocale), *sortedLanguages.keys.toTypedArray())
             entryValues = arrayOf(LanguageUtil.SYSTEM_LANGUAGE_TAG, *sortedLanguages.values.toTypedArray())
             setOnPreferenceChangeListener { selectedLanguage ->
-                LanguageUtil.setDefaultBackendLanguages(selectedLanguage as String)
+                LanguageUtil.setDefaultBackendLanguages(selectedLanguage)
                 runBlocking { CollectionManager.discardBackend() }
 
-                val localeCode = if (selectedLanguage != LanguageUtil.SYSTEM_LANGUAGE_TAG) {
-                    selectedLanguage
-                } else {
-                    null
-                }
+                val localeCode =
+                    if (selectedLanguage != LanguageUtil.SYSTEM_LANGUAGE_TAG) {
+                        selectedLanguage
+                    } else {
+                        null
+                    }
                 val localeList = LocaleListCompat.forLanguageTags(localeCode)
                 AppCompatDelegate.setApplicationLocales(localeList)
             }

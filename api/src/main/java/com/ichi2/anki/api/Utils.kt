@@ -1,25 +1,25 @@
-/***************************************************************************************
- *                                                                                      *
- * Copyright (c) 2016 Timothy Rae <perceptualchaos2@gmail.com>                          *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU Lesser General Public License as published by the Free Software *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU Lesser General Public License along with  *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2016 Timothy Rae <perceptualchaos2@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package com.ichi2.anki.api
 
 import android.text.Html
 import java.math.BigInteger
 import java.security.MessageDigest
 import java.util.regex.Pattern
+
 /**
  * Utilities class for the API
  */
@@ -33,14 +33,13 @@ internal object Utils {
     private const val FIELD_SEPARATOR = '\u001f'.toString()
 
     // TODO: Add contract for null -> null and non-null to non-null when kotlin contracts become stable/out of experimental phase
-    fun joinFields(list: Array<String>?): String? {
-        return list?.joinToString(FIELD_SEPARATOR)
-    }
+    fun joinFields(list: Array<String>?): String? = list?.joinToString(FIELD_SEPARATOR)
 
-    fun splitFields(fields: String): Array<String> {
-        return fields.split(FIELD_SEPARATOR.toRegex()).dropLastWhile { it.isEmpty() }
+    fun splitFields(fields: String): Array<String> =
+        fields
+            .split(FIELD_SEPARATOR.toRegex())
+            .dropLastWhile { it.isEmpty() }
             .toTypedArray()
-    }
 
     fun joinTags(tags: Set<String?>?): String {
         if (tags.isNullOrEmpty()) {
@@ -52,9 +51,7 @@ internal object Utils {
         return tags.joinToString(" ")
     }
 
-    fun splitTags(tags: String): Array<String> {
-        return tags.trim { it <= ' ' }.split("\\s+".toRegex()).toTypedArray()
-    }
+    fun splitTags(tags: String): Array<String> = tags.trim().split("\\s+".toRegex()).toTypedArray()
 
     fun fieldChecksum(data: String): Long {
         val strippedData = stripHTMLMedia(data)
@@ -74,7 +71,7 @@ internal object Utils {
             // This is guaranteed to never happen
             throw IllegalStateException(
                 "Error making field checksum with SHA1 algorithm and UTF-8 encoding",
-                e
+                e,
             )
         }
     }

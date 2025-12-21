@@ -2,19 +2,25 @@ plugins {
     // Gradle plugin portal
     alias(libs.plugins.tripletPlay)
     alias(libs.plugins.android.application)
-    alias(libs.plugins.amazonappstorepublisher)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.keeper)
     id 'idea'
 }
 
 repositories {
     google()
     mavenCentral()
-    maven { url "https://jitpack.io" }
+    maven { url = "https://jitpack.io" }
 }
 
+keeper {
+    traceReferences {
+        // Silence missing definitions
+        arguments.set(["--map-diagnostics:MissingDefinitionsDiagnostic", "error", "none"])
+    }
+}
 
 idea {
     module {
@@ -33,22 +39,28 @@ static def gitCommitHash() {
 }
 
 android {
-    namespace "com.ichi2.anki"
+    namespace = "com.ichi2.anki"
 
-    compileSdk libs.versions.compileSdk.get().toInteger()
+    compileSdk = libs.versions.compileSdk.get().toInteger()
 
     buildFeatures {
         buildConfig = true
         aidl = true
+        viewBinding = true
+    }
+
+    if (rootProject.testReleaseBuild) {
+        testBuildType = "release"
+    } else {
+        testBuildType = "debug"
     }
 
     defaultConfig {
-        applicationId "com.ichi2.anki"
+        applicationId = "com.ichi2.anki"
         buildConfigField "Boolean", "CI", (System.getenv("CI") == "true").toString()
         buildConfigField "String", "ACRA_URL", '"https://ankidroid.org/acra/report"'
         buildConfigField "String", "BACKEND_VERSION", "\"${libs.versions.ankiBackend.get()}\""
         buildConfigField "Boolean", "ENABLE_LEAK_CANARY", "false"
-        buildConfigField "Boolean", "ALLOW_UNSAFE_MIGRATION", "false"
         buildConfigField "String", "GIT_COMMIT_HASH", "\"${gitCommitHash()}\""
         buildConfigField "long", "BUILD_TIME", System.currentTimeMillis().toString()
         resValue "string", "app_name", "AnkiDroid"
@@ -74,21 +86,31 @@ android {
         //
         // This ensures the correct ordering between the various types of releases (dev < alpha < beta < release) which is
         // needed for upgrades to be offered correctly.
-        versionCode=21900106
-        versionName="2.19alpha6"
-        minSdk libs.versions.minSdk.get().toInteger()
+        versionCode=22400100
+        // If you change this to a new version, you probably also want to update .gradle/workflows/milestone.yml for the new version...
+        versionName="2.24.0alpha0"
+        minSdk = libs.versions.minSdk.get().toInteger()
+
         // After #13695: change .tests_emulator.yml
-        targetSdk libs.versions.targetSdk.get().toInteger()
-        testApplicationId "com.ichi2.anki.tests"
+        targetSdk = libs.versions.targetSdk.get().toInteger()
+        testApplicationId = "com.ichi2.anki.tests"
         vectorDrawables.useSupportLibrary = true
-        testInstrumentationRunner 'com.ichi2.testutils.NewCollectionPathTestRunner'
+        testInstrumentationRunner = 'com.ichi2.testutils.NewCollectionPathTestRunner'
     }
     signingConfigs {
         release {
-            storeFile file("${homePath}/src/android-keystore")
-            keyAlias "nrkeystorealias"
-            storePassword System.getenv("KSTOREPWD")
-            keyPassword System.getenv("KEYPWD")
+            def keystorePath = System.getenv("KEYSTOREPATH")
+            if (keystorePath != null && !keystorePath.trim().isEmpty()) {
+                storeFile file(keystorePath)
+                storePassword System.getenv("KEYSTOREPWD") ?: System.getenv("KSTOREPWD")
+                keyAlias System.getenv("KEYALIAS")
+                keyPassword System.getenv("KEYPWD")
+            } else {
+                storeFile file("${rootDir}/tools/fallback-release-keystore.jks")
+                storePassword "Test@123"
+                keyAlias "my-key"
+                keyPassword "Test@123"
+            }
         }
     }
     buildTypes {
@@ -104,14 +126,10 @@ android {
                 localProperties.load(project.rootProject.file('local.properties').newDataInputStream())
                 // #6009 Allow optional disabling of JaCoCo for general build (assembleDebug).
                 // jacocoDebug task was slow, hung, and wasn't required unless I wanted coverage
-                testCoverageEnabled localProperties['enable_coverage'] != "false"
+                testCoverageEnabled = localProperties['enable_coverage'] != "false"
                 // not profiled: optimization for build times
                 if (localProperties['enable_languages'] == "false") {
                     android.defaultConfig.resConfigs "en"
-                }
-                // allows the scoped storage migration when the user is not logged in
-                if (localProperties["allow_unsafe_migration"] != null) {
-                    buildConfigField "Boolean", "ALLOW_UNSAFE_MIGRATION", localProperties["allow_unsafe_migration"]
                 }
                 // allow disabling leak canary
                 if (localProperties["enable_leak_canary"] != null) {
@@ -126,21 +144,19 @@ android {
             // make the icon red if in debug mode
             resValue 'color', 'anki_foreground_icon_color_0', "#FFFF0000"
             resValue 'color', 'anki_foreground_icon_color_1', "#FFFF0000"
-            resValue "string", "applicationId", "${defaultConfig.applicationId}${applicationIdSuffix}"
         }
         named('release') {
-            minifyEnabled true
+            testCoverageEnabled = testReleaseBuild
+            minifyEnabled System.getenv("MINIFY_ENABLED") ? System.getenv("MINIFY_ENABLED") != "false" : true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            testProguardFile 'proguard-test-rules.pro'
             splits.abi.universalApk = universalApkEnabled // Build universal APK for release with `-Duniversal-apk=true`
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            signingConfig = signingConfigs.release
 
             // syntax: assembleRelease -PcustomSuffix="suffix" -PcustomName="New name"
             if (project.hasProperty("customSuffix")) {
                 // the suffix needs a '.' at the start
                 applicationIdSuffix project.property("customSuffix").replaceFirst(/^\.*/, ".")
-                resValue "string", "applicationId", "${defaultConfig.applicationId}${applicationIdSuffix}"
-            } else {
-                resValue "string", "applicationId", defaultConfig.applicationId
             }
             if (project.hasProperty("customName")) {
                 resValue "string", "app_name", project.property("customName")
@@ -161,6 +177,7 @@ android {
     flavorDimensions += "appStore"
     productFlavors {
         create('play') {
+            getIsDefault().set(true)
             dimension "appStore"
         }
         create('amazon') {
@@ -186,7 +203,7 @@ android {
     splits {
         abi {
             reset()
-            enable enableSeparateBuildPerCPUArchitecture
+            enable = enableSeparateBuildPerCPUArchitecture
             //universalApk enableUniversalApk  // set in debug + release config blocks above
             include "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
         }
@@ -219,21 +236,21 @@ android {
     }
 
     testOptions {
-        animationsDisabled true
-        kotlinOptions {
-            freeCompilerArgs += [
-                    '-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi',
-            ]
+        animationsDisabled = true
+        kotlin {
+            compilerOptions {
+                freeCompilerArgs.add("-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi")
+            }
         }
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
-        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11
+        jvmTarget = JavaVersion.VERSION_17
     }
 
     packagingOptions {
@@ -246,23 +263,54 @@ android {
 play {
     serviceAccountCredentials.set(file("${homePath}/src/AnkiDroid-GCP-Publish-Credentials.json"))
     track.set('alpha')
-}
 
-amazon {
-    securityProfile = file("${homePath}/src/AnkiDroid-Amazon-Publish-Security-Profile.json")
-    applicationId = "amzn1.devportal.mobileapp.524a424d314931494c55383833305539"
-    pathToApks = [ file("./build/outputs/apk/amazon/release/AnkiDroid-amazon-universal-release.apk") ]
-    replaceEdit = true
+    // any time we bump minSdk we want Play Store to retain the old artifacts by version code,
+    // so that they remain available for older devices
+    retain {
+        artifacts.set([
+                20700300L, // (2.7, minSdk 10, universal APK)
+                20804300L, // (2.8.4, minSdk 10, universal APK)
+                21004300L, // (2.10.4, minSdk 15, universal APK)
+                // release-2.14 minSdk 16: missing and not re-publishable, see issue 17791
+                121603300L, // (2.16.3, minSdk 21, ABI armeabi-v7a)
+                221603300L, // (2.16.3, minSdk 21, ABI x86)
+                321603300L, // (2.16.3, minSdk 21, ABI arm64-v8a)
+                421603300L, // (2.16.3, minSdk 21, ABI x86_64)
+                121905300L, // (2.19.5, minSdk 23, ABI armeabi-v7a)
+                221905300L, // (2.19.5, minSdk 23, ABI x86)
+                321905300L, // (2.19.5, minSdk 23, ABI arm64-v8a)
+                421905300L, // (2.19.5, minSdk 23, ABI x86_64)
+        ])
+    }
+
+    // If you retain APKs in a release with different names as we do above,
+    // the plugin + Play Store has no idea how to name the release except by date.
+    // release name is developer only, but sane names really help, so set one
+    releaseName.set(android.defaultConfig.versionName)
 }
 
 // Install Git pre-commit hook for Ktlint
 tasks.register('installGitHook', Copy) {
     from new File(rootProject.rootDir, 'pre-commit')
     into { new File(rootProject.rootDir, '.git/hooks') }
-    fileMode 0755
+    filePermissions {
+        user {
+            read = write = execute = true
+        }
+    }
 }
 // to run manually: `./gradlew installGitHook`
 tasks.named('preBuild').configure { dependsOn('installGitHook') }
+
+tasks.register('copyTestLibIntoAndroidTest', Copy) {
+    into new File(rootProject.rootDir, 'AnkiDroid/src/androidTest/java/com/ichi2/testutils')
+    from new File(rootProject.rootDir, 'testlib/src/main/java/com/ichi2/testutils')
+    into ('common') {
+        from 'common'
+    }
+}
+tasks.named('preBuild').configure { dependsOn('copyTestLibIntoAndroidTest') }
+tasks.named('runKtlintCheckOverAndroidTestSourceSet').configure { mustRunAfter('copyTestLibIntoAndroidTest') }
 
 // Issue 11078 - some emulators run, but run zero tests, and still report success
 tasks.register('assertNonzeroAndroidTests') {
@@ -283,7 +331,13 @@ tasks.register('assertNonzeroAndroidTests') {
     }
 }
 afterEvaluate {
-    tasks.named('connectedPlayDebugAndroidTest').configure { finalizedBy('assertNonzeroAndroidTests') }
+    tasks.named("connectedPlay${rootProject.androidTestVariantName}AndroidTest").configure {
+        finalizedBy('assertNonzeroAndroidTests')
+    }
+    tasks.named("packagePlay${rootProject.androidTestVariantName}AndroidTest").configure {
+        // Issue 17520 - ensures testlib is built
+        dependsOn(":testlib:assemblePlay${rootProject.androidTestVariantName}")
+    }
 }
 
 apply from: "./robolectricDownloader.gradle"
@@ -294,7 +348,7 @@ dependencies {
     configurations.configureEach {
         resolutionStrategy {
             // Timber has this as a dependency but they are not up to date. We want to force our version.
-            force 'org.jetbrains:annotations:24.1.0'
+            force libs.jetbrains.annotations
         }
     }
     api project(":api")
@@ -308,14 +362,18 @@ dependencies {
 
     // modules
     implementation project(":common")
+    implementation project(":libanki")
+    implementation project(":vbpd")
 
     implementation libs.androidx.activity
     implementation libs.androidx.annotation
     implementation libs.androidx.appcompat
     implementation libs.androidx.browser
     implementation libs.androidx.core.ktx
+    implementation libs.androidx.draganddrop
     implementation libs.androidx.exifinterface
     implementation libs.androidx.fragment.ktx
+    implementation libs.androidx.lifecycle.process
     implementation libs.androidx.media
     implementation libs.androidx.preference.ktx
     implementation libs.androidx.recyclerview
@@ -364,7 +422,6 @@ dependencies {
     implementation libs.jsoup
     implementation libs.java.semver // For AnkiDroid JS API Versioning
     implementation libs.drakeet.drawer
-    implementation libs.tapTargetPrompt
     implementation libs.colorpicker
     implementation libs.kotlin.reflect
     implementation libs.kotlin.test
@@ -376,6 +433,7 @@ dependencies {
     implementation libs.leakcanary.android
 
     testImplementation project(':testlib')
+    testImplementation project(":libanki:testutils")
 
     // A path for a testing library which provide Parameterized Test
     testImplementation libs.junit.jupiter
@@ -393,7 +451,6 @@ dependencies {
     testImplementation libs.kotlin.test.junit5
     testImplementation libs.kotlinx.coroutines.test
     testImplementation libs.mockk
-    testImplementation libs.commons.exec // obtaining the OS
     testImplementation libs.androidx.fragment.testing
     // in a JvmTest we need org.json.JSONObject to not be mocked
     testImplementation libs.json
@@ -408,7 +465,9 @@ dependencies {
     // for testing flows
     testImplementation libs.cashapp.turbine
 
-    androidTestImplementation project(':testlib')
+    // we should depend directly on the common testlib for androidTest, but we cannot
+    // until coverage-breaking issue is fixed https://issuetracker.google.com/issues/332746900
+    // androidTestImplementation project(':testlib')
 
     // May need a resolution strategy for support libs to our versions
     androidTestImplementation libs.androidx.espresso.core
@@ -422,4 +481,8 @@ dependencies {
     androidTestImplementation libs.kotlin.test
     androidTestImplementation libs.kotlin.test.junit
     androidTestImplementation libs.androidx.fragment.testing
+
+    implementation libs.androidx.media3.exoplayer
+    implementation libs.androidx.media3.exoplayer.dash
+    implementation libs.androidx.media3.ui
 }

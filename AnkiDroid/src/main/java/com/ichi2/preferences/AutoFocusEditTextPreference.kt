@@ -21,17 +21,21 @@ import android.util.AttributeSet
 import android.view.View
 import android.widget.EditText
 import com.ichi2.utils.AndroidUiUtils.setFocusAndOpenKeyboard
+import com.ichi2.utils.moveCursorToEnd
 
 interface AutoFocusable {
     fun autoFocusAndMoveCursorToEnd(editText: EditText) {
-        // focus EditText and place cursor at the end of text
-        setFocusAndOpenKeyboard(editText) { editText.setSelection(editText.text.length) }
+        setFocusAndOpenKeyboard(editText) { editText.moveCursorToEnd() }
     }
 }
 
 // used in .xml files
 @Suppress("deprecation", "unused")
-open class AutoFocusEditTextPreference(context: Context?, attrs: AttributeSet?) : android.preference.EditTextPreference(context, attrs), AutoFocusable {
+open class AutoFocusEditTextPreference(
+    context: Context?,
+    attrs: AttributeSet?,
+) : android.preference.EditTextPreference(context, attrs),
+    AutoFocusable {
     @Suppress("OVERRIDE_DEPRECATION") // TODO: Why?
     override fun onBindDialogView(view: View?) {
         super.onBindDialogView(view)

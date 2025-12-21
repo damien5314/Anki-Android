@@ -16,11 +16,14 @@
 
 package com.ichi2.compat
 
-import com.ichi2.testutils.*
-import com.ichi2.testutils.AnkiAssert.assertDoesNotThrow
+import android.annotation.SuppressLint
+import com.ichi2.testutils.createTransientDirectory
+import com.ichi2.testutils.createTransientFile
+import com.ichi2.testutils.withTempFile
 import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Test
+import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import java.io.File
@@ -33,15 +36,17 @@ import kotlin.test.assertFailsWith
 class CompatDeleteFileTest(
     val compat: Compat,
     /** Used in the "Test Results" Window */
-    @Suppress("unused") private val unitTestDescription: String
+    @Suppress("unused") private val unitTestDescription: String,
 ) {
     companion object {
+        @SuppressLint("NewApi")
         @JvmStatic // required for Parameters
         @Parameterized.Parameters(name = "{1}")
-        fun data(): Iterable<Array<Any>> = sequence {
-            yield(arrayOf(CompatV23(), "CompatV23"))
-            yield(arrayOf(CompatV26(), "CompatV26"))
-        }.asIterable()
+        fun data(): Iterable<Array<Any>> =
+            sequence {
+                yield(arrayOf(BaseCompat(), "BaseCompat"))
+                yield(arrayOf(CompatV26(), "CompatV26"))
+            }.asIterable()
     }
 
     @Test

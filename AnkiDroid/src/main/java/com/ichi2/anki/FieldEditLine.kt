@@ -16,7 +16,6 @@
 package com.ichi2.anki
 
 import android.content.Context
-import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Parcel
@@ -29,30 +28,24 @@ import android.view.ActionMode
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.FrameLayout
-import android.widget.ImageButton
-import android.widget.TextView
 import androidx.annotation.DrawableRes
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.os.ParcelCompat
 import androidx.vectordrawable.graphics.drawable.VectorDrawableCompat
+import com.ichi2.anki.common.utils.annotation.KotlinCleanup
+import com.ichi2.anki.databinding.CardMultimediaEditlineBinding
+import com.ichi2.compat.setTooltipTextCompat
 import com.ichi2.ui.AnimationUtil.collapseView
 import com.ichi2.ui.AnimationUtil.expandView
-import com.ichi2.utils.KotlinCleanup
-import java.util.*
+import java.util.Locale
 
 @KotlinCleanup("replace _name with `field`")
-@KotlinCleanup("remove setTypeface")
-@KotlinCleanup("replace setEnableAnimation with var")
 class FieldEditLine : FrameLayout {
-    val editText: FieldEditText
-    private val label: TextView
-    val toggleSticky: ImageButton
-    val mediaButton: ImageButton
-    private val expandButton: ImageButton
+    val binding = CardMultimediaEditlineBinding.inflate(LayoutInflater.from(context), this, true)
     private var _name: String? = null
     private var expansionState = ExpansionState.EXPANDED
-    private var enableAnimation = true
+
+    var enableAnimation = true
 
     constructor(context: Context) : super(context)
 
@@ -61,99 +54,87 @@ class FieldEditLine : FrameLayout {
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
 
     init {
-        LayoutInflater.from(context).inflate(R.layout.card_multimedia_editline, this, true)
-        editText = findViewById(R.id.id_note_editText)
-        label = findViewById(R.id.id_label)
-        toggleSticky = findViewById(R.id.id_toggle_sticky_button)
-        mediaButton = findViewById(R.id.id_media_button)
-        val constraintLayout: ConstraintLayout = findViewById(R.id.constraint_layout)
-        expandButton = findViewById(R.id.id_expand_button)
+        binding.toggleSticky.setTooltipTextCompat(CollectionManager.TR.editingToggleSticky())
         // 7433 -
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            editText.id = View.generateViewId()
-            toggleSticky.id = View.generateViewId()
-            mediaButton.id = View.generateViewId()
-            expandButton.id = View.generateViewId()
-            editText.nextFocusForwardId = toggleSticky.id
-            toggleSticky.nextFocusForwardId = mediaButton.id
-            mediaButton.nextFocusForwardId = expandButton.id
+            binding.editText.id = generateViewId()
+            binding.toggleSticky.id = generateViewId()
+            binding.mediaButton.id = generateViewId()
+            binding.expandButton.id = generateViewId()
+            binding.editText.nextFocusForwardId = binding.toggleSticky.id
+            binding.toggleSticky.nextFocusForwardId = binding.mediaButton.id
+            binding.mediaButton.nextFocusForwardId = binding.expandButton.id
             ConstraintSet().apply {
-                clone(constraintLayout)
-                connect(toggleSticky.id, ConstraintSet.END, mediaButton.id, ConstraintSet.START)
-                connect(mediaButton.id, ConstraintSet.END, expandButton.id, ConstraintSet.START)
-                applyTo(constraintLayout)
+                clone(binding.constraintLayout)
+                connect(binding.toggleSticky.id, ConstraintSet.END, binding.mediaButton.id, ConstraintSet.START)
+                connect(binding.mediaButton.id, ConstraintSet.END, binding.expandButton.id, ConstraintSet.START)
+                applyTo(binding.constraintLayout)
             }
         }
         setExpanderBackgroundImage()
-        expandButton.setOnClickListener { toggleExpansionState() }
-        editText.init()
-        label.setPadding(getDensityAdjustedValue(context, 3.4f).toInt(), 0, 0, 0)
+        binding.expandButton.setOnClickListener { toggleExpansionState() }
+        binding.editText.init()
+        binding.label.setPaddingRelative(getDensityAdjustedValue(context, 3.4f).toInt(), 0, 0, 0)
     }
 
     private fun toggleExpansionState() {
-        expansionState = when (expansionState) {
-            ExpansionState.EXPANDED -> {
-                collapseView(editText, enableAnimation)
-                ExpansionState.COLLAPSED
+        expansionState =
+            when (expansionState) {
+                ExpansionState.EXPANDED -> {
+                    collapseView(binding.editText, enableAnimation)
+                    ExpansionState.COLLAPSED
+                }
+                ExpansionState.COLLAPSED -> {
+                    expandView(binding.editText, enableAnimation)
+                    ExpansionState.EXPANDED
+                }
             }
-            ExpansionState.COLLAPSED -> {
-                expandView(editText, enableAnimation)
-                ExpansionState.EXPANDED
-            }
-        }
         setExpanderBackgroundImage()
     }
 
     private fun setExpanderBackgroundImage() {
         when (expansionState) {
-            ExpansionState.COLLAPSED -> expandButton.background = getBackgroundImage(R.drawable.ic_expand_more_black_24dp_xml)
-            ExpansionState.EXPANDED -> expandButton.background = getBackgroundImage(R.drawable.ic_expand_less_black_24dp)
+            ExpansionState.COLLAPSED -> binding.expandButton.background = getBackgroundImage(R.drawable.ic_expand_more_black_24dp_xml)
+            ExpansionState.EXPANDED -> binding.expandButton.background = getBackgroundImage(R.drawable.ic_expand_less_black_24dp)
         }
     }
 
-    private fun getBackgroundImage(@DrawableRes idRes: Int): Drawable? {
-        return VectorDrawableCompat.create(this.resources, idRes, context.theme)
-    }
+    private fun getBackgroundImage(
+        @DrawableRes idRes: Int,
+    ): Drawable? = VectorDrawableCompat.create(this.resources, idRes, context.theme)
 
     fun setActionModeCallbacks(callback: ActionMode.Callback?) {
-        editText.customSelectionActionModeCallback = callback
-        editText.customInsertionActionModeCallback = callback
-    }
-
-    fun setTypeface(typeface: Typeface?) {
-        if (typeface != null) {
-            editText.typeface = typeface
-        }
+        binding.editText.customSelectionActionModeCallback = callback
+        binding.editText.customInsertionActionModeCallback = callback
     }
 
     fun setHintLocale(hintLocale: Locale?) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && hintLocale != null) {
-            editText.setHintLocale(hintLocale)
+        if (hintLocale != null) {
+            binding.editText.setHintLocale(hintLocale)
         }
     }
 
-    fun setContent(content: String?, replaceNewline: Boolean) {
-        editText.setContent(content, replaceNewline)
+    fun setContent(
+        content: String?,
+        replaceNewline: Boolean,
+    ) {
+        binding.editText.setContent(content, replaceNewline)
     }
 
     fun setOrd(i: Int) {
-        editText.ord = i
-    }
-
-    fun setEnableAnimation(value: Boolean) {
-        enableAnimation = value
+        binding.editText.ord = i
     }
 
     var name: String?
         get() = _name
         set(name) {
             _name = name
-            editText.contentDescription = name
-            label.text = name
+            binding.editText.contentDescription = name
+            binding.label.text = name
         }
 
     val lastViewInTabOrder: View
-        get() = expandButton
+        get() = binding.expandButton
 
     fun loadState(state: AbsSavedState) {
         onRestoreInstanceState(state)
@@ -173,10 +154,10 @@ class FieldEditLine : FrameLayout {
         val state = super.onSaveInstanceState()
         val savedState = SavedState(state)
         savedState.childrenStates = SparseArray()
-        savedState.editTextId = editText.id
-        savedState.toggleStickyId = toggleSticky.id
-        savedState.mediaButtonId = mediaButton.id
-        savedState.expandButtonId = expandButton.id
+        savedState.editTextId = binding.editText.id
+        savedState.toggleStickyId = binding.toggleSticky.id
+        savedState.mediaButtonId = binding.mediaButton.id
+        savedState.expandButtonId = binding.expandButton.id
         for (i in 0 until childCount) {
             getChildAt(i).saveHierarchyState(savedState.childrenStates)
         }
@@ -189,22 +170,22 @@ class FieldEditLine : FrameLayout {
             super.onRestoreInstanceState(state)
             return
         }
-        val editTextId = editText.id
-        val toggleStickyId = toggleSticky.id
-        val mediaButtonId = mediaButton.id
-        val expandButtonId = expandButton.id
-        editText.id = state.editTextId
-        toggleSticky.id = state.toggleStickyId
-        mediaButton.id = state.mediaButtonId
-        expandButton.id = state.expandButtonId
+        val editTextId = binding.editText.id
+        val toggleStickyId = binding.toggleSticky.id
+        val mediaButtonId = binding.mediaButton.id
+        val expandButtonId = binding.expandButton.id
+        binding.editText.id = state.editTextId
+        binding.toggleSticky.id = state.toggleStickyId
+        binding.mediaButton.id = state.mediaButtonId
+        binding.expandButton.id = state.expandButtonId
         super.onRestoreInstanceState(state.superState)
         for (i in 0 until childCount) {
             getChildAt(i).restoreHierarchyState(state.childrenStates)
         }
-        editText.id = editTextId
-        toggleSticky.id = toggleStickyId
-        mediaButton.id = mediaButtonId
-        expandButton.id = expandButtonId
+        binding.editText.id = editTextId
+        binding.toggleSticky.id = toggleStickyId
+        binding.mediaButton.id = mediaButtonId
+        binding.expandButton.id = expandButtonId
         if (expansionState != state.expansionState) {
             toggleExpansionState()
         }
@@ -222,7 +203,10 @@ class FieldEditLine : FrameLayout {
 
         constructor(superState: Parcelable?) : super(superState)
 
-        override fun writeToParcel(out: Parcel, flags: Int) {
+        override fun writeToParcel(
+            out: Parcel,
+            flags: Int,
+        ) {
             super.writeToParcel(out, flags)
             out.writeSparseArray(childrenStates)
             out.writeInt(editTextId)
@@ -238,33 +222,33 @@ class FieldEditLine : FrameLayout {
             toggleStickyId = source.readInt()
             mediaButtonId = source.readInt()
             expandButtonId = source.readInt()
-            expansionState = ParcelCompat.readSerializable(
-                source,
-                ExpansionState::class.java.classLoader,
-                ExpansionState::class.java
-            )
+            expansionState =
+                ParcelCompat.readSerializable(
+                    source,
+                    ExpansionState::class.java.classLoader,
+                    ExpansionState::class.java,
+                )
         }
 
         companion object {
             @JvmField // required field that makes Parcelables from a Parcel
             @Suppress("unused")
-            val CREATOR: Parcelable.Creator<SavedState> = object : ClassLoaderCreator<SavedState> {
-                override fun createFromParcel(source: Parcel, loader: ClassLoader): SavedState {
-                    return SavedState(source, loader)
-                }
+            val CREATOR: Parcelable.Creator<SavedState> =
+                object : ClassLoaderCreator<SavedState> {
+                    override fun createFromParcel(
+                        source: Parcel,
+                        loader: ClassLoader,
+                    ): SavedState = SavedState(source, loader)
 
-                override fun createFromParcel(source: Parcel): SavedState {
-                    throw IllegalStateException()
-                }
+                    override fun createFromParcel(source: Parcel): SavedState = throw IllegalStateException()
 
-                override fun newArray(size: Int): Array<SavedState?> {
-                    return arrayOfNulls(size)
+                    override fun newArray(size: Int): Array<SavedState?> = arrayOfNulls(size)
                 }
-            }
         }
     }
 
     enum class ExpansionState {
-        EXPANDED, COLLAPSED
+        EXPANDED,
+        COLLAPSED,
     }
 }

@@ -22,8 +22,15 @@ import android.view.KeyEvent
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentContainerView
 import androidx.fragment.app.commit
+import com.ichi2.anki.SingleFragmentActivity.Companion.getIntent
+import com.ichi2.anki.android.input.ShortcutGroup
+import com.ichi2.anki.android.input.ShortcutGroupProvider
+import com.ichi2.anki.dialogs.customstudy.CustomStudyDialog.CustomStudyAction
+import com.ichi2.anki.ui.windows.managespace.ManageSpaceActivity
+import com.ichi2.anki.utils.ext.setFragmentResultListener
 import com.ichi2.themes.setTransparentStatusBar
-import com.ichi2.utils.getInstanceFromClassName
+import com.ichi2.utils.FragmentFactoryUtils
+import timber.log.Timber
 import kotlin.reflect.KClass
 import kotlin.reflect.jvm.jvmName
 
@@ -36,13 +43,16 @@ import kotlin.reflect.jvm.jvmName
  *
  * [getIntent] can be used as an easy way to build a [SingleFragmentActivity]
  */
-open class SingleFragmentActivity : AnkiActivity() {
+open class SingleFragmentActivity : AnkiActivity(R.layout.single_fragment_activity) {
     override fun onCreate(savedInstanceState: Bundle?) {
         if (showedActivityFailedScreen(savedInstanceState)) {
             return
         }
+
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.single_fragment_activity)
+        if (!ensureStoragePermissions()) {
+            return
+        }
         setTransparentStatusBar()
 
         // avoid recreating the fragment on configuration changes
@@ -50,15 +60,35 @@ open class SingleFragmentActivity : AnkiActivity() {
         if (savedInstanceState != null) {
             return
         }
+        val assignedFragment = intent.getStringExtra(FRAGMENT_NAME_EXTRA)
+        // One of the activities inheriting this activity is ManageSpaceActivity which is started
+        // only by the system. When we encounter this activity we need to assign it here the fragment
+        // it expects, which is ManageSpaceFragment
+        val fragmentClassName =
+            if (assignedFragment == null && this is ManageSpaceActivity) {
+                // the IDE updates this when moving ManageSpaceFragment
+                "com.ichi2.anki.ui.windows.managespace.ManageSpaceFragment"
+            } else {
+                requireNotNull(assignedFragment) { "'$FRAGMENT_NAME_EXTRA' extra should be provided" }
+            }
 
-        val fragmentClassName = requireNotNull(intent.getStringExtra(FRAGMENT_NAME_EXTRA)) {
-            "'$FRAGMENT_NAME_EXTRA' extra should be provided"
-        }
-        val fragment = getInstanceFromClassName<Fragment>(fragmentClassName).apply {
-            arguments = intent.getBundleExtra(FRAGMENT_ARGS_EXTRA)
-        }
+        Timber.d("Creating fragment %s", fragmentClassName)
+
+        val fragment =
+            FragmentFactoryUtils.instantiate<Fragment>(this, fragmentClassName).apply {
+                arguments = intent.getBundleExtra(FRAGMENT_ARGS_EXTRA)
+            }
         supportFragmentManager.commit {
-            replace(R.id.fragment_container, fragment)
+            replace(R.id.fragment_container, fragment, FRAGMENT_TAG)
+        }
+
+        setFragmentResultListener(CustomStudyAction.REQUEST_KEY) { _, bundle ->
+            when (CustomStudyAction.fromBundle(bundle)) {
+                CustomStudyAction.CUSTOM_STUDY_SESSION,
+                CustomStudyAction.EXTEND_STUDY_LIMITS,
+                ->
+                    openStudyOptionsAndFinish()
+            }
         }
     }
 
@@ -71,17 +101,43 @@ open class SingleFragmentActivity : AnkiActivity() {
         }
     }
 
+    /** Reference to the hosted fragment */
+    val fragment
+        get() = supportFragmentManager.findFragmentByTag(FRAGMENT_TAG)
+
+    override val shortcuts: ShortcutGroup?
+        get() = (fragment as? ShortcutGroupProvider)?.shortcuts
+
     companion object {
         const val FRAGMENT_NAME_EXTRA = "fragmentName"
         const val FRAGMENT_ARGS_EXTRA = "fragmentArgs"
+        const val FRAGMENT_TAG = "SingleFragmentActivityTag"
 
-        fun getIntent(context: Context, fragmentClass: KClass<out Fragment>, arguments: Bundle? = null): Intent {
-            return Intent(context, SingleFragmentActivity::class.java).apply {
+        fun getIntent(
+            context: Context,
+            fragmentClass: KClass<out Fragment>,
+            arguments: Bundle? = null,
+            intentAction: String? = null,
+        ): Intent =
+            Intent(context, SingleFragmentActivity::class.java).apply {
                 putExtra(FRAGMENT_NAME_EXTRA, fragmentClass.jvmName)
                 putExtra(FRAGMENT_ARGS_EXTRA, arguments)
+                action = intentAction
             }
-        }
     }
+
+    // Begin - implementation of CustomStudyListener methods here for crash fix
+    // TODO - refactor https://github.com/ankidroid/Anki-Android/pull/17508#pullrequestreview-2465561993
+    private fun openStudyOptionsAndFinish() {
+        val intent =
+            Intent(this, StudyOptionsActivity::class.java).apply {
+                putExtra("withDeckOptions", false)
+            }
+        startActivity(intent, null)
+        this.finish()
+    }
+
+    // END CustomStudyListener temporary implementation - should refactor out
 }
 
 interface DispatchKeyEventListener {

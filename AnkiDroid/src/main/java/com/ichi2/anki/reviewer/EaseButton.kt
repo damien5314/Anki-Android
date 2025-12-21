@@ -22,7 +22,10 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.annotation.StringRes
+import androidx.core.view.isVisible
+import anki.scheduler.CardAnswer.Rating
 import com.ichi2.anki.AbstractFlashcardViewer
+import com.ichi2.anki.common.utils.annotation.KotlinCleanup
 
 /**
  * The UI of an ease button
@@ -31,8 +34,12 @@ import com.ichi2.anki.AbstractFlashcardViewer
  * * [nextTime] is used by the API
  * * [canPerformClick] is used to determine if the answer is being shown and the button isn't blocked
  */
-class EaseButton(private val ease: Int, private val layout: LinearLayout, private val easeTextView: TextView, private val easeTimeView: TextView) {
-
+class EaseButton(
+    private val rating: Rating,
+    private val layout: LinearLayout,
+    private val easeTextView: TextView,
+    private val easeTimeView: TextView,
+) {
     var height: Int
         get() = layout.layoutParams.height
         set(value) {
@@ -41,7 +48,7 @@ class EaseButton(private val ease: Int, private val layout: LinearLayout, privat
 
     @get:JvmName("canPerformClick")
     val canPerformClick
-        get() = layout.isEnabled && layout.visibility == View.VISIBLE
+        get() = layout.isEnabled && layout.isVisible
 
     var nextTime: String
         get() = easeTimeView.text.toString()
@@ -97,8 +104,9 @@ class EaseButton(private val ease: Int, private val layout: LinearLayout, privat
      *
      * @param currentEase The current ease of the card
      */
-    fun unblockBasedOnEase(currentEase: Int) {
-        if (this.ease == currentEase) {
+    @KotlinCleanup("Make the type non nullable.")
+    fun unblockBasedOnEase(currentEase: Rating?) {
+        if (this.rating == currentEase) {
             layout.isClickable = true
         } else {
             layout.isEnabled = true
@@ -110,8 +118,8 @@ class EaseButton(private val ease: Int, private val layout: LinearLayout, privat
      *
      * @param currentEase The current ease of the card
      */
-    fun blockBasedOnEase(currentEase: Int) {
-        if (this.ease == currentEase) {
+    fun blockBasedOnEase(currentEase: Rating) {
+        if (this.rating == currentEase) {
             layout.isClickable = false
         } else {
             layout.isEnabled = false
@@ -126,7 +134,11 @@ class EaseButton(private val ease: Int, private val layout: LinearLayout, privat
     fun requestFocus() {
     }
 
-    fun setup(backgroundColor: Int, textColor: Int, @StringRes easeStringRes: Int) {
+    fun setup(
+        backgroundColor: Int,
+        textColor: Int,
+        @StringRes easeStringRes: Int,
+    ) {
         layout.visibility = View.VISIBLE
         layout.setBackgroundResource(backgroundColor)
         easeTextView.setText(easeStringRes)

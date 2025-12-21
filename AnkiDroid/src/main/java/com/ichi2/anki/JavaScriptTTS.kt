@@ -1,18 +1,18 @@
-/****************************************************************************************
- * Copyright (c) 2021 mikunimaru <com.mikuni0@gmail.com>                          *
+/*
+ * Copyright (c) 2021 mikunimaru <com.mikuni0@gmail.com>
  *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program. If not, see <http://www.gnu.org/licenses/>.                            *
- ****************************************************************************************/
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 package com.ichi2.anki
 
@@ -37,8 +37,10 @@ class JavaScriptTTS internal constructor() : OnInitListener {
     annotation class TTSLangResult
 
     /** OnInitListener method to receive the TTS engine status  */
-    override fun onInit(@ErrorOrSuccess status: Int) {
-        mTtsOk = status == TextToSpeech.SUCCESS
+    override fun onInit(
+        @ErrorOrSuccess status: Int,
+    ) {
+        ttsOk = status == TextToSpeech.SUCCESS
     }
 
     /**
@@ -48,9 +50,10 @@ class JavaScriptTTS internal constructor() : OnInitListener {
      * @return ERROR(-1) SUCCESS(0)
      */
     @ErrorOrSuccess
-    fun speak(text: String?, @QueueMode queueMode: Int): Int {
-        return mTts.speak(text, queueMode, mTtsParams, "stringId")
-    }
+    fun speak(
+        text: String?,
+        @QueueMode queueMode: Int,
+    ): Int = tts.speak(text, queueMode, ttsParams, "stringId")
 
     /**
      * If only a string is given, set QUEUE_FLUSH to the default behavior.
@@ -58,9 +61,7 @@ class JavaScriptTTS internal constructor() : OnInitListener {
      * @return ERROR(-1) SUCCESS(0)
      */
     @ErrorOrSuccess
-    fun speak(text: String?): Int {
-        return mTts.speak(text, TextToSpeech.QUEUE_FLUSH, mTtsParams, "stringId")
-    }
+    fun speak(text: String?): Int = tts.speak(text, TextToSpeech.QUEUE_FLUSH, ttsParams, "stringId")
 
     /**
      * Sets the text-to-speech language.
@@ -76,7 +77,7 @@ class JavaScriptTTS internal constructor() : OnInitListener {
     fun setLanguage(loc: String): Int {
         // The Int values will be returned
         // Code indicating the support status for the locale. See LANG_AVAILABLE, LANG_COUNTRY_AVAILABLE, LANG_COUNTRY_VAR_AVAILABLE, LANG_MISSING_DATA and LANG_NOT_SUPPORTED.
-        return mTts.setLanguage(LanguageUtils.localeFromStringIgnoringScriptAndExtensions(loc))
+        return tts.setLanguage(LanguageUtils.localeFromStringIgnoringScriptAndExtensions(loc))
     }
 
     /**
@@ -88,7 +89,7 @@ class JavaScriptTTS internal constructor() : OnInitListener {
     fun setPitch(pitch: Float): Int {
         // The following Int values will be returned
         // ERROR(-1) SUCCESS(0)
-        return mTts.setPitch(pitch)
+        return tts.setPitch(pitch)
     }
 
     /**
@@ -100,7 +101,7 @@ class JavaScriptTTS internal constructor() : OnInitListener {
     fun setSpeechRate(speechRate: Float): Int {
         // The following Int values will be returned
         // ERROR(-1) SUCCESS(0)
-        return mTts.setSpeechRate(speechRate)
+        return tts.setSpeechRate(speechRate)
     }
 
     /**
@@ -110,16 +111,14 @@ class JavaScriptTTS internal constructor() : OnInitListener {
      *
      */
     val isSpeaking: Boolean
-        get() = mTts.isSpeaking
+        get() = tts.isSpeaking
 
     /**
      * Interrupts the current utterance (whether played or rendered to file) and discards other utterances in the queue.
      * @return ERROR(-1) SUCCESS(0)
      */
     @ErrorOrSuccess
-    fun stop(): Int {
-        return mTts.stop()
-    }
+    fun stop(): Int = tts.stop()
 
     companion object {
         private const val TTS_SUCCESS = TextToSpeech.SUCCESS
@@ -131,13 +130,13 @@ class JavaScriptTTS internal constructor() : OnInitListener {
         private const val TTS_LANG_COUNTRY_VAR_AVAILABLE = TextToSpeech.LANG_COUNTRY_VAR_AVAILABLE
         private const val TTS_LANG_MISSING_DATA = TextToSpeech.LANG_MISSING_DATA
         private const val TTS_LANG_NOT_SUPPORTED = TextToSpeech.LANG_NOT_SUPPORTED
-        private lateinit var mTts: TextToSpeech
-        private var mTtsOk = false
-        private val mTtsParams = Bundle()
+        private lateinit var tts: TextToSpeech
+        private var ttsOk = false
+        private val ttsParams = Bundle()
     }
 
     init {
         val context = AnkiDroidApp.instance.applicationContext
-        mTts = TextToSpeech(context, this)
+        tts = TextToSpeech(context, this)
     }
 }

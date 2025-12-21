@@ -22,12 +22,12 @@
 
 package com.ichi2.anki
 
-import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
-import com.ichi2.compat.CompatHelper
-import com.ichi2.libanki.TemplateManager
-import com.ichi2.libanki.TtsVoice
+import com.ichi2.anki.i18n.normalize
+import com.ichi2.anki.i18n.toAnkiTwoLetterCode
+import com.ichi2.anki.libanki.TemplateManager
+import com.ichi2.anki.libanki.TtsVoice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -46,9 +46,9 @@ import kotlin.coroutines.resume
  * In addition, the list of available TTS Voices shouldn't change during execution
  */
 object TtsVoices {
-
     // A new instance of this list is not required if the app language changes: .displayName returns
     // the new values
+
     /** An immutable list of locales available for TTS */
     private lateinit var availableLocaleData: List<Locale>
 
@@ -57,6 +57,17 @@ object TtsVoices {
 
     /** A job which populates [availableLocaleData] */
     private var buildLocalesJob: Job? = null
+
+    /**
+     * The package name of the default speech synthesis engine.
+     *
+     * @return Package name of the Tts engine that the user has chosen as their default.
+     * 'null' if the system has no engine or if an error occurs
+     *
+     * @see TextToSpeech.getDefaultEngine
+     */
+    var ttsEngine: String? = null
+        private set
 
     /**
      * Returns the list of available locales for use in TTS
@@ -94,7 +105,7 @@ object TtsVoices {
      *
      * @return The list of available languages, or an empty list if an error occurred
      */
-    suspend fun availableLocales(): List<Locale> {
+    private suspend fun availableLocales(): List<Locale> {
         if (this::availableLocaleData.isInitialized) {
             return this.availableLocaleData
         }
@@ -134,12 +145,13 @@ object TtsVoices {
         Timber.d("launching job")
         // This is intended to be a global singleton outside the lifecycle of a specific activity
         // Most of the time of execution is waiting for the TTS Engine to initialize
-        buildLocalesJob = AnkiDroidApp.applicationScope.launch(Dispatchers.IO) {
-            Timber.d("executing job")
-            loadTtsVoicesData()
-            buildLocalesJob = null
-            Timber.d("%d TTS Voices available", availableLocaleData.size)
-        }
+        buildLocalesJob =
+            AnkiDroidApp.applicationScope.launch(Dispatchers.IO) {
+                Timber.d("executing job")
+                loadTtsVoicesData()
+                buildLocalesJob = null
+                Timber.d("%d TTS Voices available", availableLocaleData.size)
+            }
     }
 
     /**
@@ -161,8 +173,8 @@ object TtsVoices {
             // TODO: Handle multiple engines
             val ttsEngine = tts.defaultEngine
             availableVoices = tts.voices.map { it.toTtsVoice(ttsEngine) }.toSet()
-            availableLocaleData = tts.availableLanguages.map { CompatHelper.compat.normalize(it) }
-        } catch (e: Exception) {
+            availableLocaleData = tts.availableLanguages.map { it.normalize() }
+        } catch (_: Exception) {
             availableVoices = emptySet()
             availableLocaleData = emptyList()
         } finally {
@@ -176,7 +188,7 @@ object TtsVoices {
      * @return a usable [TextToSpeech] instance, or `null` if the [TextToSpeech.OnInitListener]
      * returns [TextToSpeech.ERROR]
      */
-    suspend fun createTts(context: Context = AnkiDroidApp.instance) =
+    suspend fun createTts() =
         suspendCancellableCoroutine { continuation ->
             var textToSpeech: TextToSpeech? = null
             continuation.invokeOnCancellation {
@@ -185,16 +197,21 @@ object TtsVoices {
                 textToSpeech?.shutdown()
             }
             Timber.v("begin TTS creation")
-            textToSpeech = TextToSpeech(context) { status ->
-                if (status == TextToSpeech.SUCCESS) {
-                    Timber.v("TTS creation success")
-                    continuation.resume(textToSpeech)
-                } else {
-                    Timber.e("TTS creation failed. status: %d", status)
-                    textToSpeech?.shutdown()
-                    continuation.resume(null)
+            textToSpeech =
+                // TextToSpeech retains the context. So we can't give it any context that
+                // may be expected to disappear, as it would cause a memory leak. Hence
+                // we pass it the application as context.
+                TextToSpeech(AnkiDroidApp.instance) { status ->
+                    if (status == TextToSpeech.SUCCESS) {
+                        Timber.v("TTS creation success")
+                        ttsEngine = textToSpeech?.defaultEngine
+                        continuation.resume(textToSpeech)
+                    } else {
+                        Timber.e("TTS creation failed. status: %d", status)
+                        textToSpeech?.shutdown()
+                        continuation.resume(null)
+                    }
                 }
-            }
         }
 }
 
@@ -207,7 +224,7 @@ class TtsVoicesFieldFilter : TemplateManager.FieldFilter() {
         fieldText: String,
         fieldName: String,
         filterName: String,
-        ctx: TemplateManager.TemplateRenderContext
+        ctx: TemplateManager.TemplateRenderContext,
     ): String {
         if (filterName != "tts-voices") {
             return fieldText
@@ -231,17 +248,19 @@ class TtsVoicesFieldFilter : TemplateManager.FieldFilter() {
  */
 fun Voice.toTtsVoice(engine: String) = AndroidTtsVoice(this, engine)
 
-/**
- * An instance of [TtsVoice] which allows access to the underlying [Voice] object
- */
 // We include the engine name in the TTS 'name' to future-proof the feature of
 // allowing a user to switch between TTS providers on the same card
 // a name looks like: com.google.android.tts-cmn-cn-x-ccc-local
 // com.google.android.tts + cmn-cn-x-ccc-local
-class AndroidTtsVoice(val voice: Voice, val engine: String) : TtsVoice(name = "$engine-${voice.name}", lang = toAnkiTwoLetterCode(voice.locale)) {
-    override fun unavailable(): Boolean {
-        return voice.features.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)
-    }
+
+/**
+ * An instance of [TtsVoice] which allows access to the underlying [Voice] object
+ */
+class AndroidTtsVoice(
+    val voice: Voice,
+    val engine: String,
+) : TtsVoice(name = "$engine-${voice.name}", lang = voice.locale.toAnkiTwoLetterCode()) {
+    override fun unavailable(): Boolean = voice.features.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)
 
     /**
      * The locale of the voice normalized to a human readable language/country, missing the variant
@@ -251,25 +270,8 @@ class AndroidTtsVoice(val voice: Voice, val engine: String) : TtsVoice(name = "$
         // on Samsung phones, the variant (f001/DEFAULT) looks awful in the UI
         // normalise: "en-GBR" is "English (GBR)". "en-GB" is "English (United Kingdom)"
         // then remove the variant: We want English (United Kingdom), not (United Kingdom,DEFAULT)
-        get() = CompatHelper.compat.normalize(voice.locale).let { Locale(it.language, it.country) }
+        get() = voice.locale.normalize().let { Locale.forLanguageTag(it.language + '-' + it.country) }
 
     val isNetworkConnectionRequired
         get() = voice.isNetworkConnectionRequired
-
-    companion object {
-        /**
-         * Returns an Anki-compatible 'two letter' code (ISO-639-1 + ISO 3166-1 [alpha-2 preferred])
-         * ```
-         * Locale("spa", "MEX", "001") => "es_MX"
-         * Locale("ar", "") => "ar"
-         * ```
-         *
-         * This differs from [Locale.toLanguageTag]:
-         * * [Locale.variant][Locale.getVariant] is not output
-         * * A "_" is used instead of a "-" to match Anki Desktop
-         */
-        fun toAnkiTwoLetterCode(locale: Locale): String = CompatHelper.compat.normalize(locale).run {
-            return if (country.isBlank()) language else "${language}_$country"
-        }
-    }
 }

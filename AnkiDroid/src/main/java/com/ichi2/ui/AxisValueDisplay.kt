@@ -24,7 +24,8 @@ import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.View
 import com.google.android.material.color.MaterialColors
-import com.ichi2.utils.dpToPixels
+import com.ichi2.utils.dp
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -38,27 +39,31 @@ typealias MeasureSpecValue = Int
  *
  * Invokes [extremityListener] each time an 'extreme' value is provided
  */
-class AxisValueDisplay(context: Context, attrs: AttributeSet? = null) : View(context, attrs) {
-
+class AxisValueDisplay(
+    context: Context,
+    attrs: AttributeSet? = null,
+) : View(context, attrs) {
     /** Called when [isExtremity] returns true */
     private var extremityListener: ((value: Float) -> Unit)? = null
 
     /** The default color of the value of an axis when not at an extreme */
-    private val normalPaint = Paint().apply {
-        color = Color.BLUE
-    }
+    private val normalPaint =
+        Paint().apply {
+            color = Color.BLUE
+        }
 
     /** The color when an axis is at {-1, 1} and is selectable */
-    private val extremityPaint = Paint().apply {
-        color = Color.GREEN
-    }
+    private val extremityPaint =
+        Paint().apply {
+            color = Color.GREEN
+        }
 
     /** The current value */
     var value = 0f
         set(value) {
             field = value
             this.postInvalidate()
-            text = String.format("%.3f", value)
+            text = String.format(Locale.getDefault(), "%.3f", value)
             if (isExtremity) {
                 extremityListener?.invoke(field)
             }
@@ -74,18 +79,22 @@ class AxisValueDisplay(context: Context, attrs: AttributeSet? = null) : View(con
     private val barPaint get() = if (isExtremity) extremityPaint else normalPaint
 
     /** [Paint] for the text displaying the [value] */
-    private val textPaint = Paint().apply {
-        textAlign = Paint.Align.CENTER
-        textSize = dpToPixels(20f).toFloat()
-        color = MaterialColors.getColor(context, android.R.attr.textColor, 0)
-    }
+    private val textPaint =
+        Paint().apply {
+            textAlign = Paint.Align.CENTER
+            textSize = 20.dp.toPx(context).toFloat()
+            color = MaterialColors.getColor(context, android.R.attr.textColor, 0)
+        }
 
     /** stores text dimensions, used for centering text */
     private val textBounds = Rect()
 
-    private val controlHeight = dpToPixels(40f)
+    private val controlHeight = 40.dp.toPx(context)
 
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+    override fun onMeasure(
+        widthMeasureSpec: Int,
+        heightMeasureSpec: Int,
+    ) {
         val width = widthMeasureSpec.constrainTo(suggestedMinimumWidth)
         val height = heightMeasureSpec.constrainTo(controlHeight)
         setMeasuredDimension(width, height)
@@ -119,9 +128,15 @@ private fun MeasureSpecValue.constrainTo(desiredValue: Int): Int {
     val size = View.MeasureSpec.getSize(this)
 
     return when (mode) {
-        View.MeasureSpec.EXACTLY -> { size }
-        View.MeasureSpec.AT_MOST -> { min(desiredValue, size) }
-        else -> { desiredValue }
+        View.MeasureSpec.EXACTLY -> {
+            size
+        }
+        View.MeasureSpec.AT_MOST -> {
+            min(desiredValue, size)
+        }
+        else -> {
+            desiredValue
+        }
     }
 }
 
@@ -129,5 +144,7 @@ private fun MeasureSpecValue.constrainTo(desiredValue: Int): Int {
  * Updates the receiver with the smallest boundary which would accept [text] & [paint]
  * @see [Paint.getTextBounds]
  */
-private fun Rect.updateAsTextBounds(paint: Paint, text: String) =
-    paint.getTextBounds(text, 0, text.length, this)
+private fun Rect.updateAsTextBounds(
+    paint: Paint,
+    text: String,
+) = paint.getTextBounds(text, 0, text.length, this)

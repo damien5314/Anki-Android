@@ -24,9 +24,25 @@ import androidx.core.content.edit
 import androidx.core.os.LocaleListCompat
 import com.ichi2.anki.analytics.UsageAnalytics
 import com.ichi2.anki.browser.BrowserColumnCollection
-import com.ichi2.anki.browser.CardBrowserColumn
+import com.ichi2.anki.browser.CardBrowserColumn.ANSWER
+import com.ichi2.anki.browser.CardBrowserColumn.CARD
+import com.ichi2.anki.browser.CardBrowserColumn.CHANGED
+import com.ichi2.anki.browser.CardBrowserColumn.CREATED
+import com.ichi2.anki.browser.CardBrowserColumn.DECK
+import com.ichi2.anki.browser.CardBrowserColumn.DUE
+import com.ichi2.anki.browser.CardBrowserColumn.EASE
+import com.ichi2.anki.browser.CardBrowserColumn.EDITED
+import com.ichi2.anki.browser.CardBrowserColumn.INTERVAL
+import com.ichi2.anki.browser.CardBrowserColumn.LAPSES
+import com.ichi2.anki.browser.CardBrowserColumn.NOTE_TYPE
+import com.ichi2.anki.browser.CardBrowserColumn.QUESTION
+import com.ichi2.anki.browser.CardBrowserColumn.REVIEWS
+import com.ichi2.anki.browser.CardBrowserColumn.SFLD
+import com.ichi2.anki.browser.CardBrowserColumn.TAGS
 import com.ichi2.anki.cardviewer.Gesture
 import com.ichi2.anki.cardviewer.ViewerCommand
+import com.ichi2.anki.common.annotations.NeedsTest
+import com.ichi2.anki.libanki.Consts
 import com.ichi2.anki.model.CardsOrNotes
 import com.ichi2.anki.noteeditor.CustomToolbarButton
 import com.ichi2.anki.preferences.sharedPrefs
@@ -36,22 +52,27 @@ import com.ichi2.anki.reviewer.CardSide
 import com.ichi2.anki.reviewer.FullScreenMode
 import com.ichi2.anki.reviewer.MappableBinding
 import com.ichi2.anki.reviewer.MappableBinding.Companion.toPreferenceString
-import com.ichi2.anki.reviewer.screenBuilder
-import com.ichi2.libanki.Consts
+import com.ichi2.anki.reviewer.ReviewerBinding
 import com.ichi2.utils.HashUtil.hashSetInit
 import timber.log.Timber
-import java.util.*
+import java.util.Locale
 import kotlin.collections.ArrayList
+import kotlin.math.round
 
 private typealias VersionIdentifier = Int
 private typealias LegacyVersionIdentifier = Long
 
 object PreferenceUpgradeService {
-    fun upgradePreferences(context: Context, previousVersionCode: LegacyVersionIdentifier): Boolean =
-        upgradePreferences(context.sharedPrefs(), previousVersionCode)
+    fun upgradePreferences(
+        context: Context,
+        previousVersionCode: LegacyVersionIdentifier,
+    ): Boolean = upgradePreferences(context.sharedPrefs(), previousVersionCode)
 
     /** @return Whether any preferences were upgraded */
-    internal fun upgradePreferences(preferences: SharedPreferences, previousVersionCode: LegacyVersionIdentifier): Boolean {
+    internal fun upgradePreferences(
+        preferences: SharedPreferences,
+        previousVersionCode: LegacyVersionIdentifier,
+    ): Boolean {
         val pendingPreferenceUpgrades = PreferenceUpgrade.getPendingUpgrades(preferences, previousVersionCode)
 
         pendingPreferenceUpgrades.forEach {
@@ -72,46 +93,59 @@ object PreferenceUpgradeService {
         PreferenceUpgrade.setPreferenceToLatestVersion(preferences)
     }
 
-    abstract class PreferenceUpgrade private constructor(val versionIdentifier: VersionIdentifier) {
+    abstract class PreferenceUpgrade private constructor(
+        val versionIdentifier: VersionIdentifier,
+    ) {
         /*
         To add a new preference upgrade:
-          * yield a new class from getAllInstances (do not use `legacyPreviousVersionCode` in the constructor)
-          * Implement the upgrade() method
-          * Set mVersionIdentifier to 1 more than the previous versionIdentifier
-          * Run tests in PreferenceUpgradeServiceTest
+         * yield a new class from getAllInstances (do not use `legacyPreviousVersionCode` in the constructor)
+         * Implement the upgrade() method
+         * Set mVersionIdentifier to 1 more than the previous versionIdentifier
+         * Run tests in PreferenceUpgradeServiceTest
          */
 
         companion object {
             /** A version code where the value doesn't matter as we're not using the result */
             private const val IGNORED_LEGACY_VERSION_CODE = 0L
-            const val upgradeVersionPrefKey = "preferenceUpgradeVersion"
+            const val UPGRADE_VERSION_PREF_KEY = "preferenceUpgradeVersion"
 
             /** Returns all instances of preference upgrade classes */
-            private fun getAllInstances(legacyPreviousVersionCode: LegacyVersionIdentifier) = sequence {
-                yield(LegacyPreferenceUpgrade(legacyPreviousVersionCode))
-                yield(UpdateNoteEditorToolbarPrefs())
-                yield(UpgradeGesturesToControls())
-                yield(UpgradeDayAndNightThemes())
-                yield(UpgradeFetchMedia())
-                yield(UpgradeAppLocale())
-                yield(RemoveScrollingButtons())
-                yield(RemoveAnswerRecommended())
-                yield(RemoveBackupMax())
-                yield(RemoveInCardsMode())
-                yield(RemoveReviewerETA())
-                yield(SetShowDeckTitle())
-                yield(ResetAnalyticsOptIn())
-                yield(RemoveNoCodeFormatting())
-                yield(UpgradeBrowserColumns())
-            }
+            private fun getAllInstances(legacyPreviousVersionCode: LegacyVersionIdentifier) =
+                sequence {
+                    yield(LegacyPreferenceUpgrade(legacyPreviousVersionCode))
+                    yield(UpdateNoteEditorToolbarPrefs())
+                    yield(UpgradeGesturesToControls())
+                    yield(UpgradeDayAndNightThemes())
+                    yield(UpgradeFetchMedia())
+                    yield(UpgradeAppLocale())
+                    yield(RemoveScrollingButtons())
+                    yield(RemoveAnswerRecommended())
+                    yield(RemoveBackupMax())
+                    yield(RemoveInCardsMode())
+                    yield(RemoveReviewerETA())
+                    yield(SetShowDeckTitle())
+                    yield(ResetAnalyticsOptIn())
+                    yield(RemoveNoCodeFormatting())
+                    yield(UpgradeBrowserColumns())
+                    yield(RemoveLastExportedAtTime())
+                    yield(RemoveLongTouchGesture())
+                    yield(UpgradeDoubleTapTimeout())
+                    yield(RemoveHostNum())
+                    yield(UpgradeHideAnswerButtons())
+                    yield(UpgradeToggleBacksideOnlyControl())
+                }
 
             /** Returns a list of preference upgrade classes which have not been applied */
-            fun getPendingUpgrades(preferences: SharedPreferences, legacyPreviousVersionCode: LegacyVersionIdentifier): List<PreferenceUpgrade> {
+            fun getPendingUpgrades(
+                preferences: SharedPreferences,
+                legacyPreviousVersionCode: LegacyVersionIdentifier,
+            ): List<PreferenceUpgrade> {
                 val currentPrefVersion: VersionIdentifier = getPreferenceVersion(preferences)
 
-                return getAllInstances(legacyPreviousVersionCode).filter {
-                    it.versionIdentifier > currentPrefVersion
-                }.toList()
+                return getAllInstances(legacyPreviousVersionCode)
+                    .filter {
+                        it.versionIdentifier > currentPrefVersion
+                    }.toList()
             }
 
             /** Sets the preference version such that no upgrades need to be applied */
@@ -120,12 +154,14 @@ object PreferenceUpgradeService {
                 setPreferenceVersion(preferences, versionWhichRequiresNoUpgrades)
             }
 
-            internal fun getPreferenceVersion(preferences: SharedPreferences) =
-                preferences.getInt(upgradeVersionPrefKey, 0)
+            internal fun getPreferenceVersion(preferences: SharedPreferences) = preferences.getInt(UPGRADE_VERSION_PREF_KEY, 0)
 
-            internal fun setPreferenceVersion(preferences: SharedPreferences, versionIdentifier: VersionIdentifier) {
+            internal fun setPreferenceVersion(
+                preferences: SharedPreferences,
+                versionIdentifier: VersionIdentifier,
+            ) {
                 Timber.i("upgrading preference version to '$versionIdentifier'")
-                preferences.edit { putInt(upgradeVersionPrefKey, versionIdentifier) }
+                preferences.edit { putInt(UPGRADE_VERSION_PREF_KEY, versionIdentifier) }
             }
 
             /** Returns the collection of all preference version numbers */
@@ -144,7 +180,9 @@ object PreferenceUpgradeService {
          * upgrades were detected via a version code comparison
          * rather than comparing a preference value
          */
-        private class LegacyPreferenceUpgrade(val previousVersionCode: LegacyVersionIdentifier) : PreferenceUpgrade(1) {
+        private class LegacyPreferenceUpgrade(
+            val previousVersionCode: LegacyVersionIdentifier,
+        ) : PreferenceUpgrade(1) {
             override fun upgrade(preferences: SharedPreferences) {
                 if (!needsLegacyPreferenceUpgrade(previousVersionCode)) {
                     return
@@ -224,17 +262,23 @@ object PreferenceUpgradeService {
 
                 // parse fields with separator
                 for (s in set) {
-                    val fields = s!!.split(Consts.FIELD_SEPARATOR.toRegex(), CustomToolbarButton.KEEP_EMPTY_ENTRIES.coerceAtLeast(0)).toTypedArray()
+                    val fields =
+                        s!!
+                            .split(
+                                Consts.FIELD_SEPARATOR.toRegex(),
+                                CustomToolbarButton.KEEP_EMPTY_ENTRIES.coerceAtLeast(0),
+                            ).toTypedArray()
                     if (fields.size != 3) {
                         continue
                     }
 
-                    val index: Int = try {
-                        fields[0].toInt()
-                    } catch (e: Exception) {
-                        Timber.w(e)
-                        continue
-                    }
+                    val index: Int =
+                        try {
+                            fields[0].toInt()
+                        } catch (e: Exception) {
+                            Timber.w(e)
+                            continue
+                        }
 
                     // add new button with the index + 1 as button text
                     val visualIndex: Int = index + 1
@@ -248,52 +292,51 @@ object PreferenceUpgradeService {
         }
 
         internal class UpgradeGesturesToControls : PreferenceUpgrade(5) {
-            val oldCommandValues = mapOf(
-                Pair(1, ViewerCommand.SHOW_ANSWER),
-                Pair(2, ViewerCommand.FLIP_OR_ANSWER_EASE1),
-                Pair(3, ViewerCommand.FLIP_OR_ANSWER_EASE2),
-                Pair(4, ViewerCommand.FLIP_OR_ANSWER_EASE3),
-                Pair(5, ViewerCommand.FLIP_OR_ANSWER_EASE4),
-                Pair(8, ViewerCommand.UNDO),
-                Pair(9, ViewerCommand.EDIT),
-                Pair(10, ViewerCommand.MARK),
-                Pair(12, ViewerCommand.BURY_CARD),
-                Pair(13, ViewerCommand.SUSPEND_CARD),
-                Pair(14, ViewerCommand.DELETE),
-                Pair(16, ViewerCommand.PLAY_MEDIA),
-                Pair(17, ViewerCommand.EXIT),
-                Pair(18, ViewerCommand.BURY_NOTE),
-                Pair(19, ViewerCommand.SUSPEND_NOTE),
-                Pair(20, ViewerCommand.TOGGLE_FLAG_RED),
-                Pair(21, ViewerCommand.TOGGLE_FLAG_ORANGE),
-                Pair(22, ViewerCommand.TOGGLE_FLAG_GREEN),
-                Pair(23, ViewerCommand.TOGGLE_FLAG_BLUE),
-                Pair(38, ViewerCommand.TOGGLE_FLAG_PINK),
-                Pair(39, ViewerCommand.TOGGLE_FLAG_TURQUOISE),
-                Pair(40, ViewerCommand.TOGGLE_FLAG_PURPLE),
-                Pair(24, ViewerCommand.UNSET_FLAG),
-                Pair(30, ViewerCommand.PAGE_UP),
-                Pair(31, ViewerCommand.PAGE_DOWN),
-                Pair(32, ViewerCommand.TAG),
-                Pair(33, ViewerCommand.CARD_INFO),
-                Pair(34, ViewerCommand.ABORT_AND_SYNC),
-                Pair(35, ViewerCommand.RECORD_VOICE),
-                Pair(36, ViewerCommand.REPLAY_VOICE),
-                Pair(46, ViewerCommand.SAVE_VOICE),
-                Pair(37, ViewerCommand.TOGGLE_WHITEBOARD),
-                Pair(44, ViewerCommand.CLEAR_WHITEBOARD),
-                Pair(45, ViewerCommand.CHANGE_WHITEBOARD_PEN_COLOR),
-                Pair(41, ViewerCommand.SHOW_HINT),
-                Pair(42, ViewerCommand.SHOW_ALL_HINTS),
-                Pair(43, ViewerCommand.ADD_NOTE)
-            )
+            val oldCommandValues =
+                mapOf(
+                    Pair(1, ViewerCommand.SHOW_ANSWER),
+                    Pair(2, ViewerCommand.FLIP_OR_ANSWER_EASE1),
+                    Pair(3, ViewerCommand.FLIP_OR_ANSWER_EASE2),
+                    Pair(4, ViewerCommand.FLIP_OR_ANSWER_EASE3),
+                    Pair(5, ViewerCommand.FLIP_OR_ANSWER_EASE4),
+                    Pair(8, ViewerCommand.UNDO),
+                    Pair(9, ViewerCommand.EDIT),
+                    Pair(10, ViewerCommand.MARK),
+                    Pair(12, ViewerCommand.BURY_CARD),
+                    Pair(13, ViewerCommand.SUSPEND_CARD),
+                    Pair(14, ViewerCommand.DELETE),
+                    Pair(16, ViewerCommand.PLAY_MEDIA),
+                    Pair(17, ViewerCommand.EXIT),
+                    Pair(18, ViewerCommand.BURY_NOTE),
+                    Pair(19, ViewerCommand.SUSPEND_NOTE),
+                    Pair(20, ViewerCommand.TOGGLE_FLAG_RED),
+                    Pair(21, ViewerCommand.TOGGLE_FLAG_ORANGE),
+                    Pair(22, ViewerCommand.TOGGLE_FLAG_GREEN),
+                    Pair(23, ViewerCommand.TOGGLE_FLAG_BLUE),
+                    Pair(38, ViewerCommand.TOGGLE_FLAG_PINK),
+                    Pair(39, ViewerCommand.TOGGLE_FLAG_TURQUOISE),
+                    Pair(40, ViewerCommand.TOGGLE_FLAG_PURPLE),
+                    Pair(24, ViewerCommand.UNSET_FLAG),
+                    Pair(30, ViewerCommand.PAGE_UP),
+                    Pair(31, ViewerCommand.PAGE_DOWN),
+                    Pair(32, ViewerCommand.TAG),
+                    Pair(33, ViewerCommand.CARD_INFO),
+                    Pair(35, ViewerCommand.RECORD_VOICE),
+                    Pair(36, ViewerCommand.REPLAY_VOICE),
+                    Pair(46, ViewerCommand.SAVE_VOICE),
+                    Pair(37, ViewerCommand.TOGGLE_WHITEBOARD),
+                    Pair(44, ViewerCommand.CLEAR_WHITEBOARD),
+                    Pair(45, ViewerCommand.CHANGE_WHITEBOARD_PEN_COLOR),
+                    Pair(41, ViewerCommand.SHOW_HINT),
+                    Pair(42, ViewerCommand.SHOW_ALL_HINTS),
+                    Pair(43, ViewerCommand.ADD_NOTE),
+                )
 
             override fun upgrade(preferences: SharedPreferences) {
                 upgradeGestureToBinding(preferences, "gestureSwipeUp", Gesture.SWIPE_UP)
                 upgradeGestureToBinding(preferences, "gestureSwipeDown", Gesture.SWIPE_DOWN)
                 upgradeGestureToBinding(preferences, "gestureSwipeLeft", Gesture.SWIPE_LEFT)
                 upgradeGestureToBinding(preferences, "gestureSwipeRight", Gesture.SWIPE_RIGHT)
-                upgradeGestureToBinding(preferences, "gestureLongclick", Gesture.LONG_TAP)
                 upgradeGestureToBinding(preferences, "gestureDoubleTap", Gesture.DOUBLE_TAP)
                 upgradeGestureToBinding(preferences, "gestureTapTopLeft", Gesture.TAP_TOP_LEFT)
                 upgradeGestureToBinding(preferences, "gestureTapTop", Gesture.TAP_TOP)
@@ -301,23 +344,51 @@ object PreferenceUpgradeService {
                 upgradeGestureToBinding(preferences, "gestureTapLeft", Gesture.TAP_LEFT)
                 upgradeGestureToBinding(preferences, "gestureTapCenter", Gesture.TAP_CENTER)
                 upgradeGestureToBinding(preferences, "gestureTapRight", Gesture.TAP_RIGHT)
-                upgradeGestureToBinding(preferences, "gestureTapBottomLeft", Gesture.TAP_BOTTOM_LEFT)
+                upgradeGestureToBinding(
+                    preferences,
+                    "gestureTapBottomLeft",
+                    Gesture.TAP_BOTTOM_LEFT,
+                )
                 upgradeGestureToBinding(preferences, "gestureTapBottom", Gesture.TAP_BOTTOM)
-                upgradeGestureToBinding(preferences, "gestureTapBottomRight", Gesture.TAP_BOTTOM_RIGHT)
-                upgradeVolumeGestureToBinding(preferences, "gestureVolumeUp", KeyEvent.KEYCODE_VOLUME_UP)
-                upgradeVolumeGestureToBinding(preferences, "gestureVolumeDown", KeyEvent.KEYCODE_VOLUME_DOWN)
+                upgradeGestureToBinding(
+                    preferences,
+                    "gestureTapBottomRight",
+                    Gesture.TAP_BOTTOM_RIGHT,
+                )
+                upgradeVolumeGestureToBinding(
+                    preferences,
+                    "gestureVolumeUp",
+                    KeyEvent.KEYCODE_VOLUME_UP,
+                )
+                upgradeVolumeGestureToBinding(
+                    preferences,
+                    "gestureVolumeDown",
+                    KeyEvent.KEYCODE_VOLUME_DOWN,
+                )
             }
 
-            private fun upgradeVolumeGestureToBinding(preferences: SharedPreferences, oldGesturePreferenceKey: String, volumeKeyCode: Int) {
+            private fun upgradeVolumeGestureToBinding(
+                preferences: SharedPreferences,
+                oldGesturePreferenceKey: String,
+                volumeKeyCode: Int,
+            ) {
                 upgradeBinding(preferences, oldGesturePreferenceKey, keyCode(volumeKeyCode))
             }
 
-            private fun upgradeGestureToBinding(preferences: SharedPreferences, oldGesturePreferenceKey: String, gesture: Gesture) {
+            private fun upgradeGestureToBinding(
+                preferences: SharedPreferences,
+                oldGesturePreferenceKey: String,
+                gesture: Gesture,
+            ) {
                 upgradeBinding(preferences, oldGesturePreferenceKey, Binding.gesture(gesture))
             }
 
             @VisibleForTesting
-            internal fun upgradeBinding(preferences: SharedPreferences, oldGesturePreferenceKey: String, binding: Binding) {
+            internal fun upgradeBinding(
+                preferences: SharedPreferences,
+                oldGesturePreferenceKey: String,
+                binding: Binding,
+            ) {
                 Timber.d("Replacing gesture '%s' with binding", oldGesturePreferenceKey)
 
                 // This exists as a user may have mapped "volume down" to "UNDO".
@@ -336,7 +407,11 @@ object PreferenceUpgradeService {
                 }
             }
 
-            private fun replaceBinding(preferences: SharedPreferences, oldGesturePreferenceKey: String, binding: Binding) {
+            private fun replaceBinding(
+                preferences: SharedPreferences,
+                oldGesturePreferenceKey: String,
+                binding: Binding,
+            ) {
                 // the preference should be set, but if it's null, then we have nothing to do
                 val pref = preferences.getString(oldGesturePreferenceKey, "0") ?: return
                 // If the preference doesn't map (for example: it was removed), then nothing to do
@@ -346,10 +421,24 @@ object PreferenceUpgradeService {
                 Timber.i("Moving preference from '%s' to '%s'", oldGesturePreferenceKey, command.preferenceKey)
 
                 // add to the binding_COMMANDNAME preference
-                val mappableBinding = MappableBinding(binding, command.screenBuilder(CardSide.BOTH))
-                command.addBindingAtEnd(preferences, mappableBinding)
+                val mappableBinding = ReviewerBinding(binding, CardSide.BOTH)
+                val addAtEnd: (MutableList<MappableBinding>, MappableBinding) -> Boolean =
+                    { collection, element ->
+                        // do not reorder the elements
+                        if (collection.contains(element)) {
+                            false
+                        } else {
+                            collection.add(element)
+                            true
+                        }
+                    }
+                val bindings: MutableList<MappableBinding> = ReviewerBinding.fromPreference(preferences, command)
+                addAtEnd(bindings, mappableBinding)
+                val newValue: String = bindings.toPreferenceString()
+                preferences.edit { putString(command.preferenceKey, newValue) }
             }
         }
+
         internal class UpgradeDayAndNightThemes : PreferenceUpgrade(6) {
             override fun upgrade(preferences: SharedPreferences) {
                 val dayTheme = preferences.getString("dayTheme", "0")
@@ -386,27 +475,29 @@ object PreferenceUpgradeService {
             override fun upgrade(preferences: SharedPreferences) {
                 fun getLocale(localeCode: String): Locale {
                     // Language separators are '_' or '-' at different times in display/resource fetch
-                    val locale: Locale = if (localeCode.contains("_") || localeCode.contains("-")) {
-                        try {
-                            val localeParts = localeCode.split("[_-]".toRegex(), 2).toTypedArray()
-                            Locale(localeParts[0], localeParts[1])
-                        } catch (e: ArrayIndexOutOfBoundsException) {
-                            Timber.w(e, "getLocale variant split fail, using code '%s' raw.", localeCode)
-                            Locale(localeCode)
+                    val locale: Locale =
+                        if (localeCode.contains("_") || localeCode.contains("-")) {
+                            try {
+                                val localeParts = localeCode.split("[_-]".toRegex(), 2).toTypedArray()
+                                Locale.forLanguageTag(localeParts[0] + '-' + localeParts[1])
+                            } catch (e: ArrayIndexOutOfBoundsException) {
+                                Timber.w(e, "getLocale variant split fail, using code '%s' raw.", localeCode)
+                                Locale.forLanguageTag(localeCode)
+                            }
+                        } else {
+                            Locale.forLanguageTag(localeCode) // guaranteed to be non null
                         }
-                    } else {
-                        Locale(localeCode) // guaranteed to be non null
-                    }
                     return locale
                 }
                 // 1. upgrade value from `locale.toString()` to `locale.toLanguageTag()`,
                 // because the new API uses language tags
                 val languagePrefValue = preferences.getString("language", "")!!
-                val languageTag = if (languagePrefValue.isNotEmpty()) {
-                    getLocale(languagePrefValue).toLanguageTag()
-                } else {
-                    null
-                }
+                val languageTag =
+                    if (languagePrefValue.isNotEmpty()) {
+                        getLocale(languagePrefValue).toLanguageTag()
+                    } else {
+                        null
+                    }
                 preferences.edit {
                     putString("language", languageTag ?: "")
                 }
@@ -425,14 +516,24 @@ object PreferenceUpgradeService {
         internal class RemoveAnswerRecommended : PreferenceUpgrade(12) {
             override fun upgrade(preferences: SharedPreferences) {
                 moveControlBindings(preferences, "binding_FLIP_OR_ANSWER_RECOMMENDED", ViewerCommand.FLIP_OR_ANSWER_EASE3.preferenceKey)
-                moveControlBindings(preferences, "binding_FLIP_OR_ANSWER_BETTER_THAN_RECOMMENDED", ViewerCommand.FLIP_OR_ANSWER_EASE4.preferenceKey)
+                moveControlBindings(
+                    preferences,
+                    "binding_FLIP_OR_ANSWER_BETTER_THAN_RECOMMENDED",
+                    ViewerCommand.FLIP_OR_ANSWER_EASE4.preferenceKey,
+                )
             }
 
-            private fun moveControlBindings(preferences: SharedPreferences, sourcePrefKey: String, destinyPrefKey: String) {
+            private fun moveControlBindings(
+                preferences: SharedPreferences,
+                sourcePrefKey: String,
+                destinyPrefKey: String,
+            ) {
                 val sourcePrefValue = preferences.getString(sourcePrefKey, null) ?: return
                 val destinyPrefValue = preferences.getString(destinyPrefKey, null)
 
-                val joinedBindings = MappableBinding.fromPreferenceString(destinyPrefValue) + MappableBinding.fromPreferenceString(sourcePrefValue)
+                val joinedBindings =
+                    ReviewerBinding.fromPreferenceString(destinyPrefValue) +
+                        ReviewerBinding.fromPreferenceString(sourcePrefValue)
                 preferences.edit {
                     putString(destinyPrefKey, joinedBindings.toPreferenceString())
                     remove(sourcePrefKey)
@@ -496,13 +597,11 @@ object PreferenceUpgradeService {
          * @see [UsageAnalytics.ANALYTICS_OPTIN_KEY]
          */
         internal class ResetAnalyticsOptIn : PreferenceUpgrade(17) {
-            override fun upgrade(preferences: SharedPreferences) =
-                preferences.edit { remove("analyticsOptIn") }
+            override fun upgrade(preferences: SharedPreferences) = preferences.edit { remove("analyticsOptIn") }
         }
 
         internal class RemoveNoCodeFormatting : PreferenceUpgrade(18) {
-            override fun upgrade(preferences: SharedPreferences) =
-                preferences.edit { remove("noCodeFormatting") }
+            override fun upgrade(preferences: SharedPreferences) = preferences.edit { remove("noCodeFormatting") }
         }
 
         internal class UpgradeBrowserColumns : PreferenceUpgrade(19) {
@@ -542,8 +641,8 @@ object PreferenceUpgradeService {
                     return
                 }
 
-                val currentColumn1 = CardBrowserColumn.COLUMN1_KEYS[currentColumn1Index]
-                val currentColumn2 = CardBrowserColumn.COLUMN2_KEYS[currentColumn2Index]
+                val currentColumn1 = LEGACY_COLUMN1_KEYS[currentColumn1Index]
+                val currentColumn2 = LEGACY_COLUMN2_KEYS[currentColumn2Index]
 
                 BrowserColumnCollection.update(preferences, CardsOrNotes.CARDS) { columns ->
                     if (columns.size < 2) return@update false
@@ -567,6 +666,88 @@ object PreferenceUpgradeService {
             companion object {
                 private const val DISPLAY_COLUMN_1_KEY = "cardBrowserColumn1"
                 private const val DISPLAY_COLUMN_2_KEY = "cardBrowserColumn2"
+
+                @VisibleForTesting
+                internal val LEGACY_COLUMN1_KEYS = arrayOf(QUESTION, SFLD)
+
+                @VisibleForTesting
+                internal val LEGACY_COLUMN2_KEYS =
+                    arrayOf(ANSWER, CARD, DECK, NOTE_TYPE, QUESTION, TAGS, LAPSES, REVIEWS, INTERVAL, EASE, DUE, CHANGED, CREATED, EDITED)
+            }
+        }
+
+        internal class RemoveLastExportedAtTime : PreferenceUpgrade(20) {
+            override fun upgrade(preferences: SharedPreferences) {
+                preferences.edit {
+                    remove("last_successful_export_mod")
+                    remove("last_successful_export_second")
+                }
+            }
+        }
+
+        @NeedsTest("long touch gesture is removed from preferences")
+        internal class RemoveLongTouchGesture : PreferenceUpgrade(21) {
+            override fun upgrade(preferences: SharedPreferences) {
+                for (command in ViewerCommand.entries) {
+                    val value = preferences.getString(command.preferenceKey, null) ?: continue
+                    val bindings = ReviewerBinding.fromPreferenceString(value)
+                    val unknown = bindings.filter { it.binding is Binding.UnknownBinding }
+                    if (unknown.isEmpty()) continue
+                    val newBindings = bindings - unknown
+                    preferences.edit {
+                        putString(command.preferenceKey, newBindings.toPreferenceString())
+                    }
+                }
+            }
+        }
+
+        internal class UpgradeDoubleTapTimeout : PreferenceUpgrade(22) {
+            override fun upgrade(preferences: SharedPreferences) {
+                val oldPrefKey = "doubleTapTimeInterval"
+                val value = preferences.getInt(oldPrefKey, -1)
+                if (value == -1) return
+                val newValue =
+                    if (value > 1000) {
+                        1000
+                    } else {
+                        val result = value / 10.0
+                        val roundedResult = round(result)
+                        (roundedResult * 10).toInt()
+                    }
+                preferences.edit {
+                    remove(oldPrefKey)
+                    putInt("doubleTapTimeout", newValue)
+                }
+            }
+        }
+
+        internal class RemoveHostNum : PreferenceUpgrade(23) {
+            override fun upgrade(preferences: SharedPreferences) {
+                preferences.edit {
+                    remove("hostNum")
+                }
+            }
+        }
+
+        internal class UpgradeHideAnswerButtons : PreferenceUpgrade(24) {
+            override fun upgrade(preferences: SharedPreferences) {
+                val oldPrefKey = "hideAnswerButtons"
+                val value = preferences.getBoolean(oldPrefKey, false)
+                preferences.edit {
+                    remove(oldPrefKey)
+                    putBoolean("showAnswerButtons", !value)
+                }
+            }
+        }
+
+        internal class UpgradeToggleBacksideOnlyControl : PreferenceUpgrade(25) {
+            override fun upgrade(preferences: SharedPreferences) {
+                val oldPrefKey = "previewer_BACKSIDE_ONLY"
+                val value = preferences.getString(oldPrefKey, null) ?: return
+                preferences.edit {
+                    remove(oldPrefKey)
+                    putString("previewer_TOGGLE_BACKSIDE_ONLY", value)
+                }
             }
         }
     }

@@ -25,9 +25,9 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.ichi2.anki.Flag
 import com.ichi2.anki.R
+import com.ichi2.anki.databinding.RenameFlagLayoutBinding
 import com.ichi2.utils.customView
 import com.ichi2.utils.title
 import kotlinx.coroutines.launch
@@ -37,19 +37,16 @@ import timber.log.Timber
  * A DialogFragment for renaming flags through a RecyclerView.
  */
 class FlagRenameDialog : DialogFragment() {
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var flagAdapter: FlagAdapter
-
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val dialogView = requireActivity().layoutInflater.inflate(R.layout.rename_flag_layout, null)
-        val builder = AlertDialog.Builder(requireContext()).apply {
-            customView(view = dialogView, 4, 4, 4, 4)
-            title(R.string.rename_flag)
-        }
+        val binding = RenameFlagLayoutBinding.inflate(requireActivity().layoutInflater)
+        val builder =
+            AlertDialog.Builder(requireContext()).apply {
+                customView(view = binding.root, 4, 4, 4, 4)
+                title(R.string.rename_flag)
+            }
         val dialog = builder.create()
 
-        recyclerView = dialogView.findViewById(R.id.recyclerview_flags)
-        setupRecyclerView()
+        setupRecyclerView(binding)
         return dialog
     }
 
@@ -62,27 +59,29 @@ class FlagRenameDialog : DialogFragment() {
         super.onStart()
         dialog?.window?.clearFlags(
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
+                or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
         )
     }
 
-    private fun setupRecyclerView() = requireActivity().lifecycleScope.launch {
-        val flagItems = createFlagList()
-        flagAdapter = FlagAdapter(lifecycleScope = lifecycleScope)
-        recyclerView.adapter = flagAdapter
-        flagAdapter.submitList(flagItems)
-        recyclerView.layoutManager = LinearLayoutManager(requireContext())
-    }
+    private fun setupRecyclerView(binding: RenameFlagLayoutBinding) =
+        requireActivity().lifecycleScope.launch {
+            val flagItems = createFlagList()
+            val flagAdapter = FlagAdapter(lifecycleScope = lifecycleScope)
+            binding.recyclerViewFlags.adapter = flagAdapter
+            flagAdapter.submitList(flagItems)
+            binding.recyclerViewFlags.layoutManager = LinearLayoutManager(requireContext())
+        }
 
     private suspend fun createFlagList(): List<FlagItem> {
         Timber.d("Creating flag list")
-        return Flag.queryDisplayNames()
+        return Flag
+            .queryDisplayNames()
             .filter { it.key != Flag.NONE }
             .map { (flag, displayName) ->
                 FlagItem(
-                    ordinal = flag.code,
+                    flag = flag,
                     title = displayName,
-                    icon = flag.drawableRes
+                    icon = flag.drawableRes,
                 )
             }
     }

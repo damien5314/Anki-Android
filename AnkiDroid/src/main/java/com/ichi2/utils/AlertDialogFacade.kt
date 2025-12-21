@@ -22,6 +22,7 @@ import android.content.Context
 import android.content.DialogInterface
 import android.content.DialogInterface.OnClickListener
 import android.text.InputFilter
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.ArrayAdapter
@@ -29,7 +30,9 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.ListView
+import android.widget.TextView
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
@@ -41,19 +44,22 @@ import com.google.android.material.textfield.TextInputLayout
 import com.ichi2.anki.R
 import com.ichi2.themes.Themes
 import com.ichi2.ui.FixedTextView
+import com.ichi2.utils.HandlerUtils.executeOnMainThread
+import timber.log.Timber
 
 /** Wraps [DialogInterface.OnClickListener] as we don't need the `which` parameter */
 typealias DialogInterfaceListener = (DialogInterface) -> Unit
 
-fun DialogInterfaceListener.toClickListener(): OnClickListener {
-    return OnClickListener { dialog: DialogInterface, _ -> this(dialog) }
-}
+fun DialogInterfaceListener.toClickListener(): OnClickListener = OnClickListener { dialog: DialogInterface, _ -> this(dialog) }
 
 /*
  * Allows easier transformations from [MaterialDialog] to [AlertDialog].
  * Inline this file when material dialog is removed
  */
-fun AlertDialog.Builder.title(@StringRes stringRes: Int? = null, text: String? = null): AlertDialog.Builder {
+fun AlertDialog.Builder.title(
+    @StringRes stringRes: Int? = null,
+    text: String? = null,
+): AlertDialog.Builder {
     if (stringRes == null && text == null) {
         throw IllegalArgumentException("either `stringRes` or `text` must be set")
     }
@@ -64,7 +70,10 @@ fun AlertDialog.Builder.title(@StringRes stringRes: Int? = null, text: String? =
     }
 }
 
-fun AlertDialog.Builder.message(@StringRes stringRes: Int? = null, text: CharSequence? = null): AlertDialog.Builder {
+fun AlertDialog.Builder.message(
+    @StringRes stringRes: Int? = null,
+    text: CharSequence? = null,
+): AlertDialog.Builder {
     if (stringRes == null && text == null) {
         throw IllegalArgumentException("either `stringRes` or `text` must be set")
     }
@@ -79,15 +88,13 @@ fun AlertDialog.Builder.message(@StringRes stringRes: Int? = null, text: CharSeq
  * Shows an icon to the left of the dialog title.
  */
 fun AlertDialog.Builder.iconAttr(
-    @DrawableRes res: Int
-) = apply {
-    return this.setIcon(Themes.getResFromAttr(this.context, res))
-}
+    @DrawableRes res: Int,
+): AlertDialog.Builder = this.setIcon(Themes.getResFromAttr(this.context, res))
 
 fun AlertDialog.Builder.positiveButton(
     @StringRes stringRes: Int? = null,
     text: CharSequence? = null,
-    click: DialogInterfaceListener? = null
+    click: DialogInterfaceListener? = null,
 ): AlertDialog.Builder {
     if (stringRes == null && text == null) {
         throw IllegalArgumentException("either `stringRes` or `text` must be set")
@@ -102,7 +109,7 @@ fun AlertDialog.Builder.positiveButton(
 fun AlertDialog.Builder.neutralButton(
     @StringRes stringRes: Int? = null,
     text: CharSequence? = null,
-    click: DialogInterfaceListener? = null
+    click: DialogInterfaceListener? = null,
 ): AlertDialog.Builder {
     if (stringRes == null && text == null) {
         throw IllegalArgumentException("either `stringRes` or `text` must be set")
@@ -117,7 +124,7 @@ fun AlertDialog.Builder.neutralButton(
 fun AlertDialog.Builder.negativeButton(
     @StringRes stringRes: Int? = null,
     text: CharSequence? = null,
-    click: DialogInterfaceListener? = null
+    click: DialogInterfaceListener? = null,
 ): AlertDialog.Builder {
     if (stringRes == null && text == null) {
         throw IllegalArgumentException("either `stringRes` or `text` must be set")
@@ -129,25 +136,51 @@ fun AlertDialog.Builder.negativeButton(
     }
 }
 
-fun AlertDialog.Builder.cancelable(cancelable: Boolean): AlertDialog.Builder {
-    return this.setCancelable(cancelable)
-}
+fun AlertDialog.Builder.cancelable(cancelable: Boolean): AlertDialog.Builder = this.setCancelable(cancelable)
 
 /**
  * Executes the provided block, then creates an [AlertDialog] with the arguments supplied
  * and immediately displays the dialog
  */
-inline fun AlertDialog.Builder.show(block: AlertDialog.Builder.() -> Unit): AlertDialog {
+inline fun AlertDialog.Builder.show(
+    enableEnterKeyHandler: Boolean = false, // Make it opt-in
+    block: AlertDialog.Builder.() -> Unit,
+): AlertDialog {
     this.apply { block() }
-    return this.show()
+    val dialog = this.show()
+    return if (enableEnterKeyHandler) {
+        dialog.setupEnterKeyHandler()
+    } else {
+        dialog
+    }
+}
+
+/**
+ * Extension function to configure an AlertDialog to handle the Enter key press event.
+ * This will make the Enter key directly trigger the positive button action instead of just selecting it.
+ */
+fun AlertDialog.setupEnterKeyHandler(): AlertDialog {
+    this.setOnKeyListener { dialog, keyCode, event ->
+        if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_UP) {
+            // Get the positive button and simulate a click
+            val positiveButton = (dialog as AlertDialog).getButton(DialogInterface.BUTTON_POSITIVE)
+            if (positiveButton != null && positiveButton.isEnabled) {
+                positiveButton.performClick()
+                return@setOnKeyListener true
+            }
+        }
+        false
+    }
+    return this
 }
 
 /**
  * Creates an [AlertDialog] from the [AlertDialog.Builder] instance, then executes [block] with it.
  */
-fun AlertDialog.Builder.createAndApply(block: AlertDialog.() -> Unit): AlertDialog = create().apply {
-    block()
-}
+fun AlertDialog.Builder.createAndApply(block: AlertDialog.() -> Unit): AlertDialog =
+    create().apply {
+        block()
+    }
 
 /**
  * Executes [block] on the [AlertDialog.Builder] instance and returns the initialized [AlertDialog].
@@ -168,7 +201,7 @@ fun AlertDialog.Builder.checkBoxPrompt(
     @StringRes stringRes: Int? = null,
     text: CharSequence? = null,
     isCheckedDefault: Boolean = false,
-    onToggle: (checked: Boolean) -> Unit
+    onToggle: (checked: Boolean) -> Unit,
 ): AlertDialog.Builder {
     if (stringRes == null && text == null) {
         throw IllegalArgumentException("either `stringRes` or `text` must be set")
@@ -192,21 +225,34 @@ fun AlertDialog.getCheckBoxPrompt(): CheckBox =
         "CheckBox prompt is not available. Forgot to call AlertDialog.Builder.checkBoxPrompt()?"
     }
 
+/**
+ * Sets a custom view for the dialog.
+ *
+ * @param view the view to display in the dialog
+ * @param paddingStart the start padding in pixels
+ * @param paddingTop the top padding in pixels
+ * @param paddingEnd the end padding in pixels
+ * @param paddingBottom the bottom padding in pixels
+ *
+ * @see [AlertDialog.Builder.setView]
+ * @see [View.setPaddingRelative]
+ */
 fun AlertDialog.Builder.customView(
     view: View,
     paddingTop: Int = 0,
     paddingBottom: Int = 0,
-    paddingLeft: Int = 0,
-    paddingRight: Int = 0
+    paddingStart: Int = 0,
+    paddingEnd: Int = 0,
 ): AlertDialog.Builder {
     val container = FrameLayout(context)
 
-    val containerParams = FrameLayout.LayoutParams(
-        FrameLayout.LayoutParams.MATCH_PARENT,
-        FrameLayout.LayoutParams.WRAP_CONTENT
-    )
+    val containerParams =
+        FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+        )
 
-    container.setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom)
+    container.setPaddingRelative(paddingStart, paddingTop, paddingEnd, paddingBottom)
     container.addView(view, containerParams)
     setView(container)
 
@@ -225,7 +271,10 @@ fun AlertDialog.Builder.customListAdapter(adapter: RecyclerView.Adapter<*>) {
  * @param adapter The adapter for the RecyclerView.
  * @param context The context used to access resources and LayoutInflater.
  */
-fun AlertDialog.Builder.customListAdapterWithDecoration(adapter: RecyclerView.Adapter<*>, context: Context) {
+fun AlertDialog.Builder.customListAdapterWithDecoration(
+    adapter: RecyclerView.Adapter<*>,
+    context: Context,
+) {
     val recyclerView = LayoutInflater.from(context).inflate(R.layout.dialog_generic_recycler_view, null, false) as RecyclerView
     recyclerView.adapter = adapter
     recyclerView.layoutManager = LinearLayoutManager(context)
@@ -258,7 +307,7 @@ fun AlertDialog.input(
     maxLength: Int? = null,
     displayKeyboard: Boolean = false,
     waitForPositiveButton: Boolean = true,
-    callback: (AlertDialog, CharSequence) -> Unit
+    callback: (AlertDialog, CharSequence) -> Unit,
 ): AlertDialog {
     // Builder.setView() may not be called before show()
     if (!this.isShowing) throw IllegalStateException("input() requires .show()")
@@ -322,6 +371,10 @@ fun AlertDialog.getInputField() = getInputTextLayout().editText!!
 /** @see AlertDialog.getButton */
 val AlertDialog.positiveButton: Button
     get() = getButton(DialogInterface.BUTTON_POSITIVE)
+val AlertDialog.negativeButton: Button
+    get() = getButton(DialogInterface.BUTTON_NEGATIVE)
+val AlertDialog.neutralButton: Button?
+    get() = getButton(DialogInterface.BUTTON_NEUTRAL)
 
 /**
  * Extension function for AlertDialog.Builder to set a list of items.
@@ -330,11 +383,13 @@ val AlertDialog.positiveButton: Button
  * @param items The items to display in the list.
  * @param onClick A lambda function that is invoked when an item is clicked.
  */
-fun AlertDialog.Builder.listItems(items: List<CharSequence>, onClick: (dialog: DialogInterface, index: Int) -> Unit): AlertDialog.Builder {
-    return this.setItems(items.toTypedArray()) { dialog, which ->
+fun AlertDialog.Builder.listItems(
+    items: List<CharSequence>,
+    onClick: (dialog: DialogInterface, index: Int) -> Unit,
+): AlertDialog.Builder =
+    this.setItems(items.toTypedArray()) { dialog, which ->
         onClick(dialog, which)
     }
-}
 
 /**
  * Extension workaround for Displaying ListView & Message Together
@@ -344,7 +399,11 @@ fun AlertDialog.Builder.listItems(items: List<CharSequence>, onClick: (dialog: D
  * @param items The items to display in the list.
  * @param onClick A lambda function that is invoked when an item is clicked.
  */
-fun AlertDialog.Builder.listItemsAndMessage(message: String?, items: List<CharSequence>, onClick: (dialog: DialogInterface, index: Int) -> Unit): AlertDialog.Builder {
+fun AlertDialog.Builder.listItemsAndMessage(
+    message: String?,
+    items: List<CharSequence>,
+    onClick: (dialog: DialogInterface, index: Int) -> Unit,
+): AlertDialog.Builder {
     val dialogView = View.inflate(this.context, R.layout.dialog_listview_message, null)
     dialogView.findViewById<FixedTextView>(R.id.dialog_message).text = message
 
@@ -356,4 +415,61 @@ fun AlertDialog.Builder.listItemsAndMessage(message: String?, items: List<CharSe
         onClick(dialog, index)
     }
     return this.setView(dialogView)
+}
+
+/**
+ * Adds a custom title view to the dialog with a 'help' icon. Typically used to open the Anki Manual
+ *
+ * **Example:**
+ * ```kotlin
+ * MaterialAlertDialogBuilder(context).create {
+ *     titleWithHelpIcon(stringRes = R.string.reset_card_dialog_title) {
+ *         requireActivity().openUrl(Uri.parse(getString(R.string.link_manual)))
+ *     }
+ * }
+ * ```
+ *
+ * @param block action executed when the help icon is clicked
+ *
+ */
+fun AlertDialog.Builder.titleWithHelpIcon(
+    @StringRes stringRes: Int? = null,
+    text: String? = null,
+    block: View.OnClickListener,
+) {
+    // setup the view for the dialog
+    val customTitleView = LayoutInflater.from(context).inflate(R.layout.alert_dialog_title_with_help, null, false)
+    setCustomTitle(customTitleView)
+
+    // apply a custom title
+    val titleTextView = customTitleView.findViewById<TextView>(android.R.id.title)
+
+    if (stringRes != null) {
+        titleTextView.setText(stringRes)
+    } else if (text != null) {
+        titleTextView.text = text
+    }
+
+    // set the action when clicking the help icon
+    customTitleView.findViewById<ImageView>(R.id.help_icon).setOnClickListener { v ->
+        Timber.i("dialog help icon click")
+        block.onClick(v)
+    }
+}
+
+/** Calls [AlertDialog.dismiss], ignoring errors */
+fun AlertDialog.dismissSafely() {
+    // The exception will be uncaught if not run on the main thread.
+    executeOnMainThread {
+        try {
+            // safer to catch the exception to be sure dismiss() was called
+            dismiss()
+        } catch (e: IllegalArgumentException) {
+            if (window == null || !isShowing) {
+                Timber.d(e, "Dialog not attached to window manager")
+                return@executeOnMainThread
+            }
+            Timber.w(e, "Dialog not attached to window manager")
+        }
+    }
 }

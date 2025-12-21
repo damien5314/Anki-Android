@@ -21,7 +21,6 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.edit
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -41,13 +40,12 @@ import com.ichi2.anki.CollectionManager
 import com.ichi2.anki.CollectionManager.TR
 import com.ichi2.anki.CollectionManager.withCol
 import com.ichi2.anki.R
-import com.ichi2.anki.SyncPreferences
 import com.ichi2.anki.cancelSync
 import com.ichi2.anki.notifications.NotificationId
-import com.ichi2.anki.preferences.sharedPrefs
 import com.ichi2.anki.setLastSyncTimeToNow
+import com.ichi2.anki.settings.Prefs
 import com.ichi2.anki.utils.ext.trySetForeground
-import com.ichi2.libanki.syncCollection
+import com.ichi2.utils.Permissions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -71,25 +69,31 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 class SyncWorker(
     context: Context,
-    parameters: WorkerParameters
+    parameters: WorkerParameters,
 ) : CoroutineWorker(context, parameters) {
-
     private val workManager = WorkManager.getInstance(context)
-    private val notificationManager = NotificationManagerCompat.from(context)
-    private val cancelIntent = workManager.createCancelPendingIntent(id)
+    private val cancelIntent = WorkManager.getInstance(context).createCancelPendingIntent(id)
+    private val notificationManager: NotificationManagerCompat? =
+        if (Permissions.canPostNotifications(context)) {
+            NotificationManagerCompat.from(context)
+        } else {
+            null
+        }
 
     override suspend fun doWork(): Result {
         Timber.v("SyncWorker::doWork")
         trySetForeground(getForegroundInfo())
 
-        val hkey = inputData.getString(HKEY_KEY)
-            ?: return Result.failure()
-        val auth = syncAuth {
-            this.hkey = hkey
-            inputData.getString(ENDPOINT_KEY)?.let {
-                endpoint = it
+        val hkey =
+            inputData.getString(HKEY_KEY)
+                ?: return Result.failure()
+        val auth =
+            syncAuth {
+                this.hkey = hkey
+                inputData.getString(ENDPOINT_KEY)?.let {
+                    endpoint = it
+                }
             }
-        }
         val shouldSyncMedia = inputData.getBoolean(SYNC_MEDIA_KEY, false)
 
         try {
@@ -101,64 +105,77 @@ class SyncWorker(
             Timber.w(throwable)
             notify {
                 setContentTitle(applicationContext.getString(R.string.sync_error))
+                throwable.localizedMessage?.let { message ->
+                    setContentText(message)
+                }
             }
             return Result.failure()
         }
+        Timber.d("SyncWorker: cancelling notification")
+        notificationManager?.cancel(NotificationId.SYNC)
 
         Timber.d("SyncWorker: success")
-        applicationContext.setLastSyncTimeToNow()
+        setLastSyncTimeToNow()
         return Result.success()
     }
 
-    private suspend fun syncCollection(auth: SyncAuth, syncMedia: Boolean) {
+    private suspend fun syncCollection(
+        auth: SyncAuth,
+        syncMedia: Boolean,
+    ) {
         Timber.v("SyncWorker::syncCollection")
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val monitor = scope.launch {
-            val backend = CollectionManager.getBackend()
-            var syncProgress: Progress.NormalSync? = null
-            while (true) {
-                val progress = backend.latestProgress() // avoid sending repeated notifications
-                if (progress.hasNormalSync() && syncProgress != progress.normalSync) {
-                    syncProgress = progress.normalSync
-                    val text = syncProgress.run { "$added\n$removed" }
-                    notify(getProgressNotification(text))
+        val monitor =
+            scope.launch {
+                val backend = CollectionManager.getBackend()
+                var syncProgress: Progress.NormalSync? = null
+                while (true) {
+                    val progress = backend.latestProgress() // avoid sending repeated notifications
+                    if (progress.hasNormalSync() && syncProgress != progress.normalSync) {
+                        syncProgress = progress.normalSync
+                        val text = syncProgress.run { "$added\n$removed" }
+                        notify(getProgressNotification(text))
+                    }
+                    delay(SyncMediaWorker.NOTIFICATION_UPDATE_RATE_MS)
                 }
-                delay(100)
             }
-        }
-        val response = try {
-            withCol {
-                syncCollection(auth, media = false)
+        val response =
+            try {
+                withCol {
+                    syncCollection(auth, syncMedia = false)
+                }
+            } finally {
+                Timber.d("Collection sync completed. Cancelling monitor...")
+                monitor.cancel()
             }
-        } finally {
-            Timber.d("Collection sync completed. Cancelling monitor...")
-            monitor.cancel()
-        }
         Timber.i("Sync required: %s", response.required)
         when (response.required) {
             // a successful sync returns this value
             SyncCollectionResponse.ChangesRequired.NO_CHANGES -> {
                 withCol { _loadScheduler() } // scheduler version may have changed
-                if (syncMedia) {
-                    val syncAuth = if (response.hasNewEndpoint()) {
-                        applicationContext.sharedPrefs().edit {
-                            putString(SyncPreferences.CURRENT_SYNC_URI, response.newEndpoint)
+                if (!syncMedia) return
+                val syncAuth =
+                    if (response.hasNewEndpoint() && response.newEndpoint.isNotEmpty()) {
+                        Prefs.currentSyncUri = response.newEndpoint
+                        syncAuth {
+                            hkey = auth.hkey
+                            endpoint = response.newEndpoint
                         }
-                        syncAuth { hkey = auth.hkey; endpoint = response.newEndpoint }
                     } else {
                         auth
                     }
-                    syncMedia(syncAuth)
-                }
+                syncMedia(syncAuth)
             }
             SyncCollectionResponse.ChangesRequired.FULL_SYNC,
             SyncCollectionResponse.ChangesRequired.FULL_DOWNLOAD,
-            SyncCollectionResponse.ChangesRequired.FULL_UPLOAD -> {
+            SyncCollectionResponse.ChangesRequired.FULL_UPLOAD,
+            -> {
                 Timber.d("One-way sync required: Skipping background sync")
             }
             SyncCollectionResponse.ChangesRequired.UNRECOGNIZED,
             SyncCollectionResponse.ChangesRequired.NORMAL_SYNC,
-            null -> {
+            null,
+            -> {
                 TODO("should never happen")
             }
         }
@@ -169,19 +186,20 @@ class SyncWorker(
         workManager.enqueueUniqueWork(
             UniqueWorkNames.SYNC_MEDIA,
             ExistingWorkPolicy.KEEP,
-            SyncMediaWorker.getWorkRequest(auth)
+            SyncMediaWorker.getWorkRequest(auth),
         )
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
         val cancelTitle = applicationContext.getString(R.string.dialog_cancel)
-        val notification = buildNotification {
-            setContentTitle(TR.syncSyncing())
-            setOngoing(true)
-            setProgress(0, 0, true)
-            addAction(R.drawable.close_icon, cancelTitle, cancelIntent)
-            foregroundServiceBehavior = NotificationCompat.FOREGROUND_SERVICE_DEFERRED
-        }
+        val notification =
+            buildNotification {
+                setContentTitle(TR.syncSyncing())
+                setOngoing(true)
+                setProgress(0, 0, true)
+                addAction(R.drawable.close_icon, cancelTitle, cancelIntent)
+                foregroundServiceBehavior = NotificationCompat.FOREGROUND_SERVICE_DEFERRED
+            }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ForegroundInfo(NotificationId.SYNC, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
@@ -190,22 +208,23 @@ class SyncWorker(
     }
 
     private fun notify(notification: Notification) {
-        notificationManager.notify(NotificationId.SYNC, notification)
+        notificationManager?.notify(NotificationId.SYNC, notification)
     }
 
     private fun notify(builder: NotificationCompat.Builder.() -> Unit) {
         notify(buildNotification(builder))
     }
 
-    private fun buildNotification(block: NotificationCompat.Builder.() -> Unit): Notification {
-        return NotificationCompat.Builder(applicationContext, Channel.SYNC.id).apply {
-            priority = NotificationCompat.PRIORITY_LOW
-            setSmallIcon(R.drawable.ic_star_notify)
-            setCategory(NotificationCompat.CATEGORY_PROGRESS)
-            setSilent(true)
-            block()
-        }.build()
-    }
+    private fun buildNotification(block: NotificationCompat.Builder.() -> Unit): Notification =
+        NotificationCompat
+            .Builder(applicationContext, Channel.SYNC.id)
+            .apply {
+                priority = NotificationCompat.PRIORITY_LOW
+                setSmallIcon(R.drawable.ic_star_notify)
+                setCategory(NotificationCompat.CATEGORY_PROGRESS)
+                setSilent(true)
+                block()
+            }.build()
 
     private fun getProgressNotification(progress: CharSequence): Notification {
         val cancelTitle = applicationContext.getString(R.string.dialog_cancel)
@@ -223,29 +242,40 @@ class SyncWorker(
         private const val ENDPOINT_KEY = "endpoint"
         private const val SYNC_MEDIA_KEY = "syncMedia"
 
-        fun start(context: Context, syncAuth: SyncAuth, syncMedia: Boolean) {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
+        fun start(
+            context: Context,
+            syncAuth: SyncAuth,
+            syncMedia: Boolean,
+        ) {
+            val constraints =
+                Constraints
+                    .Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
 
-            val data = Data.Builder()
-                .putString(HKEY_KEY, syncAuth.hkey)
-                .putString(ENDPOINT_KEY, syncAuth.endpoint)
-                .putBoolean(SYNC_MEDIA_KEY, syncMedia)
-                .build()
+            val data =
+                Data
+                    .Builder()
+                    .putString(HKEY_KEY, syncAuth.hkey)
+                    .putString(ENDPOINT_KEY, syncAuth.endpoint)
+                    .putBoolean(SYNC_MEDIA_KEY, syncMedia)
+                    .build()
 
-            val request = OneTimeWorkRequestBuilder<SyncWorker>()
-                .setInputData(data)
-                .setConstraints(constraints)
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                .build()
+            val request =
+                OneTimeWorkRequestBuilder<SyncWorker>()
+                    .setInputData(data)
+                    .setConstraints(constraints)
+                    .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                    .build()
 
-            WorkManager.getInstance(context)
+            WorkManager
+                .getInstance(context)
                 .enqueueUniqueWork(UniqueWorkNames.SYNC, ExistingWorkPolicy.KEEP, request)
         }
 
         fun cancel(context: Context) {
-            WorkManager.getInstance(context)
+            WorkManager
+                .getInstance(context)
                 .cancelUniqueWork(UniqueWorkNames.SYNC)
         }
     }

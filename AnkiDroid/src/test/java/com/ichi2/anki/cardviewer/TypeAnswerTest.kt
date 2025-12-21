@@ -91,7 +91,7 @@ hello"""
  background-color: white;
 }
 </style>Type in hello
-<code id=typeans><span class=typeBad>hello</span><br><span id=typearrow>&darr;</span><br><span class=typeMissed>xyzzy${"$"}${"$"}$22</span></code>
+<code id=typeans><span class=typeBad>hello</span><br><span id=typearrow>&darr;</span><br><span class=typeMissed>xyzzy$$$22</span></code>
 
 <hr id=answer>
 
@@ -249,9 +249,13 @@ $!"""
         assertEquals("test, test, test2", contentForCloze(cloze2, 1))
     }
 
-    private fun typeAnsAnswerFilter(answer: String, correctAnswer: String, userAnswer: String): String =
+    private fun typeAnsAnswerFilter(
+        answer: String,
+        correctAnswer: String,
+        userAnswer: String,
+    ): String =
         TypeAnswer(
             useInputTag = false,
-            autoFocus = false
+            autoFocus = false,
         ).filterAnswer(answer, correctAnswer, userAnswer)
 }

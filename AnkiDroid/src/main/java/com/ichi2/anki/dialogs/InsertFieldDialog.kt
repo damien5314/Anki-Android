@@ -1,18 +1,18 @@
-/****************************************************************************************
- * Copyright (c) 2021 Akshay Jadhav <jadhavakshay0701@gmail.com>                          *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2021 Akshay Jadhav <jadhavakshay0701@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 package com.ichi2.anki.dialogs
 
@@ -38,6 +38,7 @@ import com.ichi2.utils.title
  */
 class InsertFieldDialog : DialogFragment() {
     private lateinit var fieldList: List<String>
+    private lateinit var requestKey: String
 
     /**
      * A dialog for inserting field in card template editor
@@ -45,22 +46,28 @@ class InsertFieldDialog : DialogFragment() {
     override fun onCreateDialog(savedInstanceState: Bundle?): AlertDialog {
         super.onCreate(savedInstanceState)
         fieldList = requireArguments().getStringArrayList(KEY_FIELD_ITEMS)!!
-        val adapter: RecyclerView.Adapter<*> = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-                val root = layoutInflater.inflate(R.layout.material_dialog_list_item, parent, false)
-                return object : RecyclerView.ViewHolder(root) {}
-            }
+        requestKey = requireArguments().getString(KEY_REQUEST_KEY)!!
+        val adapter: RecyclerView.Adapter<*> =
+            object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+                override fun onCreateViewHolder(
+                    parent: ViewGroup,
+                    viewType: Int,
+                ): RecyclerView.ViewHolder {
+                    val root = layoutInflater.inflate(R.layout.material_dialog_list_item, parent, false)
+                    return object : RecyclerView.ViewHolder(root) {}
+                }
 
-            override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-                val textView = holder.itemView as TextView
-                textView.text = fieldList[position]
-                textView.setOnClickListener { selectFieldAndClose(textView) }
-            }
+                override fun onBindViewHolder(
+                    holder: RecyclerView.ViewHolder,
+                    position: Int,
+                ) {
+                    val textView = holder.itemView as TextView
+                    textView.text = fieldList[position]
+                    textView.setOnClickListener { selectFieldAndClose(textView) }
+                }
 
-            override fun getItemCount(): Int {
-                return fieldList.size
+                override fun getItemCount(): Int = fieldList.size
             }
-        }
         return AlertDialog.Builder(requireContext()).create {
             title(R.string.card_template_editor_select_field)
             negativeButton(R.string.dialog_cancel)
@@ -70,27 +77,37 @@ class InsertFieldDialog : DialogFragment() {
 
     private fun selectFieldAndClose(textView: TextView) {
         parentFragmentManager.setFragmentResult(
-            REQUEST_FIELD_INSERT,
-            bundleOf(KEY_INSERTED_FIELD to textView.text.toString())
+            requestKey,
+            bundleOf(KEY_INSERTED_FIELD to textView.text.toString()),
         )
         dismiss()
     }
 
     companion object {
         /**
-         * Other fragments sharing the activity can use this with
-         * [androidx.fragment.app.FragmentManager.setFragmentResultListener] to get a result back.
-         */
-        const val REQUEST_FIELD_INSERT = "request_field_insert"
-
-        /**
          * This fragment requires that a list of fields names to be passed in.
          */
         const val KEY_INSERTED_FIELD = "key_inserted_field"
         private const val KEY_FIELD_ITEMS = "key_field_items"
+        private const val KEY_REQUEST_KEY = "key_request_key"
 
-        fun newInstance(fieldItems: List<String>): InsertFieldDialog = InsertFieldDialog().apply {
-            arguments = bundleOf(KEY_FIELD_ITEMS to ArrayList(fieldItems))
-        }
+        /**
+         * Creates a new instance of [InsertFieldDialog]
+         *
+         * @param fieldItems The list of field names to be displayed in the dialog.
+         * @param requestKey The key used to identify the result when returning the selected field
+         *                   to the calling fragment.
+         */
+        fun newInstance(
+            fieldItems: List<String>,
+            requestKey: String,
+        ): InsertFieldDialog =
+            InsertFieldDialog().apply {
+                arguments =
+                    bundleOf(
+                        KEY_FIELD_ITEMS to ArrayList(fieldItems),
+                        KEY_REQUEST_KEY to requestKey,
+                    )
+            }
     }
 }

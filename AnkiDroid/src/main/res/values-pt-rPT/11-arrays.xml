@@ -46,19 +46,6 @@
     <string name="error_reporting_choice_always_report">Comunicar sempre</string>
     <string name="error_reporting_choice_never_report">Nunca comunicar</string>
     <string name="error_reporting_choice_ask_user">Perguntar-me</string>
-    <!-- leech_action_labels -->
-    <!-- 01-core:menu_suspend_card -->
-    <!-- new_order_labels -->
-    <!-- cram_deck_conf_order_labels -->
-    <string name="cram_deck_conf_order_oldest_seen_first">Mais antigas primeiro</string>
-    <string name="cram_deck_conf_order_random">Aleatória</string>
-    <string name="cram_deck_conf_order_increasing_intervals">Intervalos crescentes</string>
-    <string name="cram_deck_conf_order_decreasing_intervals">Intervalos decrescentes</string>
-    <string name="cram_deck_conf_order_most_lapsed">Mais falhadas</string>
-    <string name="cram_deck_conf_order_order_added">Ordem de adição</string>
-    <string name="cram_deck_conf_order_order_due">Ordem de revisão</string>
-    <string name="cram_deck_conf_order_latest_added_first">Primeiro, a última adicionada</string>
-    <string name="cram_deck_conf_order_relative_overdueness">Atrasos relativos</string>
     <!-- add_to_cur_labels -->
     <string name="add_to_deck_use_current_deck">Usar o baralho atual</string>
     <string name="add_to_deck_decide_by_note_type">Decidir por tipo de nota</string>
@@ -79,27 +66,26 @@
     <string name="html_size_code_x_large">extra grande</string>
     <string name="html_size_code_xx_large">extra-extra grande</string>
     <!-- gestures_labels -->
-    <string name="answer_again">Responder novamente</string>
-    <string name="answer_hard">Responder \"Difícil\"</string>
-    <string name="answer_good">Responder \"Bom\"</string>
-    <string name="answer_easy">Responder \"Fácil\"</string>
-    <string name="gesture_play">Reproduzir multimédia</string>
-    <string name="gesture_abort_learning">Acabar sessão de estudo</string>
-    <string name="gesture_flag_red">Activar/desactivar sinalização vermelha</string>
-    <string name="gesture_flag_orange">Activar/desactivar sinalização laranja</string>
-    <string name="gesture_flag_green">Activar/desactivar sinalização verde</string>
-    <string name="gesture_flag_blue">Activar/desactivar sinalização azul</string>
-    <string name="gesture_flag_pink">Activar/desactivar sinalização rosa</string>
-    <string name="gesture_flag_turquoise">Activar/desactivar sinalização turquesa</string>
-    <string name="gesture_flag_purple">Activar/desactivar sinalização roxa</string>
-    <string name="gesture_flag_remove">Remover sinalização</string>
-    <string name="gesture_page_up">Página Acima</string>
-    <string name="gesture_page_down">Página Abaixo</string>
-    <string name="gesture_abort_sync">Acabar sessão de estudo e Sincronizar</string>
-    <string name="gesture_toggle_whiteboard">Activar/Desactivar quadro de escrita</string>
-    <string name="gesture_show_hint">Mostrar Dica</string>
-    <string name="gesture_show_all_hints">Mostrar todas as dicas</string>
-    <string name="record_voice">Gravar Voz</string>
-    <string name="replay_voice">Reproduzir Voz</string>
-    <string name="save_voice">Guardar gravação</string>
+    <string name="answer_again" maxLength="41">Responder novamente</string>
+    <string name="answer_hard" maxLength="41">Responder \"Difícil\"</string>
+    <string name="answer_good" maxLength="41">Responder \"Bom\"</string>
+    <string name="answer_easy" maxLength="41">Responder \"Fácil\"</string>
+    <string name="gesture_abort_learning" maxLength="41">Fechar Ecrã de Estudo</string>
+    <string name="gesture_flag_red" maxLength="41">Toggle red flag</string>
+    <string name="gesture_flag_orange" maxLength="41">Toggle orange flag</string>
+    <string name="gesture_flag_green" maxLength="41">Toggle green flag</string>
+    <string name="gesture_flag_blue" maxLength="41">Toggle blue flag</string>
+    <string name="gesture_flag_pink" maxLength="41">Toggle pink flag</string>
+    <string name="gesture_flag_turquoise" maxLength="41">Toggle turquoise flag</string>
+    <string name="gesture_flag_purple" maxLength="41">Toggle purple flag</string>
+    <string name="gesture_flag_remove" maxLength="41">Remover bandeira</string>
+    <string name="gesture_page_up" maxLength="41">Page up</string>
+    <string name="gesture_page_down" maxLength="41">Page down</string>
+    <string name="gesture_toggle_whiteboard" maxLength="41">Activar/Desactivar quadro de escrita</string>
+    <string name="gesture_toggle_eraser" maxLength="41">Toggle eraser</string>
+    <string name="gesture_show_hint" maxLength="41">Revelar dica</string>
+    <string name="gesture_show_all_hints" maxLength="41">Revelar todas as dicas</string>
+    <string name="record_voice" maxLength="41">Gravar voz</string>
+    <string name="replay_voice" maxLength="41">Reproduzir voz</string>
+    <string name="save_voice" maxLength="41">Guardar gravação</string>
 </resources>

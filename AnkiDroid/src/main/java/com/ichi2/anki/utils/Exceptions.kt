@@ -16,90 +16,9 @@ package com.ichi2.anki.utils
 
 import android.content.Context
 import com.ichi2.anki.R
-import java.io.PrintStream
-import java.io.PrintWriter
-import java.lang.Exception
-import java.lang.RuntimeException
-
-/**
- * An exception that embeds multiple other exceptions.
- * It prints a stack trace like this:
- *
- *     AggregateException: Foo
- *         at ...
- *
- *     This exception was indirectly caused by 2 exceptions
- *
- *     Details of embedded exception 0:
- *
- *         java.lang.Exception: Bar
- *             at ...
- *
- *     Details of embedded exception 1:
- *
- *         java.lang.Exception
- *             at ...
- */
-open class AggregateException(message: String?, val causes: List<Exception>) : RuntimeException(message) {
-
-    override fun printStackTrace(s: PrintStream) {
-        super.printStackTrace(s)
-
-        s.print("\nThis exception was indirectly caused by ${causes.size} exceptions\n")
-
-        causes.forEachIndexed { index, exception ->
-            s.print("\nDetails of embedded exception $index:\n\n")
-            exception.printStackTrace(IndentedPrintStream(s))
-        }
-    }
-
-    override fun printStackTrace(s: PrintWriter) {
-        super.printStackTrace(s)
-
-        s.print("\nThis exception was indirectly caused by ${causes.size} exceptions\n")
-
-        causes.forEachIndexed { index, exception ->
-            s.print("\nDetails of embedded exception $index:\n\n")
-            exception.printStackTrace(IndentedPrintWriter(s))
-        }
-    }
-
-    private class IndentedPrintStream(s: PrintStream) : PrintStream(s) {
-        override fun println(x: Any?) {
-            super.print("\t")
-            super.println(x)
-        }
-    }
-
-    private class IndentedPrintWriter(s: PrintWriter) : PrintWriter(s) {
-        override fun println(x: Any?) {
-            super.print("\t")
-            super.println(x)
-        }
-    }
-}
 
 fun interface TranslatableException {
     fun getTranslatedMessage(context: Context): String
-}
-
-class TranslatableAggregateException(
-    message: String? = null,
-    private val translatableMessage: TranslatableString? = null,
-    causes: List<Exception>
-) : AggregateException(message, causes), TranslatableException {
-
-    @Suppress("IfThenToElvis")
-    override fun getTranslatedMessage(context: Context): String {
-        return if (translatableMessage != null) {
-            translatableMessage.toTranslatedString(context)
-        } else {
-            context.getString(
-                R.string.error__etc__multiple_errors_most_recent,
-                context.getUserFriendlyErrorText(causes.last())
-            )
-        }
-    }
 }
 
 /**
@@ -117,3 +36,19 @@ fun Context.getUserFriendlyErrorText(e: Exception): String =
             ?: e::class.simpleName?.ifBlank { null }
             ?: getString(R.string.error__etc__unknown_error)
     }
+
+/**
+ * Runs [action] and guards against [OutOfMemoryError] using a try-catch block.
+ * @param action the code to run
+ * @param onError optional listener to be notified when a [OutOfMemoryError] occurred
+ * @return the result of successfully executing [action] or null if an [OutOfMemoryError] occurred
+ */
+fun <T> runWithOOMCheck(
+    action: () -> T,
+    onError: ((OutOfMemoryError) -> Unit)? = null,
+) = try {
+    action()
+} catch (e: OutOfMemoryError) {
+    onError?.invoke(e)
+    null
+}

@@ -16,117 +16,195 @@
 
 package com.ichi2.anki.dialogs
 
+import android.app.Dialog
 import android.os.Bundle
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.core.os.bundleOf
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.DialogFragment
-import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.textfield.TextInputEditText
-import com.ichi2.anki.CollectionManager.withCol
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.ichi2.anki.CollectionManager.TR
 import com.ichi2.anki.R
 import com.ichi2.anki.StudyOptionsFragment
-import com.ichi2.anki.launchCatchingTask
-import com.ichi2.anki.utils.ext.description
-import com.ichi2.anki.utils.ext.update
-import com.ichi2.libanki.DeckId
-import com.ichi2.themes.Themes
+import com.ichi2.anki.databinding.DialogDeckDescriptionBinding
+import com.ichi2.anki.dialogs.EditDeckDescriptionDialogViewModel.DismissType
+import com.ichi2.anki.libanki.DeckId
+import com.ichi2.anki.snackbar.showSnackbar
+import com.ichi2.anki.utils.ext.dismissAllDialogFragments
+import com.ichi2.utils.AndroidUiUtils.hideKeyboard
+import com.ichi2.utils.AndroidUiUtils.setFocusAndOpenKeyboard
+import com.ichi2.utils.create
+import com.ichi2.utils.moveCursorToEnd
+import com.ichi2.utils.negativeButton
+import com.ichi2.utils.positiveButton
+import com.ichi2.utils.show
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * Allows a user to edit the [deck description][description]
+ * Allows a user to edit the [deck description][com.ichi2.anki.libanki.Deck.description]
  *
  * This is visible on [StudyOptionsFragment]
  */
 class EditDeckDescriptionDialog : DialogFragment() {
-    private val deckId: DeckId
-        get() = requireArguments().getLong(ARG_DECK_ID)
+    private val viewModel: EditDeckDescriptionDialogViewModel by viewModels()
 
-    private lateinit var deckDescriptionInput: TextInputEditText
+    private lateinit var binding: DialogDeckDescriptionBinding
 
-    private var currentDescription
-        get() = deckDescriptionInput.text.toString()
-        set(value) { deckDescriptionInput.setText(value) }
+    private lateinit var alertDialog: AlertDialog
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        Themes.setTheme(requireContext())
-        return inflater.inflate(R.layout.dialog_deck_description, null).apply {
-            deckDescriptionInput = this.findViewById(R.id.deck_description_input)
-            launchCatchingTask {
-                currentDescription = getDescription()
-            }
-            findViewById<MaterialToolbar>(R.id.topAppBar).apply {
-                setNavigationOnClickListener {
-                    onBack()
+    private var isKeyboardVisible: Boolean = false
+
+    private val onUnsavedChangesBackCallback =
+        object : OnBackPressedCallback(enabled = false) {
+            override fun handleOnBackPressed() {
+                if (isKeyboardVisible) {
+                    binding.deckDescriptionInput.hideKeyboard()
+                } else {
+                    showDiscardChangesDialog()
                 }
+            }
+        }
 
-                setOnMenuItemClickListener { menuItem ->
-                    if (menuItem.itemId == R.id.action_save) {
-                        saveAndExit()
-                        true
-                    } else {
-                        false
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        this.binding = DialogDeckDescriptionBinding.inflate(layoutInflater)
+        return MaterialAlertDialogBuilder(requireContext())
+            .create {
+                setView(binding.root)
+                positiveButton(R.string.save)
+                negativeButton(R.string.close)
+            }.apply {
+                alertDialog = this
+                setOnShowListener {
+                    positiveButton.setOnClickListener { viewModel.saveAndExit() }
+                    negativeButton.setOnClickListener { viewModel.onBackRequested() }
+                }
+                setCanceledOnTouchOutside(false)
+                setCancelable(false)
+                onBackPressedDispatcher.addCallback(this, onUnsavedChangesBackCallback)
+                show()
+                setupDialogView(binding.root)
+            }
+    }
+
+    override fun setupDialog(
+        dialog: Dialog,
+        style: Int,
+    ) {
+        super.setupDialog(dialog, style)
+        dialog.window?.let {
+            ViewCompat.setOnApplyWindowInsetsListener(it.decorView) { _, insets ->
+                isKeyboardVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+                insets
+            }
+        }
+    }
+
+    private fun setupDialogView(view: View) {
+        binding.deckDescriptionInput.apply {
+            doOnTextChanged { text, _, _, _ ->
+                viewModel.description = text?.toString() ?: ""
+            }
+        }
+
+        binding.formatAsMarkdownInput.apply {
+            setOnCheckedChangeListener { _, value -> viewModel.formatAsMarkdown = value }
+        }
+
+        // setup 'Format as Markdown' help
+        binding.markdownFormattingHelp.apply {
+            contentDescription =
+                getString(R.string.help_button_content_description, getString(R.string.format_deck_description_as_markdown))
+            setOnClickListener {
+                MaterialAlertDialogBuilder(requireContext()).show {
+                    setTitle(binding.formatAsMarkdownInput.text)
+                    setIcon(R.drawable.ic_help_black_24dp)
+                    // FIXME: the upstream string unexpectedly contains newlines
+                    setMessage(TR.deckConfigDescriptionNewHandlingHint().replace("\n", " ").replace("  ", " "))
+                }
+            }
+        }
+
+        setupFlows()
+    }
+
+    private fun setupFlows() {
+        lifecycleScope.launch {
+            viewModel.flowOfDismissDialog
+                .filterNotNull()
+                .collect { dismissType ->
+                    when (dismissType) {
+                        DismissType.ClosedWithoutSaving -> requireActivity().dismissAllDialogFragments()
+                        DismissType.Saved -> {
+                            requireActivity().dismissAllDialogFragments()
+                            showSnackbar(R.string.deck_description_saved)
+                            // notify DeckPicker to invalidate its toolbar menu, otherwise the undo
+                            // action to revert the description change is not going to be visible
+                            // when there are no other undo actions
+                            requireActivity().invalidateOptionsMenu()
+                        }
                     }
                 }
-            }.also { toolbar ->
-                launchCatchingTask { toolbar.title = withCol { decks.get(deckId)!!.name } }
+        }
+
+        lifecycleScope.launch {
+            viewModel.flowOfDescription.collect { desc ->
+                if (desc == binding.deckDescriptionInput.text.toString()) return@collect
+                binding.deckDescriptionInput.setText(desc)
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.flowOfFormatAsMarkdown.collect {
+                binding.formatAsMarkdownInput.isChecked = it
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.flowOfInitCompleted.collect {
+                if (!it) return@collect
+                binding.toolbar.title = viewModel.windowTitle
+                setFocusAndOpenKeyboard(binding.deckDescriptionInput) {
+                    binding.deckDescriptionInput.moveCursorToEnd()
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.flowOfShowDiscardChanges.collect {
+                showDiscardChangesDialog()
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.flowOfHasChanges.collect {
+                alertDialog.positiveButton.isEnabled = it
+                onUnsavedChangesBackCallback.isEnabled = it
             }
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-
-        dialog!!.window!!.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-    }
-
-    private fun saveAndExit() = launchCatchingTask {
-        setDescription(currentDescription)
-        Timber.i("closing deck description dialog")
-        dismiss()
-    }
-
-    private fun onBack() = launchCatchingTask {
-        fun closeWithoutSaving() {
-            Timber.i("Closing dialog without saving")
-            dismiss()
-        }
-
-        if (getDescription() == currentDescription) {
-            closeWithoutSaving()
-            return@launchCatchingTask
-        }
-
+    fun showDiscardChangesDialog() {
         Timber.i("asking if user should discard changes")
         DiscardChangesDialog.showDialog(requireContext()) {
-            closeWithoutSaving()
+            viewModel.closeWithoutSaving()
         }
-    }
-
-    private suspend fun getDescription() = withCol { decks.get(deckId)!!.description }
-
-    private suspend fun setDescription(value: String) {
-        Timber.i("updating deck description")
-        withCol { decks.update(deckId) { description = value } }
     }
 
     companion object {
-        private const val ARG_DECK_ID = "deckId"
-
-        fun newInstance(deckId: DeckId): EditDeckDescriptionDialog {
-            return EditDeckDescriptionDialog().apply {
-                arguments = bundleOf(
-                    ARG_DECK_ID to deckId
-                )
+        fun newInstance(deckId: DeckId): EditDeckDescriptionDialog =
+            EditDeckDescriptionDialog().apply {
+                arguments =
+                    bundleOf(
+                        EditDeckDescriptionDialogViewModel.ARG_DECK_ID to deckId,
+                    )
             }
-        }
     }
 }

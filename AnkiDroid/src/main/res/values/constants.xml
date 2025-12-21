@@ -70,17 +70,6 @@
         <item>@string/error_reporting_choice_never_report</item>
         <item>@string/error_reporting_choice_ask_user</item>
     </string-array>
-    <string-array name="cram_deck_conf_order_labels">
-        <item>@string/cram_deck_conf_order_oldest_seen_first</item>
-        <item>@string/cram_deck_conf_order_random</item>
-        <item>@string/cram_deck_conf_order_increasing_intervals</item>
-        <item>@string/cram_deck_conf_order_decreasing_intervals</item>
-        <item>@string/cram_deck_conf_order_most_lapsed</item>
-        <item>@string/cram_deck_conf_order_order_added</item>
-        <item>@string/cram_deck_conf_order_order_due</item>
-        <item>@string/cram_deck_conf_order_latest_added_first</item>
-        <item>@string/cram_deck_conf_order_relative_overdueness</item>
-    </string-array>
     <string-array name="add_to_cur_labels">
         <item>@string/add_to_deck_use_current_deck</item>
         <item>@string/add_to_deck_decide_by_note_type</item>
@@ -105,8 +94,10 @@
 
     <string name="link_anki_manual">https://docs.ankiweb.net/#/</string>
     <string name="link_anki_forum">https://forums.ankiweb.net/</string>
+    <string name="link_anki_forum_ankidroid">https://forums.ankiweb.net/c/ankidroid/22</string>
     <string name="link_forum">http://groups.google.com/group/anki-android</string>
     <string name="licence_wiki">http://www.gnu.org/licenses/gpl.html</string>
+    <string name="dependency_license_wiki">https://github.com/ankidroid/Anki-Android/wiki/Licences</string>
     <string name="link_agpl_wiki">https://www.gnu.org/licenses/agpl-3.0.html</string>
     <string name="link_source">https://github.com/ankidroid/Anki-Android</string>
     <string name="link_market">market://details?id=com.ichi2.anki</string>
@@ -124,11 +115,13 @@
     <string name="link_help_ar">https://docs.ankidroid.org/help-ar.html</string>
     <string name="link_manual_ar">https://docs.ankidroid.org/manual-ar.html</string>
     <string name="link_manual_note_format_toolbar">https://docs.ankidroid.org/manual.html#noteFormattingToolbar</string>
-    <string name="link_user_actions_help">https://ankidroid.org/#userActions</string>
+    <string name="link_manual_browser_find_replace">https://docs.ankiweb.net/browsing.html#find-and-replace</string>
+    <string name="link_user_actions_help">https://docs.ankidroid.org/#userActions</string>
     <string name="link_faq_tts">https://github.com/ankidroid/Anki-Android/wiki/FAQ#tts--text-to-speech-is-not-speaking</string>
     <string name="link_faq_missing_media" tools:ignore="Typos">https://github.com/ankidroid/Anki-Android/wiki/FAQ#why-doesnt-my-sound-or-image-work-on-ankidroid</string>
     <string name="link_third_party_api_apps">https://github.com/ankidroid/Anki-Android/wiki/Third-Party-Apps</string>
     <string name="shared_decks_url">https://ankiweb.net/shared/decks/</string>
+    <string name="shared_deck_info">https://ankiweb.net/shared/info/</string>
     <string name="shared_decks_login_url">https://ankiweb.net/account/login</string>
     <string name="shared_decks_sign_up_url">https://ankiweb.net/account/signup</string>
     <string name="repair_deck">https://docs.ankiweb.net/#/files?id=corrupt-collections</string>
@@ -150,24 +143,13 @@
     <string name="link_opencollective_donate">https://opencollective.com/ankidroid/contribute</string>
     <string name="link_distributions">https://apps.ankiweb.net/#download</string>
     <string name="link_ankiweb_lost_email_instructions">https://github.com/ankidroid/Anki-Android/wiki/FAQ#forgotten-ankiweb-email-instructions</string>
-    <string name="link_scoped_storage_faq">https://github.com/ankidroid/Anki-Android/wiki/Storage-Migration-FAQ</string>
     <string name="link_install_non_play_store_install">https://github.com/ankidroid/Anki-Android/wiki/Full-Storage-Access</string>
     <string name="link_custom_sync_server_help_learn_more_en">https://docs.ankidroid.org/#_custom_sync_server</string>
-    <string name="link_migration_failed_dialog_learn_more_en">https://docs.ankidroid.org/storage-migration-error.html</string>
     <string name="link_set_due_date_help">https://docs.ankiweb.net/browsing.html#cards</string>
-    <string name="migration_failed_help_url">https://docs.ankidroid.org/storage-migration-error.html</string>
+    <string name="link_full_storage_access">https://github.com/ankidroid/Anki-Android/wiki/Full-Storage-Access</string>
+    <string name="link_help_forget_cards">https://docs.ankiweb.net/studying.html#editing-and-more</string>
+    <string name="link_scheduler_upgrade_faq">https://faqs.ankiweb.net/the-anki-2.1-scheduler.html#updating-to-v2-from-v1</string>
 
-    <string-array name="cram_deck_conf_order_values">
-        <item>0</item>
-        <item>1</item>
-        <item>2</item>
-        <item>3</item>
-        <item>4</item>
-        <item>5</item>
-        <item>6</item>
-        <item>7</item>
-        <item>8</item>
-    </string-array>
     <string-array name="add_to_cur_values">
         <item>0</item>
         <item>1</item>
@@ -223,6 +205,55 @@
         <item>@string/sync_media_never_value</item>
     </string-array>
 
+    <string-array name="hide_system_bars_entries">
+        <item>@string/hide_system_bars_none</item>
+        <item>@string/hide_system_bars_status_bar</item>
+        <item>@string/hide_system_bars_navigation_bar</item>
+        <item>@string/hide_system_bars_all_bars</item>
+    </string-array>
+
+    <string name="hide_system_bars_none_value">0</string>
+    <string name="hide_system_bars_status_bar_value">1</string>
+    <string name="hide_system_bars_navigation_bar_value">2</string>
+    <string name="hide_system_bars_all_value">3</string>
+
+    <string-array name="hide_system_bars_values">
+        <item>@string/hide_system_bars_none_value</item>
+        <item>@string/hide_system_bars_status_bar_value</item>
+        <item>@string/hide_system_bars_navigation_bar_value</item>
+        <item>@string/hide_system_bars_all_value</item>
+    </string-array>
+
+    <string-array name="reviewer_frame_style_entries">
+        <item>@string/reviewer_frame_style_card</item>
+        <item>@string/reviewer_frame_style_box</item>
+    </string-array>
+
+    <string name="reviewer_frame_style_card_value">0</string>
+    <string name="reviewer_frame_style_box_value">1</string>
+
+    <string-array name="reviewer_frame_style_values">
+        <item>@string/reviewer_frame_style_card_value</item>
+        <item>@string/reviewer_frame_style_box_value</item>
+    </string-array>
+
+    <string-array name="reviewer_toolbar_position_entries">
+        <item>@string/reviewer_toolbar_top</item>
+        <item>@string/reviewer_toolbar_bottom</item>
+        <item>@string/reviewer_toolbar_none</item>
+    </string-array>
+
+    <string name="reviewer_toolbar_value_top">0</string>
+    <string name="reviewer_toolbar_value_bottom">1</string>
+    <string name="reviewer_toolbar_value_none">2</string>
+
+    <string-array name="reviewer_toolbar_position_values">
+        <item>@string/reviewer_toolbar_value_top</item>
+        <item>@string/reviewer_toolbar_value_bottom</item>
+        <item>@string/reviewer_toolbar_value_none</item>
+    </string-array>
+
+
     <!-- Preferences headers summaries -->
     <string-array name="general_summary_entries">
         <item>@string/language</item>
@@ -230,9 +261,15 @@
         <item>@string/pref_cat_system_wide</item>
     </string-array>
 
+    <string-array name="study_screen_summary_entries">
+        <item>@string/screen</item>
+        <item>@string/toolbar</item>
+        <item>@string/answer_buttons</item>
+    </string-array>
+
     <string-array name="reviewing_summary_entries">
         <item>@string/pref_cat_scheduling</item>
-        <item>@string/timeout_answer_text</item>
+        <item>@string/pref_keep_screen_on</item>
     </string-array>
 
     <string-array name="sync_summary_entries">
@@ -251,9 +288,14 @@
         <item>@string/notification_minimum_cards_due_blink</item>
     </string-array>
 
+    <string-array name="review_reminders_summary_entries">
+        <item>App-wide</item>
+        <item>Deck-specific</item>
+    </string-array>
+
     <string-array name="appearance_summary_entries">
         <item>@string/pref_cat_themes</item>
-        <item>@string/pref_cat_reviewer</item>
+        <item>@string/background_image_title</item>
     </string-array>
 
     <string-array name="accessibility_summary_entries">
@@ -272,6 +314,11 @@
         <item>@string/pref_cat_plugins</item>
     </string-array>
 
+    <!-- Sample deck names and for Deck Picker Widget layout in widget picker screen
+       These strings are marked as `translatable=false` because translating them would defeat the purpose of the example, which relies on specific language usage.-->
+    <string name="deck1Name_deck_picker_widget" translatable="false" comment="Example of a Deck name. Android's widget provider displays it as an example of what the Deck Picker widget may look like">English</string>
+    <string name="deck2Name_deck_picker_widget" translatable="false" comment="Example of a Deck name. Android's widget provider displays it as an example of what the Deck Picker widget may look like">Español</string>
+    <string name="deck3Name_deck_picker_widget" translatable="false" comment="Example of a Deck name. Android's widget provider displays it as an example of what the Deck Picker widget may look like">日本語</string>
 
     <string name="answer_buttons_position_preference" translatable="false">answerButtonPosition</string>
     <string-array name="answer_buttons_position" translatable="false">
@@ -294,13 +341,15 @@
         <item>android.permission.READ_EXTERNAL_STORAGE</item>
         <item>android.permission.WRITE_EXTERNAL_STORAGE</item>
     </string-array>
+    <string name="post_notification_permission">android.permission.POST_NOTIFICATIONS</string>
+    <string name="record_audio_permission">android.permission.RECORD_AUDIO</string>
 
-    <!-- Onboarding -->
-    <string name="reset_onboarding" maxLength="41">Reset onboarding walkthrough</string>
-    <string name="show_onboarding" maxLength="41">Show onboarding walkthrough</string>
-    <string name="show_onboarding_desc">Display feature tutorial to learn more about the app</string>
-    <string name="reset_onboarding_desc">Show all tutorials again</string>
 
-    <!-- Instant Editor -->
-    <string name="open_instant_editor">Open Instant Editor</string>
+    <string-array name="import_cache_error_resolutions">
+        <item>@string/import_error_resolution_try_again</item>
+        <item>@string/import_error_resolution_free_up_space</item>
+        <item>@string/import_error_resolution_check_internet</item>
+        <item>@string/import_error_resolution_copy_to_device</item>
+        <item>@string/import_error_resolution_select_file</item>
+    </string-array>
 </resources>

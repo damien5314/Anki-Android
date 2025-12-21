@@ -15,6 +15,7 @@
  */
 package com.ichi2.anki.tests
 
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
@@ -82,7 +83,7 @@ class LayoutValidationTest : InstrumentedTest() {
         @Throws(
             IllegalAccessException::class,
             InvocationTargetException::class,
-            InstantiationException::class
+            InstantiationException::class,
         )
         @JvmStatic // required for initParameters
         fun initParameters(): Collection<Array<out Any>> {
@@ -100,10 +101,18 @@ class LayoutValidationTest : InstrumentedTest() {
             // with a specified fragment name, as these would currently fail the test, throwing:
             //   UnsupportedOperationException: FragmentContainerView must be within
             //   a FragmentActivity to use android:name="..."
-            val ignoredLayoutIds = listOf(
-                com.ichi2.anki.R.layout.activity_manage_space,
-                com.ichi2.anki.R.layout.introduction_activity
-            )
+            val ignoredLayoutIds =
+                listOf(
+                    com.ichi2.anki.R.layout.introduction_activity,
+                    com.ichi2.anki.R.layout.reviewer2,
+                    com.ichi2.anki.R.layout.preferences,
+                    com.ichi2.anki.R.layout.drawing_fragment,
+                ) +
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                        listOf(com.ichi2.anki.R.layout.widget_small_unthemed)
+                    } else {
+                        emptyList()
+                    }
 
             return layout::class.java.fields
                 .map { arrayOf(it.getInt(layout), it.name) }

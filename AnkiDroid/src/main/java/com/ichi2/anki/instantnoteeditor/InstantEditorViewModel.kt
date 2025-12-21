@@ -17,7 +17,6 @@
 
 package com.ichi2.anki.instantnoteeditor
 
-import android.content.Context
 import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -26,15 +25,14 @@ import androidx.lifecycle.viewModelScope
 import com.ichi2.anki.CollectionManager.withCol
 import com.ichi2.anki.NoteFieldsCheckResult
 import com.ichi2.anki.OnErrorListener
-import com.ichi2.anki.R
 import com.ichi2.anki.checkNoteFieldsResponse
 import com.ichi2.anki.instantnoteeditor.InstantNoteEditorActivity.DialogType
+import com.ichi2.anki.libanki.DeckId
+import com.ichi2.anki.libanki.Note
+import com.ichi2.anki.libanki.NotetypeJson
+import com.ichi2.anki.observability.undoableOp
+import com.ichi2.anki.selectedDeckIfNotFiltered
 import com.ichi2.anki.utils.ext.getAllClozeTextFields
-import com.ichi2.libanki.DeckId
-import com.ichi2.libanki.Decks
-import com.ichi2.libanki.Note
-import com.ichi2.libanki.NotetypeJson
-import com.ichi2.libanki.undoableOp
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,7 +46,9 @@ import kotlin.math.max
  * This ViewModel provides methods for handling note editing operations and
  * managing the state related to instant note editing.
  */
-class InstantEditorViewModel : ViewModel(), OnErrorListener {
+class InstantEditorViewModel :
+    ViewModel(),
+    OnErrorListener {
     override val onError = MutableSharedFlow<String>()
 
     /** Errors or Warnings related to the edit fields that might occur when trying to save note */
@@ -58,6 +58,13 @@ class InstantEditorViewModel : ViewModel(), OnErrorListener {
 
     val currentClozeNumber: Int
         get() = _currentClozeNumber.value
+
+    // List to store the cloze integers
+    private val intClozeList = mutableListOf<Int>()
+
+    /** The number of words which are marked as cloze deletions */
+    @VisibleForTesting
+    val clozeDeletionCount get() = intClozeList.size
 
     private val _currentClozeMode = MutableStateFlow(InstantNoteEditorActivity.ClozeMode.INCREMENT)
 
@@ -97,9 +104,8 @@ class InstantEditorViewModel : ViewModel(), OnErrorListener {
     init {
         viewModelScope.launch {
             // setup the deck Id
-            withCol { config.get<Long?>(Decks.CURRENT_DECK) ?: 1L }.let { did ->
-                deckId = did
-            }
+            val selectedDeck = withCol { selectedDeckIfNotFiltered() }
+            deckId = selectedDeck.id
 
             // setup the note type
             // TODO: Use did here
@@ -110,34 +116,24 @@ class InstantEditorViewModel : ViewModel(), OnErrorListener {
             }
 
             @Suppress("RedundantRequireNotNullCall") // postValue lint requires this
-            val clozeNoteType = requireNotNull(noteType)
+            val clozeNoteType = requireNotNull(noteType) { "noteType" }
             Timber.d("Changing to cloze type note")
             _currentlySelectedNotetype.postValue(clozeNoteType)
             Timber.i("Using note type '%d", clozeNoteType.id)
-            editorNote = withCol { Note.fromNotetypeId(clozeNoteType.id) }
+            editorNote = withCol { Note.fromNotetypeId(this@withCol, clozeNoteType.id) }
 
             _dialogType.emit(DialogType.SHOW_EDITOR_DIALOG)
         }
-    }
-
-    /** Update the deck id when changed from deck spinner **/
-    fun setDeckId(deckId: DeckId) {
-        this.deckId = deckId
     }
 
     /**
      * Checks the note fields and calls [saveNote] if all fields are valid.
      * If [skipClozeCheck] is set to true, the cloze field check is skipped.
      *
-     * @param context The context used to retrieve localized error messages.
      * @param skipClozeCheck Indicates whether to skip the cloze field check.
      * @return A [SaveNoteResult] indicating the outcome of the operation.
      */
-    // TODO: remove context from here
-    suspend fun checkAndSaveNote(
-        context: Context,
-        skipClozeCheck: Boolean = false
-    ): SaveNoteResult {
+    suspend fun checkAndSaveNote(skipClozeCheck: Boolean = false): SaveNoteResult {
         if (skipClozeCheck) {
             return saveNote()
         }
@@ -145,8 +141,7 @@ class InstantEditorViewModel : ViewModel(), OnErrorListener {
         val note = editorNote
         val result = checkNoteFieldsResponse(note)
         if (result is NoteFieldsCheckResult.Failure) {
-            val errorMessage = result.getLocalizedMessage(context)
-            return SaveNoteResult.Warning(errorMessage)
+            return SaveNoteResult.Warning(result.localizedMessage)
         }
         Timber.d("Note fields check successful, saving note")
         instantEditorError.emit(null)
@@ -159,8 +154,6 @@ class InstantEditorViewModel : ViewModel(), OnErrorListener {
      */
     private suspend fun saveNote(): SaveNoteResult {
         return try {
-            editorNote.notetype.put("did", deckId)
-
             val note = editorNote
             val deckId = deckId ?: return SaveNoteResult.Failure()
 
@@ -174,6 +167,19 @@ class InstantEditorViewModel : ViewModel(), OnErrorListener {
         }
     }
 
+    private fun shouldResetClozeNumber(number: Int) {
+        intClozeList.remove(number)
+
+        _currentClozeNumber.value =
+            when {
+                // Reset cloze number if the list is empty
+                intClozeList.isEmpty() -> 1
+                currentClozeMode.value == InstantNoteEditorActivity.ClozeMode.INCREMENT ->
+                    (intClozeList.maxOrNull() ?: 0) + 1
+                else -> _currentClozeNumber.value
+            }
+    }
+
     /**
      * Retrieves all cloze text fields from the current editor note's note type.
      *
@@ -182,9 +188,7 @@ class InstantEditorViewModel : ViewModel(), OnErrorListener {
      *
      * @return A list of strings representing the cloze text fields in the current editor note's note type.
      */
-    fun getClozeFields(): List<String> {
-        return editorNote.notetype.getAllClozeTextFields()
-    }
+    fun getClozeFields(): List<String> = editorNote.notetype.getAllClozeTextFields()
 
     /**
      * Set the warning message to be displayed in editor dialog
@@ -229,20 +233,18 @@ class InstantEditorViewModel : ViewModel(), OnErrorListener {
 
         val clozeText: String?
 
-        val punctuation: String? = matcher?.groups?.get(2)?.value
-        if (!punctuation.isNullOrEmpty()) {
-            val capturedWord = matcher.groups[1]?.value
-            clozeText = "{{c$currentClozeNumber::$capturedWord}}$punctuation"
-        } else {
-            clozeText = "{{c$currentClozeNumber::$text}}"
+        val clozeNumber = currentClozeNumber
+        if (currentClozeMode.value == InstantNoteEditorActivity.ClozeMode.INCREMENT) {
+            incrementClozeNumber()
         }
+        intClozeList.add(clozeNumber)
 
-        when (currentClozeMode.value) {
-            InstantNoteEditorActivity.ClozeMode.INCREMENT -> { incrementClozeNumber() }
-            InstantNoteEditorActivity.ClozeMode.NO_INCREMENT -> {
-                // Do nothing here
-            }
-        }
+        // Extract the first, second, and third regex groups from the matcher
+        val punctuationAtStart: String? = matcher?.groups?.get(1)?.value
+        val capturedWord: String? = matcher?.groups?.get(2)?.value
+        val punctuationAtEnd: String? = matcher?.groups?.get(4)?.value
+
+        clozeText = "$punctuationAtStart{{c$clozeNumber::$capturedWord}}$punctuationAtEnd"
 
         return clozeText
     }
@@ -260,7 +262,11 @@ class InstantEditorViewModel : ViewModel(), OnErrorListener {
      */
     fun getWordClozeNumber(word: String): Int? {
         val matcher = clozePattern.find(word)
-        return matcher?.groups?.get(1)?.value?.toIntOrNull()
+        return matcher
+            ?.groups
+            ?.get(2)
+            ?.value
+            ?.toIntOrNull()
     }
 
     fun getWordsFromFieldText(): List<String> {
@@ -305,6 +311,17 @@ class InstantEditorViewModel : ViewModel(), OnErrorListener {
         return combinedWords
     }
 
+    fun updateClozeNumber(
+        word: String,
+        newClozeNumber: Int,
+    ): String =
+        clozePattern.replace(word) { matchResult ->
+            val punctutationAtStart = matchResult.groupValues[1]
+            val content = matchResult.groupValues[3]
+            val punctutationAtEnd = matchResult.groupValues[4]
+            "$punctutationAtStart{{c$newClozeNumber::$content}}$punctutationAtEnd"
+        }
+
     /**
      * Removes the cloze deletion marker and surrounding delimiters from a word.
      *
@@ -315,7 +332,7 @@ class InstantEditorViewModel : ViewModel(), OnErrorListener {
     fun getCleanClozeWords(word: String): String {
         val regex = clozePattern
         return regex.replace(word) { matchResult ->
-            (matchResult.groups[2]?.value ?: "") + (matchResult.groups[3]?.value ?: "")
+            (matchResult.groups[1]?.value ?: "") + (matchResult.groups[3]?.value ?: "") + (matchResult.groups[4]?.value ?: "")
         }
     }
 
@@ -330,14 +347,26 @@ class InstantEditorViewModel : ViewModel(), OnErrorListener {
      */
     private fun processClozeUndo(text: String): String? {
         val matchResult = clozePattern.find(text)
-        val capturedClozeNumber = matchResult?.groups?.get(1)?.value
+        val capturedClozeNumber = matchResult?.groups?.get(2)?.value
         if (capturedClozeNumber != null && currentClozeNumber - capturedClozeNumber.toInt() == 1) {
             decrementClozeNumber()
         }
-        if (matchResult?.groups?.get(3)?.value != null) {
-            return matchResult.groups[2]?.value + matchResult.groups[3]?.value
+
+        if (matchResult == null) {
+            Timber.d("No match found for the input text")
+            return null
         }
-        return matchResult?.groups?.get(2)?.value
+
+        matchResult.groups[2]
+            ?.value
+            ?.toInt()
+            ?.let { shouldResetClozeNumber(it) }
+
+        val punctuationAtStart: String = matchResult.groups[1]?.value ?: ""
+        val capturedWord: String = matchResult.groups[3]?.value ?: ""
+        val punctuationAtEnd: String = matchResult.groups[4]?.value ?: ""
+
+        return punctuationAtStart + capturedWord + punctuationAtEnd
     }
 
     fun setEditorMode(mode: InstantNoteEditorActivity.EditMode) {
@@ -350,13 +379,17 @@ class InstantEditorViewModel : ViewModel(), OnErrorListener {
     }
 
     fun toggleClozeMode() {
-        val newMode = when (_currentClozeMode.value) {
-            InstantNoteEditorActivity.ClozeMode.INCREMENT -> InstantNoteEditorActivity.ClozeMode.NO_INCREMENT
-            InstantNoteEditorActivity.ClozeMode.NO_INCREMENT -> {
-                incrementClozeNumber()
-                InstantNoteEditorActivity.ClozeMode.INCREMENT
+        val newMode =
+            when (_currentClozeMode.value) {
+                InstantNoteEditorActivity.ClozeMode.INCREMENT -> {
+                    decrementClozeNumber()
+                    InstantNoteEditorActivity.ClozeMode.NO_INCREMENT
+                }
+                InstantNoteEditorActivity.ClozeMode.NO_INCREMENT -> {
+                    incrementClozeNumber()
+                    InstantNoteEditorActivity.ClozeMode.INCREMENT
+                }
             }
-        }
         _currentClozeMode.value = newMode
     }
 }
@@ -376,20 +409,9 @@ sealed class SaveNoteResult {
      *
      * @property message An optional message describing the reason for the failure.
      */
-    data class Failure(val message: String? = null) : SaveNoteResult() {
-
-        /**
-         * Retrieves the error message associated with this failure.
-         *
-         * If a message is provided, it returns that message. Otherwise, it returns a default
-         * error message from the context's resources.
-         *
-         * @param context The context used to retrieve the default error message string.
-         * @return The error message.
-         */
-        fun getErrorMessage(context: Context) =
-            message ?: context.getString(R.string.something_wrong)
-    }
+    data class Failure(
+        val message: String? = null,
+    ) : SaveNoteResult()
 
     /**
      * Indicates that the save note operation completed with a warning.
@@ -398,7 +420,9 @@ sealed class SaveNoteResult {
      *
      * @property message A message describing the warning.
      */
-    data class Warning(val message: String?) : SaveNoteResult()
+    data class Warning(
+        val message: String?,
+    ) : SaveNoteResult()
 }
 
 /**
@@ -408,7 +432,7 @@ sealed class SaveNoteResult {
  * used in educational materials. The pattern follows the format:
  * {{c`number`::`content`}} (optional punctuation)
  */
-val clozePattern = Regex("""\{\{c(\d+)::([^}]+?)\}\}(\p{Punct}+)?""")
+val clozePattern = Regex("""(\p{Punct}+)?\{\{c(\d+)::([^}]+?)\}\}(\p{Punct}+)?""")
 
 private val punctuationPattern = Regex("""\p{Punct}+$""")
 
@@ -416,4 +440,4 @@ private val punctuationPattern = Regex("""\p{Punct}+$""")
 private val spaceRegex = Regex("\\s+")
 
 /** Used to build cloze text here word is not null **/
-private val clozeBuilderPattern = "(\\w+)(\\p{Punct}*)".toRegex()
+private val clozeBuilderPattern = "(\\p{Punct}*)((?:\\w|\\p{Pd}|\\p{Pc}|'|(\\(\\w+\\)))+)(\\p{Punct}*)".toRegex()

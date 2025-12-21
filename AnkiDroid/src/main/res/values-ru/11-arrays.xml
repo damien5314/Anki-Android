@@ -46,19 +46,6 @@
     <string name="error_reporting_choice_always_report">Всегда</string>
     <string name="error_reporting_choice_never_report">Никогда</string>
     <string name="error_reporting_choice_ask_user">Спрашивать</string>
-    <!-- leech_action_labels -->
-    <!-- 01-core:menu_suspend_card -->
-    <!-- new_order_labels -->
-    <!-- cram_deck_conf_order_labels -->
-    <string name="cram_deck_conf_order_oldest_seen_first">Давно не повторяемые</string>
-    <string name="cram_deck_conf_order_random">Случайные</string>
-    <string name="cram_deck_conf_order_increasing_intervals">По возрастанию интервалов</string>
-    <string name="cram_deck_conf_order_decreasing_intervals">По убыванию интервалов</string>
-    <string name="cram_deck_conf_order_most_lapsed">Самые забываемые</string>
-    <string name="cram_deck_conf_order_order_added">По порядку добавления</string>
-    <string name="cram_deck_conf_order_order_due">По сроку</string>
-    <string name="cram_deck_conf_order_latest_added_first">Последние добавленные</string>
-    <string name="cram_deck_conf_order_relative_overdueness">По относительной просрочке</string>
     <!-- add_to_cur_labels -->
     <string name="add_to_deck_use_current_deck">Использовать текущую</string>
     <string name="add_to_deck_decide_by_note_type">Выбрать по типу записи</string>
@@ -79,27 +66,26 @@
     <string name="html_size_code_x_large">очень большой</string>
     <string name="html_size_code_xx_large">самый большой</string>
     <!-- gestures_labels -->
-    <string name="answer_again">Ответить снова</string>
-    <string name="answer_hard">Сложный ответ</string>
-    <string name="answer_good">Хороший ответ</string>
-    <string name="answer_easy">Простой ответ</string>
-    <string name="gesture_play">Воспроизвести медиафайл</string>
-    <string name="gesture_abort_learning">Прервать учёбу</string>
-    <string name="gesture_flag_red">Красный флажок</string>
-    <string name="gesture_flag_orange">Оранжевый флажок</string>
-    <string name="gesture_flag_green">Зелёный флажок</string>
-    <string name="gesture_flag_blue">Синий флажок</string>
-    <string name="gesture_flag_pink">Розовый флажок</string>
-    <string name="gesture_flag_turquoise">Бирюзовой флажок</string>
-    <string name="gesture_flag_purple">Фиолетовый флажок</string>
-    <string name="gesture_flag_remove">Убрать флажок</string>
-    <string name="gesture_page_up">На страницу вверх</string>
-    <string name="gesture_page_down">На страницу вниз</string>
-    <string name="gesture_abort_sync">Отменить обучение и синхронизацию</string>
-    <string name="gesture_toggle_whiteboard">Переключить доску</string>
-    <string name="gesture_show_hint">Показать подсказку</string>
-    <string name="gesture_show_all_hints">Показать все подсказки</string>
-    <string name="record_voice">Записать голос</string>
-    <string name="replay_voice">Воспроизвести голос</string>
-    <string name="save_voice">Сохранить запись</string>
+    <string name="answer_again" maxLength="41">Ответить снова</string>
+    <string name="answer_hard" maxLength="41">Ответить «Трудно»</string>
+    <string name="answer_good" maxLength="41">Ответить «Хорошо»</string>
+    <string name="answer_easy" maxLength="41">Ответить «Легко»</string>
+    <string name="gesture_abort_learning" maxLength="41">Закрыть экран обучения</string>
+    <string name="gesture_flag_red" maxLength="41">Красный флажок</string>
+    <string name="gesture_flag_orange" maxLength="41">Оранжевый флажок</string>
+    <string name="gesture_flag_green" maxLength="41">Зелёный флажок</string>
+    <string name="gesture_flag_blue" maxLength="41">Синий флажок</string>
+    <string name="gesture_flag_pink" maxLength="41">Розовый флажок</string>
+    <string name="gesture_flag_turquoise" maxLength="41">Бирюзовой флажок</string>
+    <string name="gesture_flag_purple" maxLength="41">Фиолетовый флажок</string>
+    <string name="gesture_flag_remove" maxLength="41">Убрать флажок</string>
+    <string name="gesture_page_up" maxLength="41">На страницу вверх</string>
+    <string name="gesture_page_down" maxLength="41">На страницу вниз</string>
+    <string name="gesture_toggle_whiteboard" maxLength="41">Переключить доску</string>
+    <string name="gesture_toggle_eraser" maxLength="41">Переключить ластик</string>
+    <string name="gesture_show_hint" maxLength="41">Показать подсказку</string>
+    <string name="gesture_show_all_hints" maxLength="41">Показать все подсказки</string>
+    <string name="record_voice" maxLength="41">Записать голос</string>
+    <string name="replay_voice" maxLength="41">Воспроизвести голос</string>
+    <string name="save_voice" maxLength="41">Сохранить запись</string>
 </resources>

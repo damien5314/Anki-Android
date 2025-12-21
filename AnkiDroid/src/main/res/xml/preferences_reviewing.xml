@@ -49,26 +49,11 @@
             app:min="0"
             app1:summaryFormat="@plurals/pref_summ_minutes"/>
     </PreferenceCategory>
-    <PreferenceCategory android:title="@string/timeout_answer_text" >
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:disableDependentsState="false"
-            android:key="@string/timeout_answer_preference"
-            android:summary="@string/timeout_answer_summ2"
-            android:title="@string/timeout_answer_text" />
-    </PreferenceCategory>
     <PreferenceCategory android:title="@string/pref_cat_advanced">
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="@string/keep_screen_on_preference"
             android:summary="@string/pref_keep_screen_on_summ"
             android:title="@string/pref_keep_screen_on" />
-        <com.ichi2.preferences.NumberRangePreferenceCompat
-            android:defaultValue="200"
-            android:key="@string/double_tap_time_interval_preference"
-            android:summary="@string/pref_double_tap_time_interval_summary"
-            android:title="@string/pref_double_tap_time_interval"
-            app:min="0"
-            app:max="2000" />
     </PreferenceCategory>
 </PreferenceScreen>

@@ -17,8 +17,7 @@
 package com.ichi2.testutils
 
 import anki.collection.OpChanges
-import com.ichi2.libanki.ChangeManager
-import com.ichi2.libanki.undoableOp
+import com.ichi2.anki.observability.ChangeManager
 import timber.log.Timber
 import kotlin.test.fail
 
@@ -40,7 +39,10 @@ suspend fun ensureNoOpsExecuted(block: suspend () -> Unit) {
 /**
  * Ensures no calls to [ChangeManager.notifySubscribers] via [undoableOp]
  */
-suspend fun ensureOpsExecuted(count: Int, block: suspend () -> Unit) {
+suspend fun ensureOpsExecuted(
+    count: Int,
+    block: suspend () -> Unit,
+) {
     val subscription = ChangeCounter()
 
     Timber.v("Listening for ChangeManager ops")
@@ -59,7 +61,11 @@ private class ChangeCounter : ChangeManager.Subscriber {
     private var changes = 0
     val changeCount get() = changes
     val hasChanges get() = changes > 0
-    override fun opExecuted(changes: OpChanges, handler: Any?) {
+
+    override fun opExecuted(
+        changes: OpChanges,
+        handler: Any?,
+    ) {
         Timber.d("ChangeManager op detected")
         this.changes++
     }

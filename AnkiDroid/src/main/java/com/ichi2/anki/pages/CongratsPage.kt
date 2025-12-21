@@ -19,37 +19,38 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import android.webkit.JavascriptInterface
 import androidx.appcompat.app.AlertDialog
-import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import anki.collection.OpChanges
+import anki.scheduler.UnburyDeckRequest
 import com.google.android.material.appbar.MaterialToolbar
-import com.ichi2.anki.CollectionManager
 import com.ichi2.anki.CollectionManager.TR
 import com.ichi2.anki.CollectionManager.withCol
 import com.ichi2.anki.DeckPicker
-import com.ichi2.anki.FilteredDeckOptions
 import com.ichi2.anki.OnErrorListener
-import com.ichi2.anki.OnPageFinishedCallback
 import com.ichi2.anki.R
+import com.ichi2.anki.SingleFragmentActivity
 import com.ichi2.anki.StudyOptionsActivity
+import com.ichi2.anki.common.time.SECONDS_PER_DAY
+import com.ichi2.anki.common.time.TIME_HOUR
+import com.ichi2.anki.common.time.TIME_MINUTE
 import com.ichi2.anki.dialogs.customstudy.CustomStudyDialog
+import com.ichi2.anki.dialogs.customstudy.CustomStudyDialog.CustomStudyAction
 import com.ichi2.anki.launchCatchingIO
 import com.ichi2.anki.launchCatchingTask
+import com.ichi2.anki.observability.ChangeManager
+import com.ichi2.anki.observability.undoableOp
 import com.ichi2.anki.preferences.sharedPrefs
 import com.ichi2.anki.showThemedToast
 import com.ichi2.anki.snackbar.showSnackbar
-import com.ichi2.anki.utils.SECONDS_PER_DAY
-import com.ichi2.anki.utils.TIME_HOUR
-import com.ichi2.anki.utils.TIME_MINUTE
-import com.ichi2.libanki.ChangeManager
-import com.ichi2.libanki.DeckId
-import com.ichi2.libanki.undoableOp
+import com.ichi2.utils.listItemsAndMessage
+import com.ichi2.utils.negativeButton
+import com.ichi2.utils.show
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -58,8 +59,8 @@ import kotlin.math.round
 
 class CongratsPage :
     PageFragment(),
-    CustomStudyDialog.CustomStudyListener,
     ChangeManager.Subscriber {
+    override val pagePath: String = "congrats"
 
     private val viewModel by viewModels<CongratsViewModel>()
 
@@ -67,50 +68,70 @@ class CongratsPage :
         ChangeManager.subscribe(this)
     }
 
-    override fun opExecuted(changes: OpChanges, handler: Any?) {
+    override fun opExecuted(
+        changes: OpChanges,
+        handler: Any?,
+    ) {
         // typically due to 'day rollover'
         if (changes.studyQueues) {
             Timber.i("refreshing: study queues updated")
-            webView.reload()
+            webViewLayout.post { webViewLayout.reload() }
         }
     }
 
-    override fun onCreateWebViewClient(savedInstanceState: Bundle?): PageWebViewClient {
-        return super.onCreateWebViewClient(savedInstanceState).also { client ->
-            client.onPageFinishedCallback = OnPageFinishedCallback { webView ->
-                webView.evaluateJavascript(
-                    "bridgeCommand = function(request){ ankidroid.bridgeCommand(request); };"
-                ) {}
-            }
-        }
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
 
         viewModel.onError
             .flowWithLifecycle(lifecycle)
             .onEach { errorMessage ->
-                AlertDialog.Builder(requireContext())
+                AlertDialog
+                    .Builder(requireContext())
                     .setTitle(R.string.vague_error)
                     .setMessage(errorMessage)
                     .show()
-            }
-            .launchIn(lifecycleScope)
+            }.launchIn(lifecycleScope)
 
-        viewModel.openStudyOptions
-            .onEach { openStudyOptionsAndFinish() }
-            .launchIn(lifecycleScope)
+        viewModel.unburyState
+            .onEach { state ->
+                when (state) {
+                    UnburyState.OpenStudy -> openStudyOptionsAndFinish()
+                    UnburyState.SelectMode -> {
+                        val unburyOptions =
+                            mutableListOf(
+                                TR.studyingManuallyBuriedCards(),
+                                TR.studyingBuriedSiblings(),
+                                TR.studyingAllBuriedCards(),
+                            )
+                        AlertDialog.Builder(requireContext()).show {
+                            negativeButton(R.string.dialog_cancel)
+                            listItemsAndMessage(
+                                TR.studyingWhatWouldYouLikeToUnbury(),
+                                unburyOptions,
+                            ) { _, position ->
+                                val mode =
+                                    when (position) {
+                                        0 -> UnburyDeckRequest.Mode.USER_ONLY
+                                        1 -> UnburyDeckRequest.Mode.SCHED_ONLY
+                                        2 -> UnburyDeckRequest.Mode.ALL
+                                        else -> error("Unhandled unbury option: ${unburyOptions[position]}")
+                                    }
+                                viewModel.onUnburyModeSelected(mode)
+                            }
+                        }
+                    }
+                }
+            }.launchIn(lifecycleScope)
 
         viewModel.deckOptionsDestination
             .flowWithLifecycle(lifecycle)
             .onEach { destination ->
-                val intent = destination.getIntent(requireContext())
+                val intent = destination.toIntent(requireContext())
                 startActivity(intent, null)
-            }
-            .launchIn(lifecycleScope)
-
-        webView.addJavascriptInterface(BridgeCommand(), "ankidroid")
+            }.launchIn(lifecycleScope)
 
         with(view.findViewById<MaterialToolbar>(R.id.toolbar)) {
             inflateMenu(R.menu.congrats)
@@ -121,70 +142,39 @@ class CongratsPage :
                 true
             }
         }
-    }
 
-    inner class BridgeCommand {
-        @JavascriptInterface
-        fun bridgeCommand(request: String) {
-            when (request) {
-                "unbury" -> viewModel.onUnbury()
-                "customStudy" -> onStudyMore()
+        setFragmentResultListener(CustomStudyAction.REQUEST_KEY) { _, bundle ->
+            when (CustomStudyAction.fromBundle(bundle)) {
+                CustomStudyAction.CUSTOM_STUDY_SESSION,
+                CustomStudyAction.EXTEND_STUDY_LIMITS,
+                -> openStudyOptionsAndFinish()
             }
         }
     }
 
+    override val bridgeCommands =
+        mapOf(
+            "unbury" to { viewModel.onUnbury() },
+            "customStudy" to { onStudyMore() },
+        )
+
     private fun openStudyOptionsAndFinish() {
-        val intent = Intent(requireContext(), StudyOptionsActivity::class.java).apply {
-            putExtra("withDeckOptions", false)
-        }
+        val intent = Intent(requireContext(), StudyOptionsActivity::class.java)
         startActivity(intent, null)
         requireActivity().finish()
     }
 
     private fun onStudyMore() {
-        val col = CollectionManager.getColUnsafe()
-        val dialogFragment = CustomStudyDialog(CollectionManager.getColUnsafe(), this).withArguments(
-            CustomStudyDialog.ContextMenuConfiguration.STANDARD,
-            col.decks.selected()
-        )
-        dialogFragment.show(childFragmentManager, null)
-    }
-
-    /******************************** CustomStudyListener methods ********************************/
-    override fun onExtendStudyLimits() {
-        Timber.v("CustomStudyListener::onExtendStudyLimits()")
-        openStudyOptionsAndFinish()
-    }
-
-    override fun showDialogFragment(newFragment: DialogFragment) {
-        Timber.v("CustomStudyListener::showDialogFragment()")
-        newFragment.show(childFragmentManager, null)
-    }
-
-    override fun onCreateCustomStudySession() {
-        Timber.v("CustomStudyListener::onCreateCustomStudySession()")
-        openStudyOptionsAndFinish()
-    }
-
-    override fun showProgressBar() {
-        Timber.v("CustomStudyListener::showProgressBar() - not handled")
-    }
-
-    override fun dismissAllDialogFragments() {
-        Timber.v("CustomStudyListener::dismissAllDialogFragments() - not handled")
-    }
-
-    override fun hideProgressBar() {
-        Timber.v("CustomStudyListener::hideProgressBar() - not handled")
+        launchCatchingTask {
+            val customStudy = CustomStudyDialog.createInstance(deckId = withCol { decks.selected() })
+            customStudy.show(childFragmentManager, null)
+        }
     }
 
     companion object {
-        fun getIntent(context: Context): Intent {
-            return getIntent(context, path = "congrats", clazz = CongratsPage::class)
-        }
+        fun getIntent(context: Context): Intent = SingleFragmentActivity.getIntent(context, fragmentClass = CongratsPage::class)
 
-        private fun displayNewCongratsScreen(context: Context): Boolean =
-            context.sharedPrefs().getBoolean("new_congrats_screen", false)
+        private fun displayNewCongratsScreen(context: Context): Boolean = context.sharedPrefs().getBoolean("new_congrats_screen", false)
 
         fun display(activity: FragmentActivity) {
             if (displayNewCongratsScreen(activity)) {
@@ -197,7 +187,10 @@ class CongratsPage :
             }
         }
 
-        fun onReviewsCompleted(activity: FragmentActivity, cardsInDeck: Boolean) {
+        fun onReviewsCompleted(
+            activity: FragmentActivity,
+            cardsInDeck: Boolean,
+        ) {
             if (displayNewCongratsScreen(activity)) {
                 activity.startActivity(getIntent(activity))
                 return
@@ -222,36 +215,56 @@ class CongratsPage :
                 return activity.getString(R.string.studyoptions_congrats_finished)
             }
             // https://github.com/ankitects/anki/blob/9b4dd54312de8798a3f2bee07892bb3a488d1f9b/ts/lib/tslib/time.ts#L22
-            val (unit, amount) = if (secsUntilNextLearn < TIME_MINUTE) {
-                "seconds" to secsUntilNextLearn.toDouble()
-            } else if (secsUntilNextLearn < TIME_HOUR) {
-                "minutes" to secsUntilNextLearn / TIME_MINUTE
-            } else {
-                "hours" to secsUntilNextLearn / TIME_HOUR
-            }
+            val (unit, amount) =
+                if (secsUntilNextLearn < TIME_MINUTE) {
+                    "seconds" to secsUntilNextLearn.toDouble()
+                } else if (secsUntilNextLearn < TIME_HOUR) {
+                    "minutes" to secsUntilNextLearn / TIME_MINUTE
+                } else {
+                    "hours" to secsUntilNextLearn / TIME_HOUR
+                }
 
             val nextLearnDue = TR.schedulingNextLearnDue(unit, round(amount).toInt())
             return activity.getString(R.string.studyoptions_congrats_next_due_in, nextLearnDue)
         }
 
         fun DeckPicker.onDeckCompleted() {
+            Timber.i("Opening CongratsPage")
             startActivity(getIntent(this))
         }
     }
 }
 
-class CongratsViewModel : ViewModel(), OnErrorListener {
+class CongratsViewModel :
+    ViewModel(),
+    OnErrorListener {
     override val onError = MutableSharedFlow<String>()
-    val openStudyOptions = MutableSharedFlow<Boolean>()
+    val unburyState = MutableSharedFlow<UnburyState>()
     val deckOptionsDestination = MutableSharedFlow<DeckOptionsDestination>()
 
     fun onUnbury() {
         launchCatchingIO {
-            undoableOp {
-                sched.unburyDeck(decks.getCurrentId())
+            // https://github.com/ankitects/anki/blob/acaeee91fa853e4a7a78dcddbb832d009ec3529a/qt/aqt/overview.py#L154
+            val congratsInfo = withCol { sched.congratulationsInfo() }
+            if (congratsInfo.haveSchedBuried && congratsInfo.haveUserBuried) {
+                unburyState.emit(UnburyState.SelectMode)
+                return@launchCatchingIO
             }
-            openStudyOptions.emit(true)
+            unburyAndStudy(UnburyDeckRequest.Mode.ALL)
         }
+    }
+
+    fun onUnburyModeSelected(mode: UnburyDeckRequest.Mode) {
+        launchCatchingIO {
+            unburyAndStudy(mode)
+        }
+    }
+
+    private suspend fun unburyAndStudy(mode: UnburyDeckRequest.Mode) {
+        undoableOp {
+            sched.unburyDeck(decks.getCurrentId(), mode)
+        }
+        unburyState.emit(UnburyState.OpenStudy)
     }
 
     fun onDeckOptions() {
@@ -263,12 +276,8 @@ class CongratsViewModel : ViewModel(), OnErrorListener {
     }
 }
 
-class DeckOptionsDestination(private val deckId: DeckId, private val isFiltered: Boolean) {
-    fun getIntent(context: Context): Intent {
-        return if (isFiltered) {
-            Intent(context, FilteredDeckOptions::class.java)
-        } else {
-            DeckOptions.getIntent(context, deckId)
-        }
-    }
+sealed class UnburyState {
+    data object OpenStudy : UnburyState()
+
+    data object SelectMode : UnburyState()
 }

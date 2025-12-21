@@ -18,64 +18,68 @@ package com.ichi2.anki
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.content.pm.PackageInfo
-import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteFullException
 import android.os.Build
 import android.os.Environment
 import android.os.Parcelable
 import androidx.annotation.CheckResult
 import androidx.annotation.RequiresApi
-import androidx.appcompat.app.AlertDialog
 import androidx.core.content.edit
+import com.ichi2.anki.exception.StorageAccessException
 import com.ichi2.anki.servicelayer.PreferenceUpgradeService
 import com.ichi2.anki.servicelayer.PreferenceUpgradeService.setPreferencesUpToDate
 import com.ichi2.anki.servicelayer.ScopedStorageService.isLegacyStorage
-import com.ichi2.anki.ui.windows.permissions.Full30and31PermissionsFragment
 import com.ichi2.anki.ui.windows.permissions.PermissionsFragment
+import com.ichi2.anki.ui.windows.permissions.PermissionsStartingAt30Fragment
 import com.ichi2.anki.ui.windows.permissions.PermissionsUntil29Fragment
-import com.ichi2.anki.ui.windows.permissions.TiramisuPermissionsFragment
+import com.ichi2.compat.CompatHelper.Companion.sdkVersion
 import com.ichi2.utils.Permissions
 import com.ichi2.utils.VersionUtils.pkgVersionName
-import com.ichi2.utils.getAndroidSystemWebViewPackageInfo
-import com.ichi2.utils.show
 import kotlinx.parcelize.Parcelize
 import net.ankiweb.rsdroid.BackendException
 import timber.log.Timber
-import java.lang.Exception
 
 /** Utilities for launching the first activity (currently the DeckPicker)  */
 object InitialActivity {
+    @CheckResult
+    fun getStartupFailureType(context: Context): StartupFailure? =
+        getStartupFailureType { CollectionHelper.isCurrentAnkiDroidDirAccessible(context) }
+
     /** Returns null on success  */
     @CheckResult
-    fun getStartupFailureType(context: Context): StartupFailure? {
-        // A WebView failure means that we skip `AnkiDroidApp`, and therefore haven't loaded the collection
-        if (AnkiDroidApp.webViewFailedToLoad()) {
-            return StartupFailure.WEBVIEW_FAILED
+    fun getStartupFailureType(initializeAnkiDroidDirectory: () -> Boolean): StartupFailure? {
+        AnkiDroidApp.fatalError?.let {
+            return StartupFailure.InitializationError(it)
         }
 
-        val failure = try {
-            CollectionManager.getColUnsafe()
-            return null
-        } catch (e: BackendException.BackendDbException.BackendDbLockedException) {
-            Timber.w(e)
-            StartupFailure.DATABASE_LOCKED
-        } catch (e: BackendException.BackendDbException.BackendDbFileTooNewException) {
-            Timber.w(e)
-            StartupFailure.FUTURE_ANKIDROID_VERSION
-        } catch (e: SQLiteFullException) {
-            Timber.w(e)
-            StartupFailure.DISK_FULL
-        } catch (e: Exception) {
-            Timber.w(e)
-            CrashReportService.sendExceptionReport(e, "InitialActivity::getStartupFailureType")
-            StartupFailure.DB_ERROR
-        }
+        val failure =
+            try {
+                CollectionManager.getColUnsafe()
+                return null
+            } catch (e: BackendException.BackendDbException.BackendDbLockedException) {
+                Timber.w(e)
+                StartupFailure.DatabaseLocked
+            } catch (e: BackendException.BackendDbException.BackendDbFileTooNewException) {
+                Timber.w(e)
+                StartupFailure.FutureAnkidroidVersion
+            } catch (e: SQLiteFullException) {
+                Timber.w(e)
+                StartupFailure.DiskFull
+            } catch (e: StorageAccessException) {
+                // Same handling as the fall through, but without the exception report
+                // These are now handled with a dialog and don't generate actionable reports
+                Timber.w(e)
+                StartupFailure.DBError(e)
+            } catch (e: Exception) {
+                Timber.w(e)
+                CrashReportService.sendExceptionReport(e, "InitialActivity::getStartupFailureType")
+                StartupFailure.DBError(e)
+            }
 
         if (!AnkiDroidApp.isSdCardMounted) {
-            return StartupFailure.SD_CARD_NOT_MOUNTED
-        } else if (!CollectionHelper.isCurrentAnkiDroidDirAccessible(context)) {
-            return StartupFailure.DIRECTORY_NOT_ACCESSIBLE
+            return StartupFailure.SDCardNotMounted
+        } else if (!initializeAnkiDroidDirectory()) {
+            return StartupFailure.DirectoryNotAccessible
         }
 
         return failure
@@ -83,9 +87,10 @@ object InitialActivity {
 
     /** @return Whether any preferences were upgraded
      */
-    fun upgradePreferences(context: Context, previousVersionCode: Long): Boolean {
-        return PreferenceUpgradeService.upgradePreferences(context, previousVersionCode)
-    }
+    fun upgradePreferences(
+        context: Context,
+        previousVersionCode: Long,
+    ): Boolean = PreferenceUpgradeService.upgradePreferences(context, previousVersionCode)
 
     /**
      * @return Whether a fresh install occurred and a "fresh install" setup for preferences was performed
@@ -116,8 +121,7 @@ object InitialActivity {
      * false if the app was launched for the second time after a successful initialisation
      * false if the app was launched after an update
      */
-    fun wasFreshInstall(preferences: SharedPreferences) =
-        "" == preferences.getString("lastVersion", "")
+    fun wasFreshInstall(preferences: SharedPreferences) = "" == preferences.getString("lastVersion", "")
 
     /** Sets the preference stating that the latest version has been applied  */
     fun setUpgradedToLatestVersion(preferences: SharedPreferences) {
@@ -130,55 +134,52 @@ object InitialActivity {
      * This is not called in the case of performSetupFromFreshInstall returning true.
      * So this should not use the default value
      */
-    fun isLatestVersion(preferences: SharedPreferences): Boolean {
-        return preferences.getString("lastVersion", "") == pkgVersionName
-    }
+    fun isLatestVersion(preferences: SharedPreferences): Boolean = preferences.getString("lastVersion", "") == pkgVersionName
 
-    enum class StartupFailure {
-        SD_CARD_NOT_MOUNTED, DIRECTORY_NOT_ACCESSIBLE, FUTURE_ANKIDROID_VERSION,
-        DB_ERROR, DATABASE_LOCKED, WEBVIEW_FAILED, DISK_FULL
-    }
+    sealed class StartupFailure {
+        data object SDCardNotMounted : StartupFailure()
 
-    /**
-     * Shows a dialog if the current WebView version is older than the last supported version.
-     */
-    fun checkWebviewVersion(packageManager: PackageManager, activity: AnkiActivity) {
-        val webviewPackageInfo = getAndroidSystemWebViewPackageInfo(packageManager) ?: return
-        val versionCode = webviewPackageInfo.versionName.split(".")[0].toInt()
-        if (versionCode >= OLDEST_WORKING_WEBVIEW_VERSION) {
-            Timber.d("WebView is up to date. %s: %s", webviewPackageInfo.packageName, webviewPackageInfo.versionName)
-            return
+        data object DirectoryNotAccessible : StartupFailure()
+
+        data object FutureAnkidroidVersion : StartupFailure()
+
+        class DBError(
+            val exception: Exception,
+        ) : StartupFailure()
+
+        data object DatabaseLocked : StartupFailure()
+
+        /**
+         * [AnkiDroidApp] encountered a fatal error
+         */
+        data class InitializationError(
+            val error: FatalInitializationError,
+        ) : StartupFailure() {
+            val infoLink
+                get() = error.infoLink
+
+            fun toHumanReadableString(context: Context): String =
+                when (error) {
+                    is FatalInitializationError.WebViewError ->
+                        context.getString(
+                            R.string.ankidroid_init_failed_webview,
+                            error.errorDetail,
+                        )
+                    is FatalInitializationError.StorageError ->
+                        context.getString(
+                            R.string.ankidroid_init_failed_storage,
+                            error.errorDetail,
+                        )
+                }
         }
 
-        val legacyWebViewPackageInfo = getLegacyWebViewPackageInfo(packageManager)
-        if (legacyWebViewPackageInfo != null) {
-            Timber.w("WebView is outdated. %s: %s", legacyWebViewPackageInfo.packageName, legacyWebViewPackageInfo.versionName)
-            showOutdatedWebViewDialog(activity, versionCode, activity.getString(R.string.link_legacy_webview_update))
-        } else {
-            Timber.w("WebView is outdated. %s: %s", webviewPackageInfo.packageName, webviewPackageInfo.versionName)
-            showOutdatedWebViewDialog(activity, versionCode, activity.getString(R.string.link_webview_update))
-        }
-    }
-
-    private fun showOutdatedWebViewDialog(activity: AnkiActivity, installedVersion: Int, learnMoreUrl: String) {
-        AlertDialog.Builder(activity).show {
-            setMessage(activity.getString(R.string.webview_update_message, installedVersion, OLDEST_WORKING_WEBVIEW_VERSION))
-            setPositiveButton(R.string.scoped_storage_learn_more) { _, _ ->
-                activity.openUrl(learnMoreUrl)
-            }
-        }
-    }
-
-    private fun getLegacyWebViewPackageInfo(packageManager: PackageManager): PackageInfo? {
-        return try {
-            packageManager.getPackageInfo("com.android.webview", 0)
-        } catch (e: PackageManager.NameNotFoundException) {
-            null
-        }
+        data object DiskFull : StartupFailure()
     }
 }
 
-sealed class AnkiDroidFolder(val permissionSet: PermissionSet) {
+sealed class AnkiDroidFolder(
+    val permissionSet: PermissionSet,
+) {
     /**
      * AnkiDroid will use the folder ~/AnkiDroid by default
      * To access it, we must first get [permissionSet].permissions.
@@ -186,7 +187,9 @@ sealed class AnkiDroidFolder(val permissionSet: PermissionSet) {
      * but increase the risk of space used on their storage when they don't want to.
      * It can not be used on the play store starting with Sdk 30.
      **/
-    class PublicFolder(requiredPermissions: PermissionSet) : AnkiDroidFolder(requiredPermissions)
+    class PublicFolder(
+        requiredPermissions: PermissionSet,
+    ) : AnkiDroidFolder(requiredPermissions)
 
     /**
      * AnkiDroid will use the app-private folder: `~/Android/data/com.ichi2.anki[.A]/files/AnkiDroid`.
@@ -196,25 +199,20 @@ sealed class AnkiDroidFolder(val permissionSet: PermissionSet) {
      */
     data object AppPrivateFolder : AnkiDroidFolder(PermissionSet.APP_PRIVATE)
 
-    fun hasRequiredPermissions(context: Context): Boolean {
-        return Permissions.hasAllPermissions(context, permissionSet.permissions)
-    }
+    fun hasRequiredPermissions(context: Context): Boolean = Permissions.hasAllPermissions(context, permissionSet.permissions)
 }
 
 @Parcelize
-enum class PermissionSet(val permissions: List<String>, val permissionsFragment: Class<out PermissionsFragment>?) : Parcelable {
+enum class PermissionSet(
+    val permissions: List<String>,
+    val permissionsFragment: Class<out PermissionsFragment>?,
+) : Parcelable {
     LEGACY_ACCESS(Permissions.legacyStorageAccessPermissions, PermissionsUntil29Fragment::class.java),
 
     @RequiresApi(Build.VERSION_CODES.R)
-    EXTERNAL_MANAGER(listOf(Permissions.MANAGE_EXTERNAL_STORAGE), Full30and31PermissionsFragment::class.java),
+    EXTERNAL_MANAGER(listOf(Permissions.MANAGE_EXTERNAL_STORAGE), PermissionsStartingAt30Fragment::class.java),
 
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    TIRAMISU_EXTERNAL_MANAGER(
-        permissions = listOf(Permissions.MANAGE_EXTERNAL_STORAGE),
-        permissionsFragment = TiramisuPermissionsFragment::class.java
-    ),
-
-    APP_PRIVATE(emptyList(), null);
+    APP_PRIVATE(emptyList(), null),
 }
 
 /**
@@ -225,7 +223,7 @@ enum class PermissionSet(val permissions: List<String>, val permissionsFragment:
  */
 internal fun selectAnkiDroidFolder(
     canManageExternalStorage: Boolean,
-    currentFolderIsAccessibleAndLegacy: Boolean
+    currentFolderIsAccessibleAndLegacy: Boolean,
 ): AnkiDroidFolder {
     if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q || currentFolderIsAccessibleAndLegacy) {
         // match AnkiDroid behaviour before scoped storage - force the use of ~/AnkiDroid,
@@ -237,11 +235,7 @@ internal fun selectAnkiDroidFolder(
 
     // If the user can manage external storage, we can access the safe folder & access is fast
     return if (canManageExternalStorage) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            AnkiDroidFolder.PublicFolder(PermissionSet.TIRAMISU_EXTERNAL_MANAGER)
-        } else {
-            AnkiDroidFolder.PublicFolder(PermissionSet.EXTERNAL_MANAGER)
-        }
+        AnkiDroidFolder.PublicFolder(PermissionSet.EXTERNAL_MANAGER)
     } else {
         return AnkiDroidFolder.AppPrivateFolder
     }
@@ -253,6 +247,21 @@ fun selectAnkiDroidFolder(context: Context): AnkiDroidFolder {
 
     return selectAnkiDroidFolder(
         canManageExternalStorage = Permissions.canManageExternalStorage(context),
-        currentFolderIsAccessibleAndLegacy = currentFolderIsAccessibleAndLegacy
+        currentFolderIsAccessibleAndLegacy = currentFolderIsAccessibleAndLegacy,
     )
+}
+
+/**
+ * Configures either hardware or software rendering
+ */
+fun configureRenderingMode() {
+    val preferences = AnkiDroidApp.sharedPrefs()
+    // For Android 8/8.1 we want to use software rendering by default or the Reviewer UI is broken #7369
+    if (sdkVersion != Build.VERSION_CODES.O && sdkVersion != Build.VERSION_CODES.O_MR1) return
+    if (!preferences.contains("softwareRender")) {
+        Timber.i("Android 8/8.1 detected with no render preference. Turning on software render.")
+        preferences.edit { putBoolean("softwareRender", true) }
+    } else {
+        Timber.i("Android 8/8.1 detected, software render preference already exists.")
+    }
 }

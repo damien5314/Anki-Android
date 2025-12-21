@@ -21,6 +21,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.annotation.CheckResult
+import androidx.core.net.toUri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ichi2.anki.RobolectricTest
 import com.ichi2.utils.ImportUtils.FileImporter
@@ -113,22 +114,29 @@ class ImportUtilsTest : RobolectricTest() {
     }
 
     private fun clipDataUriFromFile(fileName: String): ClipData {
-        val item = ClipData.Item(Uri.parse("content://$fileName"))
+        val item = ClipData.Item("content://$fileName".toUri())
         val description = ClipDescription("", arrayOf())
         return ClipData(description, item)
     }
 
-    class TestFileImporter(private val fileName: String?) : FileImporter() {
+    class TestFileImporter(
+        private val fileName: String?,
+    ) : FileImporter() {
         lateinit var cacheFileName: String
             private set
 
-        override fun copyFileToCache(context: Context, data: Uri?, tempPath: String): Boolean {
+        override fun copyFileToCache(
+            context: Context,
+            data: Uri,
+            tempPath: String,
+        ) = run {
             cacheFileName = tempPath
-            return true
+            CacheFileResult.Success(tempPath)
         }
 
-        override fun getFileNameFromContentProvider(context: Context, data: Uri): String? {
-            return fileName
-        }
+        override fun getFileNameFromContentProvider(
+            context: Context,
+            data: Uri,
+        ): String? = fileName
     }
 }

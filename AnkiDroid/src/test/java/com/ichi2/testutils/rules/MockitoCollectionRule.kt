@@ -17,7 +17,7 @@
 package com.ichi2.testutils.rules
 
 import com.ichi2.anki.CollectionManager
-import com.ichi2.libanki.Collection
+import com.ichi2.anki.libanki.Collection
 import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
@@ -37,8 +37,12 @@ import timber.log.Timber
  */
 class MockitoCollectionRule : TestRule {
     val col: Collection = Mockito.mock(Collection::class.java)
-    override fun apply(base: Statement, description: Description): Statement {
-        return object : Statement() {
+
+    override fun apply(
+        base: Statement,
+        description: Description,
+    ): Statement =
+        object : Statement() {
             override fun evaluate() {
                 try {
                     mockCollection()
@@ -48,7 +52,6 @@ class MockitoCollectionRule : TestRule {
                 }
             }
         }
-    }
 
     private fun removeCollectionMock() {
         Timber.v("removing collection mock")

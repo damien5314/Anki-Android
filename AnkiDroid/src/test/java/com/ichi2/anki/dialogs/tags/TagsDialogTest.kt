@@ -15,121 +15,46 @@
  */
 package com.ichi2.anki.dialogs.tags
 
-import android.content.DialogInterface
 import android.os.Bundle
-import android.view.View
 import android.widget.EditText
-import android.widget.RadioGroup
 import androidx.appcompat.app.AlertDialog
-import androidx.core.os.BundleCompat
 import androidx.fragment.app.testing.FragmentScenario
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ichi2.anki.R
 import com.ichi2.anki.RobolectricTest
-import com.ichi2.anki.dialogs.utils.AnKingTags
-import com.ichi2.anki.model.CardStateFilter
-import com.ichi2.compat.CompatHelper.Companion.getSerializableCompat
-import com.ichi2.testutils.Flaky
-import com.ichi2.testutils.HamcrestUtils.containsInAnyOrder
-import com.ichi2.testutils.OS
+import com.ichi2.anki.libanki.testutils.ext.newNote
 import com.ichi2.testutils.ParametersUtils
 import com.ichi2.testutils.RecyclerViewUtils
 import com.ichi2.ui.CheckBoxTriStates
 import com.ichi2.utils.ListUtil
-import org.hamcrest.MatcherAssert
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.core.IsNull
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mockito
-import org.mockito.kotlin.whenever
 import timber.log.Timber
-import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(AndroidJUnit4::class)
-// inheriting from RobolectricTest is required for @Flaky
-@Flaky(OS.WINDOWS, "16404: tests in this class occasionally hang")
 class TagsDialogTest : RobolectricTest() {
-    @Test
-    fun testTagsDialogCustomStudyOptionInterface() {
-        val type = TagsDialog.DialogType.CUSTOM_STUDY_TAGS
-        val allTags = listOf("1", "2", "3", "4")
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, ArrayList(), allTags)
-            .arguments
-        val mockListener = Mockito.mock(TagsDialogListener::class.java)
-        val factory = TagsDialogFactory(mockListener)
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { f: TagsDialog ->
-            val dialog = f.dialog as AlertDialog?
-            MatcherAssert.assertThat(dialog, IsNull.notNullValue())
-
-            val optionsGroup = dialog!!.findViewById<RadioGroup>(R.id.tags_dialog_options_radiogroup)!!
-            Assert.assertEquals(optionsGroup.visibility.toLong(), View.VISIBLE.toLong())
-            val expectedOption = CardStateFilter.NEW
-            optionsGroup.getChildAt(1).performClick()
-            dialog.getButton(DialogInterface.BUTTON_POSITIVE).callOnClick()
-            advanceRobolectricLooper()
-            Mockito.verify(mockListener, Mockito.times(1)).onSelectedTags(ArrayList(), ArrayList(), expectedOption)
-        }
-    }
-
-    @Test
-    fun testTagsDialogCustomStudyOptionFragmentAPI() {
-        val type = TagsDialog.DialogType.CUSTOM_STUDY_TAGS
-        val allTags = listOf("1", "2", "3", "4")
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, ArrayList(), allTags)
-            .arguments
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { f: TagsDialog ->
-            val dialog = f.dialog as AlertDialog?
-            MatcherAssert.assertThat(dialog, IsNull.notNullValue())
-            val returnedList = AtomicReference<List<String>?>()
-            val returnedOption = AtomicReference<CardStateFilter>()
-            f.parentFragmentManager.setFragmentResultListener(
-                TagsDialogListener.ON_SELECTED_TAGS_KEY,
-                mockLifecycleOwner()
-            ) { _: String?, bundle: Bundle ->
-                returnedList.set(bundle.getStringArrayList(TagsDialogListener.ON_SELECTED_TAGS__SELECTED_TAGS))
-                returnedOption.set(bundle.getSerializableCompat<CardStateFilter>(TagsDialogListener.ON_SELECTED_TAGS__OPTION))
-            }
-
-            val optionsGroup = dialog!!.findViewById<RadioGroup>(R.id.tags_dialog_options_radiogroup)!!
-            Assert.assertEquals(optionsGroup.visibility.toLong(), View.VISIBLE.toLong())
-            val expectedOption = CardStateFilter.DUE
-            optionsGroup.getChildAt(2).performClick()
-            dialog.getButton(DialogInterface.BUTTON_POSITIVE).callOnClick()
-            advanceRobolectricLooper()
-            ListUtil.assertListEquals(ArrayList(), returnedList.get())
-            Assert.assertEquals(expectedOption, returnedOption.get())
-        }
-    }
-
     // regression test #8762
     // test for #8763
     @Test
     fun test_AddNewTag_shouldBeVisibleInRecyclerView_andSortedCorrectly() {
         val type = TagsDialog.DialogType.EDIT_TAGS
         val allTags = listOf("a", "b", "d", "e")
-        val checkedTags = listOf("a", "b")
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, checkedTags, allTags)
-            .arguments
+        val checkedTags = arrayListOf("a", "b")
+        val args =
+            TagsDialog(ParametersUtils.whatever())
+                .withTestArguments(type, checkedTags, allTags)
+                .requireArguments()
         val mockListener = Mockito.mock(TagsDialogListener::class.java)
         val factory = TagsDialogFactory(mockListener)
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { f: TagsDialog ->
+        runTagsDialogScenario(args, factory) { f: TagsDialog ->
             val dialog = f.dialog as AlertDialog?
-            MatcherAssert.assertThat(dialog, IsNull.notNullValue())
+            assertThat(dialog, IsNull.notNullValue())
 
             val recycler: RecyclerView = dialog!!.findViewById(R.id.tags_dialog_tags_list)!!
             val tag = "zzzz"
@@ -154,17 +79,16 @@ class TagsDialogTest : RobolectricTest() {
     fun test_AddNewTag_existingTag_shouldBeSelectedAndSorted() {
         val type = TagsDialog.DialogType.EDIT_TAGS
         val allTags = listOf("a", "b", "d", "e")
-        val checkedTags = listOf("a", "b")
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, checkedTags, allTags)
-            .arguments
+        val checkedTags = arrayListOf("a", "b")
+        val args =
+            TagsDialog(ParametersUtils.whatever())
+                .withTestArguments(type, checkedTags, allTags)
+                .requireArguments()
         val mockListener = Mockito.mock(TagsDialogListener::class.java)
         val factory = TagsDialogFactory(mockListener)
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { f: TagsDialog ->
+        runTagsDialogScenario(args, factory) { f: TagsDialog ->
             val dialog = f.dialog as AlertDialog?
-            MatcherAssert.assertThat(dialog, IsNull.notNullValue())
+            assertThat(dialog, IsNull.notNullValue())
 
             val recycler: RecyclerView = dialog!!.findViewById(R.id.tags_dialog_tags_list)!!
             val tag = "e"
@@ -188,21 +112,19 @@ class TagsDialogTest : RobolectricTest() {
     fun test_checked_unchecked_indeterminate() {
         val type = TagsDialog.DialogType.EDIT_TAGS
         val expectedAllTags = listOf("a", "b", "d", "e")
-        val checkedTags = listOf("a", "b")
-        val uncheckedTags = listOf("b", "d")
-        val expectedCheckedTags = listOf("a")
+        val checkedTags = arrayListOf("a", "b")
+        val expectedCheckedTags = listOf("a", "b")
         val expectedUncheckedTags = listOf("d", "e")
-        val expectedIndeterminate = listOf("b")
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, checkedTags, uncheckedTags, expectedAllTags)
-            .arguments
+        val expectedIndeterminate = emptyList<String>()
+        val args =
+            TagsDialog(ParametersUtils.whatever())
+                .withTestArguments(type, checkedTags, expectedAllTags)
+                .requireArguments()
         val mockListener = Mockito.mock(TagsDialogListener::class.java)
         val factory = TagsDialogFactory(mockListener)
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { f: TagsDialog ->
+        runTagsDialogScenario(args, factory) { f: TagsDialog ->
             val dialog = f.dialog as AlertDialog?
-            MatcherAssert.assertThat(dialog, IsNull.notNullValue())
+            assertThat(dialog, IsNull.notNullValue())
 
             val recycler: RecyclerView = dialog!!.findViewById(R.id.tags_dialog_tags_list)!!
 
@@ -223,7 +145,6 @@ class TagsDialogTest : RobolectricTest() {
                     CheckBoxTriStates.State.INDETERMINATE -> foundIndeterminate.add(tag)
                     CheckBoxTriStates.State.UNCHECKED -> foundUncheckedTags.add(tag)
                     CheckBoxTriStates.State.CHECKED -> foundCheckedTags.add(tag)
-                    else -> Assert.fail("Unknown CheckBoxTriStates.State? " + vh.checkboxState)
                 }
             }
             ListUtil.assertListEquals(expectedAllTags, foundAllTags)
@@ -236,34 +157,34 @@ class TagsDialogTest : RobolectricTest() {
     @Test
     fun test_TagsDialog_expandPathToCheckedTagsUponOpening() {
         val type = TagsDialog.DialogType.FILTER_BY_TAG
-        val allTags = listOf(
-            "fruit::apple",
-            "fruit::pear",
-            "fruit::pear::big",
-            "sport::football",
-            "sport::tennis",
-            "book"
-        )
-        val checkedTags = listOf(
-            "fruit::pear::big",
-            "sport::tennis"
-        )
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, checkedTags, allTags)
-            .arguments
+        val allTags =
+            listOf(
+                "fruit::apple",
+                "fruit::pear",
+                "fruit::pear::big",
+                "sport::football",
+                "sport::tennis",
+                "book",
+            )
+        val checkedTags =
+            arrayListOf(
+                "fruit::pear::big",
+                "sport::tennis",
+            )
+        val args =
+            TagsDialog(ParametersUtils.whatever())
+                .withTestArguments(type, checkedTags, allTags)
+                .requireArguments()
         val mockListener = Mockito.mock(TagsDialogListener::class.java)
         val factory = TagsDialogFactory(mockListener)
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { f: TagsDialog ->
+        runTagsDialogScenario(args, factory) { f: TagsDialog ->
             val dialog = f.dialog as AlertDialog?
-            MatcherAssert.assertThat(dialog, IsNull.notNullValue())
+            assertThat(dialog, IsNull.notNullValue())
 
             val recycler: RecyclerView = dialog!!.findViewById(R.id.tags_dialog_tags_list)!!
 
-            fun getItem(index: Int): TagsArrayAdapter.ViewHolder {
-                return RecyclerViewUtils.viewHolderAt(recycler, index)
-            }
+            fun getItem(index: Int): TagsArrayAdapter.ViewHolder = RecyclerViewUtils.viewHolderAt(recycler, index)
+
             fun updateLayout() {
                 recycler.measure(0, 0)
                 recycler.layout(0, 0, 100, 2000)
@@ -294,17 +215,16 @@ class TagsDialogTest : RobolectricTest() {
     fun test_AddNewTag_newHierarchicalTag_pathToItShouldBeExpanded() {
         val type = TagsDialog.DialogType.EDIT_TAGS
         val allTags = listOf("common::speak", "common::speak::daily", "common::sport::tennis", "common::sport::football")
-        val checkedTags = listOf("common::speak::daily", "common::sport::tennis")
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, checkedTags, allTags)
-            .arguments
+        val checkedTags = arrayListOf("common::speak::daily", "common::sport::tennis")
+        val args =
+            TagsDialog(ParametersUtils.whatever())
+                .withTestArguments(type, checkedTags, allTags)
+                .requireArguments()
         val mockListener = Mockito.mock(TagsDialogListener::class.java)
         val factory = TagsDialogFactory(mockListener)
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { f: TagsDialog ->
+        runTagsDialogScenario(args, factory) { f: TagsDialog ->
             val dialog = f.dialog as AlertDialog?
-            MatcherAssert.assertThat(dialog, IsNull.notNullValue())
+            assertThat(dialog, IsNull.notNullValue())
 
             val recycler: RecyclerView = dialog!!.findViewById(R.id.tags_dialog_tags_list)!!
             val tag = "common::sport::football::small"
@@ -348,17 +268,16 @@ class TagsDialogTest : RobolectricTest() {
     fun test_AddNewTag_newHierarchicalTag_willUniformHierarchicalTag() {
         val type = TagsDialog.DialogType.EDIT_TAGS
         val allTags = listOf("common")
-        val checkedTags = listOf("common")
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, checkedTags, allTags)
-            .arguments
+        val checkedTags = arrayListOf("common")
+        val args =
+            TagsDialog(ParametersUtils.whatever())
+                .withTestArguments(type, checkedTags, allTags)
+                .requireArguments()
         val mockListener = Mockito.mock(TagsDialogListener::class.java)
         val factory = TagsDialogFactory(mockListener)
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { f: TagsDialog ->
+        runTagsDialogScenario(args, factory) { f: TagsDialog ->
             val dialog = f.dialog as AlertDialog?
-            MatcherAssert.assertThat(dialog, IsNull.notNullValue())
+            assertThat(dialog, IsNull.notNullValue())
 
             val recycler: RecyclerView = dialog!!.findViewById(R.id.tags_dialog_tags_list)!!
             val tag = "common::::careless"
@@ -385,28 +304,29 @@ class TagsDialogTest : RobolectricTest() {
     @Test
     fun test_SearchTag_showAllRelevantTags() {
         val type = TagsDialog.DialogType.FILTER_BY_TAG
-        val allTags = listOf(
-            "common::speak",
-            "common::speak::tennis",
-            "common::sport::tennis",
-            "common::sport::football",
-            "common::sport::football::small"
-        )
-        val checkedTags = listOf(
-            "common::speak::tennis",
-            "common::sport::tennis",
-            "common::sport::football::small"
-        )
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, checkedTags, allTags)
-            .arguments
+        val allTags =
+            listOf(
+                "common::speak",
+                "common::speak::tennis",
+                "common::sport::tennis",
+                "common::sport::football",
+                "common::sport::football::small",
+            )
+        val checkedTags =
+            arrayListOf(
+                "common::speak::tennis",
+                "common::sport::tennis",
+                "common::sport::football::small",
+            )
+        val args =
+            TagsDialog(ParametersUtils.whatever())
+                .withTestArguments(type, checkedTags, allTags)
+                .requireArguments()
         val mockListener = Mockito.mock(TagsDialogListener::class.java)
         val factory = TagsDialogFactory(mockListener)
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { f: TagsDialog ->
+        runTagsDialogScenario(args, factory) { f: TagsDialog ->
             val dialog = f.dialog as AlertDialog?
-            MatcherAssert.assertThat(dialog, IsNull.notNullValue())
+            assertThat(dialog, IsNull.notNullValue())
 
             val recycler: RecyclerView = dialog!!.findViewById(R.id.tags_dialog_tags_list)!!
             val adapter = recycler.adapter!! as TagsArrayAdapter
@@ -437,17 +357,16 @@ class TagsDialogTest : RobolectricTest() {
     fun test_SearchTag_willInheritExpandState() {
         val type = TagsDialog.DialogType.FILTER_BY_TAG
         val allTags = listOf("common::speak", "common::sport::tennis")
-        val checkedTags = emptyList<String>()
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, checkedTags, allTags)
-            .arguments
+        val checkedTags = arrayListOf<String>()
+        val args =
+            TagsDialog(ParametersUtils.whatever())
+                .withTestArguments(type, checkedTags, allTags)
+                .requireArguments()
         val mockListener = Mockito.mock(TagsDialogListener::class.java)
         val factory = TagsDialogFactory(mockListener)
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { f: TagsDialog ->
+        runTagsDialogScenario(args, factory) { f: TagsDialog ->
             val dialog = f.dialog as AlertDialog?
-            MatcherAssert.assertThat(dialog, IsNull.notNullValue())
+            assertThat(dialog, IsNull.notNullValue())
 
             val recycler: RecyclerView = dialog!!.findViewById(R.id.tags_dialog_tags_list)!!
 
@@ -477,30 +396,29 @@ class TagsDialogTest : RobolectricTest() {
     @Test
     fun test_CheckTags_intermediateTagsShouldToggleDynamically() {
         val type = TagsDialog.DialogType.FILTER_BY_TAG
-        val allTags = listOf(
-            "common::speak",
-            "common::speak::tennis",
-            "common::sport::tennis",
-            "common::sport::football",
-            "common::sport::football::small"
-        )
-        val checkedTags = emptyList<String>()
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, checkedTags, allTags)
-            .arguments
+        val allTags =
+            listOf(
+                "common::speak",
+                "common::speak::tennis",
+                "common::sport::tennis",
+                "common::sport::football",
+                "common::sport::football::small",
+            )
+        val checkedTags = arrayListOf<String>()
+        val args =
+            TagsDialog(ParametersUtils.whatever())
+                .withTestArguments(type, checkedTags, allTags)
+                .requireArguments()
         val mockListener = Mockito.mock(TagsDialogListener::class.java)
         val factory = TagsDialogFactory(mockListener)
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { f: TagsDialog ->
+        runTagsDialogScenario(args, factory) { f: TagsDialog ->
             val dialog = f.dialog as AlertDialog?
-            MatcherAssert.assertThat(dialog, IsNull.notNullValue())
+            assertThat(dialog, IsNull.notNullValue())
 
             val recycler: RecyclerView = dialog!!.findViewById(R.id.tags_dialog_tags_list)!!
 
-            fun getItem(index: Int): TagsArrayAdapter.ViewHolder {
-                return RecyclerViewUtils.viewHolderAt(recycler, index)
-            }
+            fun getItem(index: Int): TagsArrayAdapter.ViewHolder = RecyclerViewUtils.viewHolderAt(recycler, index)
+
             fun updateLayout() {
                 recycler.measure(0, 0)
                 recycler.layout(0, 0, 100, 2000)
@@ -603,24 +521,23 @@ class TagsDialogTest : RobolectricTest() {
     fun test_SearchTag_spaceWillBeFilteredCorrectly() {
         val type = TagsDialog.DialogType.FILTER_BY_TAG
         val allTags = listOf("hello::world")
-        val checkedTags = emptyList<String>()
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, checkedTags, allTags)
-            .arguments
+        val checkedTags = arrayListOf<String>()
+        val args =
+            TagsDialog(ParametersUtils.whatever())
+                .withTestArguments(type, checkedTags, allTags)
+                .requireArguments()
         val mockListener = Mockito.mock(TagsDialogListener::class.java)
         val factory = TagsDialogFactory(mockListener)
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { f: TagsDialog ->
+        runTagsDialogScenario(args, factory) { f: TagsDialog ->
             val dialog = f.dialog as AlertDialog?
-            MatcherAssert.assertThat(dialog, IsNull.notNullValue())
+            assertThat(dialog, IsNull.notNullValue())
             val editText = f.getSearchView()!!.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)!!
 
             editText.setText("hello ")
             Assert.assertEquals(
                 "The space should be replaced by '::' without mistakenly clear everything.",
                 "hello::",
-                editText.text.toString()
+                editText.text.toString(),
             )
 
             editText.setText("hello")
@@ -646,40 +563,15 @@ class TagsDialogTest : RobolectricTest() {
         val type = TagsDialog.DialogType.FILTER_BY_TAG
         val allTags = listOf("02动作状态")
 
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, emptyList(), allTags)
-            .arguments
+        val args =
+            TagsDialog(ParametersUtils.whatever())
+                .withTestArguments(type, arrayListOf(), allTags)
+                .arguments
         val mockListener = Mockito.mock(TagsDialogListener::class.java)
         val factory = TagsDialogFactory(mockListener)
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { Timber.d("Dialog successfully opened") }
-    }
-
-    @Test
-    fun `huge number of tags`() {
-        val type = TagsDialog.DialogType.FILTER_BY_TAG
-        val allTags = AnKingTags.value
-
-        val args = TagsDialog(ParametersUtils.whatever())
-            .withTestArguments(type, emptyList(), allTags)
-            .arguments
-        val mockListener = Mockito.mock(TagsDialogListener::class.java)
-        val factory = TagsDialogFactory(mockListener)
-        val scenario = FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory)
-        scenario.moveToState(Lifecycle.State.STARTED)
-        scenario.onFragment { f ->
-            val tagsFile = requireNotNull(
-                BundleCompat.getParcelable(
-                    f.requireArguments(),
-                    "tagsFile",
-                    TagsFile::class.java
-                )
-            )
-
-            val dataFromArguments = tagsFile.getData()
-
-            assertThat(dataFromArguments.allTags, containsInAnyOrder(allTags))
+        FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory).use { scenario ->
+            scenario.moveToState(Lifecycle.State.STARTED)
+            scenario.onFragment { Timber.d("Dialog successfully opened") }
         }
     }
 
@@ -687,35 +579,32 @@ class TagsDialogTest : RobolectricTest() {
     // this is needed so we can pass in 'targetContext' for context.cacheDir
     private fun TagsDialog.withTestArguments(
         type: TagsDialog.DialogType,
-        checkedTags: List<String>,
-        allTags: List<String>
-    ) =
-        with(this@TagsDialogTest.targetContext) {
-            withArguments(type = type, checkedTags = checkedTags, allTags = allTags)
-        }
+        checkedTags: ArrayList<String>,
+        allTags: Collection<String>,
+    ): TagsDialog {
+        val note = col.newNote()
+        col.tags.bulkAdd(listOf(note.id), allTags.joinToString(separator = " "))
+        col.addNote(note, 0L)
+        return withArguments(
+            context = targetContext,
+            type = type,
+            checkedTags = checkedTags,
+        )
+    }
 
-    private fun TagsDialog.withTestArguments(
-        type: TagsDialog.DialogType,
-        checkedTags: List<String>,
-        uncheckedTags: List<String>?,
-        allTags: List<String>
-    ) =
-        with(this@TagsDialogTest.targetContext) {
-            withArguments(
-                type = type,
-                checkedTags = checkedTags,
-                uncheckedTags = uncheckedTags,
-                allTags = allTags
-            )
-        }
-
-    companion object {
-        private fun mockLifecycleOwner(): LifecycleOwner {
-            val owner = Mockito.mock(LifecycleOwner::class.java)
-            val lifecycle = LifecycleRegistry(owner)
-            lifecycle.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-            whenever(owner.lifecycle).thenReturn(lifecycle)
-            return owner
+    private fun runTagsDialogScenario(
+        args: Bundle,
+        factory: TagsDialogFactory? = null,
+        block: (TagsDialog) -> Unit,
+    ) {
+        FragmentScenario.launch(TagsDialog::class.java, args, R.style.Theme_Light, factory).use { scenario ->
+            scenario.moveToState(Lifecycle.State.STARTED)
+            scenario.onFragment { tagsDialog: TagsDialog ->
+                block(tagsDialog)
+            }
         }
     }
 }
+
+val TagsArrayAdapter.ViewHolder.checkBoxView: CheckBoxTriStates
+    get() = this.binding.checkBoxView

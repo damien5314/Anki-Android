@@ -29,8 +29,8 @@ A semi-official port of the open source [Anki](https://apps.ankiweb.net/index.ht
 - Syncing with AnkiWeb
 - Write answers (optional)
 - Text-to-speech integration
-- More than 6000 premade decks
-- Spaced repetition (supermemo 2 algorithm)
+- More than 10,000 premade decks
+- Spaced repetition (AI-optimized [FSRS algorithm](https://github.com/open-spaced-repetition))
 - Supported contents: text, images, sounds, MathJax
 - Add cards by intent from other applications like dictionaries
 
@@ -48,11 +48,17 @@ Install
     <img alt="Get it on F-Droid" height="80"
         src="docs/graphics/logos/f-droid-badge.png"></a>
 
-<a href="http://www.amazon.com/gp/product/B004L1G7T2/ref=mas_pm_ankidroid_flashcards">
-    <img alt="Get it on Amazon app store" height="80"
-        src="docs/graphics/logos/amazon-badge.png"/></a>
+<a href="http://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/ankidroid/Anki-Android">
+    <img alt="Get it on Obtainium" height="80"
+        src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6"/></a>
 
 </div>
+
+Signing certificate fingerprint to [verify](https://developer.android.com/studio/command-line/apksigner#usage-verify) the APK:
+```
+SHA-256: 2071534f0f4b5e54ae952dd275d70da6e3459ee69909d2ab1b4843c4c5b21a45 
+SHA-1: f24e06a3657b190a12671100402df32d7b9b3d36
+```
 
 Wiki
 ----
@@ -74,7 +80,7 @@ Join Us On
 <a href="https://discord.gg/qjzcRTx"><img src="docs/graphics/logos/discord_logo_color.png" height="50px"/></a>
 <a href="https://www.reddit.com/r/Anki"><img src="docs/graphics/logos/reddit_logo_color.png" height="50px"/></a>
 <a href="https://www.facebook.com/AnkiDroid/"><img src="docs/graphics/logos/facebook_logo_color.png" height="50px"/></a>
-<a href="https://twitter.com/ankidroid"><img src="docs/graphics/logos/twitter_logo_color.png" height="50px"/></a>
+<a href="https://x.com/ankidroid"><img src="docs/graphics/logos/twitter_logo.png" height="50px"/></a>
 <a href="https://forums.ankiweb.net/"><img src="/docs/graphics/logos/anki_forums_logo.png" height="50px"/></a>
 
 ## Credits
@@ -110,5 +116,5 @@ Thanks to our 1400 translators, for allowing us to be available, partially or to
 License
 -------
 * [GPL-3.0 License](https://github.com/ankidroid/Anki-Android/blob/main/COPYING)
-* [AGPL-3.0 Licence](https://github.com/ankitects/anki/blob/main/LICENSE) for some part of the back-end
+* [AGPL-3.0 License](https://github.com/ankitects/anki/blob/main/LICENSE) for some part of the back-end
 * [LGPL-3.0 License](https://github.com/ankidroid/Anki-Android/blob/main/api/COPYING.LESSER) for the AnkiDroid API

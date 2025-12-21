@@ -1,19 +1,18 @@
-/***************************************************************************************
- *                                                                                      *
- * Copyright (c) 2018 Mike Hardy <github@mikehardy.net>                                 *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2018 Mike Hardy <github@mikehardy.net>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package com.ichi2.anki.tests.libanki
 
 import android.database.sqlite.SQLiteDatabase
@@ -21,9 +20,9 @@ import android.database.sqlite.SQLiteDatabaseCorruptException
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ichi2.anki.CollectionHelper
+import com.ichi2.anki.libanki.DB
 import com.ichi2.anki.tests.InstrumentedTest
 import com.ichi2.anki.testutil.GrantStoragePermission
-import com.ichi2.libanki.DB
 import net.ankiweb.rsdroid.database.AnkiSupportSQLiteDatabase
 import org.junit.Assert
 import org.junit.Rule
@@ -31,7 +30,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import java.io.FileOutputStream
-import java.util.*
+import java.util.Random
 
 @RunWith(AndroidJUnit4::class)
 class DBTest : InstrumentedTest() {
@@ -48,13 +47,14 @@ class DBTest : InstrumentedTest() {
         SQLiteDatabase.deleteDatabase(illFatedDBFile)
         Assert.assertFalse("database exists already", illFatedDBFile.exists())
         val callback = TestCallback(1)
-        val illFatedDB = DB(
-            AnkiSupportSQLiteDatabase.withFramework(
-                testContext,
-                illFatedDBFile.canonicalPath,
-                callback
+        val illFatedDB =
+            DB(
+                AnkiSupportSQLiteDatabase.withFramework(
+                    testContext,
+                    illFatedDBFile.canonicalPath,
+                    callback,
+                ),
             )
-        )
         Assert.assertFalse("database should not be corrupt yet", callback.databaseIsCorrupt)
 
         // Scribble in it
@@ -81,8 +81,11 @@ class DBTest : InstrumentedTest() {
     }
 
     // Test fixture that lets us inspect corruption handler status
-    inner class TestCallback(version: Int) : AnkiSupportSQLiteDatabase.DefaultDbCallback(version) {
+    inner class TestCallback(
+        version: Int,
+    ) : AnkiSupportSQLiteDatabase.DefaultDbCallback(version) {
         internal var databaseIsCorrupt = false
+
         override fun onCorruption(db: SupportSQLiteDatabase) {
             databaseIsCorrupt = true
             super.onCorruption(db)

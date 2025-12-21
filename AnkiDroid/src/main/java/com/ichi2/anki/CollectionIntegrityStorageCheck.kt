@@ -17,7 +17,6 @@ import android.content.Context
 import android.text.format.Formatter
 import com.ichi2.utils.FileUtil
 import timber.log.Timber
-import java.io.File
 
 /**
  * This currently stores either:
@@ -44,9 +43,7 @@ class CollectionIntegrityStorageCheck {
         this.errorMessage = errorMessage
     }
 
-    fun shouldWarnOnIntegrityCheck(): Boolean {
-        return errorMessage != null || fileSystemDoesNotHaveSpaceForBackup()
-    }
+    fun shouldWarnOnIntegrityCheck(): Boolean = errorMessage != null || fileSystemDoesNotHaveSpaceForBackup()
 
     private fun fileSystemDoesNotHaveSpaceForBackup(): Boolean {
         // only to be called when mErrorMessage == null
@@ -67,29 +64,28 @@ class CollectionIntegrityStorageCheck {
             val defaultRequiredFreeSpace = defaultRequiredFreeSpace(context)
             return context.resources.getString(
                 R.string.integrity_check_insufficient_space,
-                defaultRequiredFreeSpace
+                defaultRequiredFreeSpace,
             )
         }
         val required = Formatter.formatShortFileSize(context, requiredSpace)
-        val insufficientSpace = context.resources.getString(
-            R.string.integrity_check_insufficient_space,
-            required
-        )
+        val insufficientSpace =
+            context.resources.getString(
+                R.string.integrity_check_insufficient_space,
+                required,
+            )
 
         // Also concat in the extra content showing the current free space.
         val currentFree = Formatter.formatShortFileSize(context, freeSpace)
-        val insufficientSpaceCurrentFree = context.resources.getString(
-            R.string.integrity_check_insufficient_space_extra_content,
-            currentFree
-        )
+        val insufficientSpaceCurrentFree =
+            context.resources.getString(
+                R.string.integrity_check_insufficient_space_extra_content,
+                currentFree,
+            )
         return insufficientSpace + insufficientSpaceCurrentFree
     }
 
     companion object {
-
-        private fun fromError(errorMessage: String): CollectionIntegrityStorageCheck {
-            return CollectionIntegrityStorageCheck(errorMessage)
-        }
+        private fun fromError(errorMessage: String): CollectionIntegrityStorageCheck = CollectionIntegrityStorageCheck(errorMessage)
 
         private fun defaultRequiredFreeSpace(context: Context): String {
             val oneHundredFiftyMB =
@@ -105,8 +101,8 @@ class CollectionIntegrityStorageCheck {
                 return fromError(
                     context.resources.getString(
                         R.string.integrity_check_insufficient_space,
-                        requiredFreeSpace
-                    )
+                        requiredFreeSpace,
+                    ),
                 )
             }
 
@@ -115,7 +111,7 @@ class CollectionIntegrityStorageCheck {
             val requiredSpaceInBytes = maybeCurrentCollectionSizeInBytes * 2
 
             // We currently use the same directory as the collection for VACUUM/ANALYZE due to the SQLite APIs
-            val collectionFile = File(CollectionHelper.getCollectionPath(context))
+            val collectionFile = CollectionHelper.getCollectionPath(context)
             val freeSpace = FileUtil.getFreeDiskSpace(collectionFile, -1)
             if (freeSpace == -1L) {
                 Timber.w("Error obtaining free space for '%s'", collectionFile.path)
@@ -123,8 +119,8 @@ class CollectionIntegrityStorageCheck {
                 return fromError(
                     context.resources.getString(
                         R.string.integrity_check_insufficient_space,
-                        readableFileSize
-                    )
+                        readableFileSize,
+                    ),
                 )
             }
             return CollectionIntegrityStorageCheck(requiredSpaceInBytes, freeSpace)

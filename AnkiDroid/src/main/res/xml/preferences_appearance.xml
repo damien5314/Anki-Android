@@ -36,6 +36,7 @@
             android:title="@string/app_theme"
             android:icon="@drawable/ic_color_lens_white_24dp"
             app:useSimpleSummaryProvider="true"/>
+        <!--day and night theme label is ignored in search to avoid a duplicate entry and "theme" preference's entry-->
         <ListPreference
             android:defaultValue="1"
             android:entries="@array/day_theme_labels"
@@ -64,8 +65,16 @@
             android:shouldDisableView="true"
             android:icon="@drawable/wallpaper_icon"
             android:title="@string/choose_an_image" />
+        <Preference
+            android:key="@string/pref_remove_wallpaper_key"
+            android:icon="@drawable/ic_delete_white"
+            android:title="@string/remove_wallpaper_image"/>
     </PreferenceCategory>
-    <PreferenceCategory android:title="@string/pref_cat_reviewer" >
+    <PreferenceCategory
+        android:title="@string/pref_cat_reviewer"
+        android:key="@string/study_screen_category_key"
+        >
+        <!-- This is ignored in the search as it opens a submenu. The submenu content is what should actually appear in search result. -->
         <Preference
             android:summary="@string/custom_buttons_summary"
             android:title="@string/custom_buttons"
@@ -98,7 +107,7 @@
         <SwitchPreferenceCompat
             android:key="@string/show_topbar_preference"
             android:defaultValue="true"
-            android:summary="@string/show_top_bar_summ"
+            android:summary="@string/show_top_bar_summary"
             android:title="@string/show_top_bar" />
         <SwitchPreferenceCompat
             android:key="@string/show_progress_preference"

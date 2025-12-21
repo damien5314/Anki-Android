@@ -46,20 +46,18 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="check_db_title">Sprawdź bazę danych</string>
     <string name="check_db_warning">To może zająć dużo czasu.</string>
-    <string name="contextmenu_deckpicker_delete_deck">Skasuj talię</string>
+    <string name="contextmenu_deckpicker_delete_deck" maxLength="28">Skasuj talię</string>
     <string name="delete_deck_title">Skasuj talię</string>
+    <plurals name="delete_deck_message">
+        <item quantity="one">Usunąć wszystkie karty z %1$s? Jest tam %2$d karta</item>
+        <item quantity="few">Usunąć wszystkie karty z %1$s? Są tam %2$d karty</item>
+        <item quantity="many">Usunąć wszystkie karty z %1$s? Jest tam %2$d kart</item>
+        <item quantity="other">Usunąć wszystkie karty z %1$s? Jest tam %2$d kart</item>
+    </plurals>
+    <string name="delete_cram_deck_message">Czy na pewno chcesz usunąć filtrowaną talię %s i przenieść wszystkie karty do ich oryginalnych talii?</string>
     <string name="no_tts_available_message">Brak dostępnego języka zamiany tekstu na mowę</string>
     <string name="tts_no_tts">Nie mów</string>
-    <string name="unused_strings">\n\nNieużywane pliki:\n</string>
-    <string name="reposition_card_dialog_title">Przestawianie nowej karty</string>
-    <string name="reposition_card_dialog_message">Pozycja początkowa:</string>
     <string name="reposition_card_not_new_error">Tylko nowe karty mogą być przestawione</string>
-    <plurals name="reposition_card_dialog_acknowledge">
-        <item quantity="one">%d karta przestawiona</item>
-        <item quantity="few">%d karty przestawione</item>
-        <item quantity="many">%d kart przestawiono</item>
-        <item quantity="other">%d kart przestawiono</item>
-    </plurals>
     <string name="reset_card_dialog_title">Reset postępu karty</string>
     <plurals name="reset_cards_dialog_acknowledge">
         <item quantity="one">%d karta zresetowana</item>
@@ -67,33 +65,23 @@
         <item quantity="many">%d kart zresetowano</item>
         <item quantity="other">%d kart zresetowano</item>
     </plurals>
-    <!-- Reschedule Card Dialog -->
-    <plurals name="reschedule_cards_dialog_acknowledge">
-        <item quantity="one">%d karta ponownie zaplanowana</item>
-        <item quantity="few">%d karty ponownie zaplanowane</item>
-        <item quantity="many">%d kart ponownie zaplanowano</item>
-        <item quantity="other">%d kart ponownie zaplanowano</item>
-    </plurals>
     <string name="answering_error_title">Błąd bazy danych</string>
-    <string name="answering_error_message">Wystąpił błąd podczas zapisywania do kolekcji. Powodem może być uszkodzenie bazy danych albo niewystarczająca ilość miejsca na dysku.\n\nJeśli błąd ten występuje często, spróbuj użyć opcji \"sprawdź bazę danych\" oraz naprawić kolekcję lub przywróć ją z kopii zapasowej (by tego dokonać kliknij „opcje”).\n\nRównie dobrze może to być też błąd AnkiDroid; zgłoś go abyśmy mogli to sprawdzić.</string>
+    <string name="answering_error_message">Wystąpił błąd podczas zapisywania do kolekcji. Powodem może być uszkodzenie bazy danych albo niewystarczająca ilość miejsca na dysku.\n\nJeśli błąd ten występuje często, spróbuj użyć opcji „sprawdź bazę danych” oraz naprawić kolekcję lub przywróć ją z kopii zapasowej (by tego dokonać kliknij „opcje”).\n\nRównie dobrze może to być też błąd AnkiDroid; zgłoś go, abyśmy mogli to sprawdzić.</string>
     <string name="answering_error_report">Zgłoś błąd</string>
-    <string name="storage_full_message">Nie ma wystarczającej ilości wolnego miejsca, aby otworzyć AnkiDroid. Zwolnij trochę miejsca, aby kontynuować. </string>
+    <string name="storage_full_message">Nie ma wystarczającej ilości wolnego miejsca, aby otworzyć AnkiDroid. Zwolnij trochę miejsca, aby kontynuować.</string>
     <string name="repair_deck_dialog">Czy na pewno chcesz próbować naprawić bazę danych? \n\nPrzed próbą naprawy zostanie utworzona kopia w katalogu \'%s\'.</string>
     <string name="intent_aedict_empty">Kategoria \'Domyślne\' jest pusta</string>
     <string name="intent_aedict_category">Aby dodać karty AnkiDroid usuń wszystkie kategorie Notatnika lub dodaj jedną o nazwie \'default\'</string>
-    <string name="custom_study_new_total_new">Nowe karty w talii: %d</string>
-    <string name="custom_study_rev_total_rev">Oczekujące na przejrzenie karty w talii: %d</string>
     <string name="custom_study_new_extend">Zwiększ/zmniejsz (“-3”) dzisiejszy limit nowych kart</string>
     <string name="custom_study_rev_extend">Zwiększ/zmniejsz (“-3”) dzisiejszy limit przeglądanych kart</string>
-    <string name="custom_study_forgotten">Przejrzyj zapomniane kartę z ostatnich x dni:</string>
+    <string name="custom_study_forgotten">Przejrzyj zapomniane karty z ostatnich x dni:</string>
     <string name="custom_study_ahead">Przejrzyj z wyprzedzeniem x dni:</string>
-    <string name="custom_study_random">Wybierz losowo x kart z talii:</string>
     <string name="custom_study_preview">Podgląd nowych kart dodanych w ostatnich x dniach:</string>
-    <string name="custom_study_rebuild_deck_corrupt">Nie udało się przebudować talii nauki niestandardowej</string>
+    <string name="custom_study_tags">Wybierz losowo x kart z talii:</string>
     <string name="storage_full_title">Pamięć jest pełna</string>
     <string name="storage_almost_full_title">Pamięć jest prawie pełna</string>
     <string name="no_space_to_downgrade_title" tools:ignore="UnusedResources">Brak miejsca</string>
-    <string name="no_space_to_downgrade_content" tools:ignore="UnusedResources">AnkiDroid potrzebuje %s wolnej przestrzeni dyskowej by kontynuować. Proszę zwolnij trochę miejsca</string>
+    <string name="no_space_to_downgrade_content" tools:ignore="UnusedResources">AnkiDroid potrzebuje %s wolnej przestrzeni dyskowej, by kontynuować. Zwolnij trochę miejsca</string>
     <string name="restore_backup_title">Odtworzyć kopię zapasową?</string>
     <string name="restore_backup">Kolekcja zostanie zastąpione starszą kopią. Wszelkie niezapisane postępy zostaną utracone.</string>
     <string name="restore_backup_choose_another">Wybierz inny</string>
@@ -107,24 +95,22 @@
     <string name="dialog_continue">Kontynuuj</string>
     <string name="dialog_processing">Przetwarzanie&#8230;</string>
     <string name="dialog_positive_create" comment="Create a new collection, probably erasing the previous one, may be necessary in case of error.">Utwórz</string>
-    <string name="dialog_positive_delete">Usuń</string>
+    <string name="dialog_positive_delete" maxLength="28">Usuń</string>
     <!-- Currently unsued, should be useful in the future -->
-    <string name="dialog_positive_disable" tools:ignore="UnusedResources">Wyłacz</string>
+    <string name="dialog_positive_disable" tools:ignore="UnusedResources">Wyłącz</string>
     <string name="dialog_positive_overwrite">Nadpisz</string>
     <string name="dialog_positive_repair">Napraw</string>
     <string name="dialog_positive_replace">Zastąp</string>
     <string name="dialog_collection_path_not_dir">Wybrana ścieżka nie wskazuje prawidłowo katalogu</string>
+    <string name="dialog_invalid_custom_certificate">Podany tekst nie rozwiązuje poprawnego certyfikatu X509 zakodowanego PEM</string>
+    <string name="dialog_invalid_custom_certificate_title">Błąd podczas parsowania certyfikatu</string>
+    <string name="dialog_updated_custom_certificate">Certyfikat zaktualizowany</string>
     <!-- Media checking -->
     <string name="check_media_title">Sprawdzić media?</string>
     <string name="check_media_warning">To może trwać bardzo długo przy dużych kolekcjach</string>
     <string name="check_media_message">Sprawdzanie mediów&#8230;</string>
-    <string name="check_media_acknowledge">Media sprawdzone</string>
-    <string name="check_media_invalid">Plików z błędnym kodowaniem: %d</string>
-    <string name="check_media_unused">Plików z foldera mediów, które nie są użyte na żadnej karcie: %d</string>
-    <string name="check_media_nohave">Plików wymienionych na kartach ale nie znalezionych w folderze mediów: %d</string>
-    <string name="check_media_no_unused_missing">Nie znaleziono nie używanych ani brakujących plików.</string>
-    <string name="check_media_db_updated">Baza mediów przebudowana.</string>
-    <string name="check_media_delete_unused">Usuń nieużywane</string>
+    <string name="check_media_adding_missing_tag">Dodawanie etykiet&#8230;</string>
+    <string name="check_media_tags_added">Etykiety dodane</string>
     <string name="delete_media_message">Usuwanie mediów&#8230;</string>
     <string name="delete_media_result_title">Wynik usuwania</string>
     <plurals name="delete_media_result_message">
@@ -139,15 +125,13 @@
     <string name="tags_dialog_option_due_cards" comment="Name of cards that are already been reviewed in the past, and that should be reviewed again">Do przejrzenia</string>
     <!-- Empty cards -->
     <string name="emtpy_cards_finding">Wyszukiwanie pustych kart&#8230;</string>
-    <string name="empty_cards_count">Kart do usunięcia: %d</string>
-    <string name="empty_cards_deleted">Usuniętych kart: %d</string>
     <!-- Multimedia - Edit Field Activity -->
     <string name="multimedia_editor_audio_permission_refused">Nie udało się uzyskać uprawnień do interakcji z mikrofonem.</string>
-    <string name="multimedia_editor_camera_permission_refused">Nie można uzyskać uprawnień aparatu. Funkcjonalność została wyłączona.</string>
     <string name="multimedia_editor_failed">Nie udało się otworzyć edytora multimediów</string>
     <!-- Multimedia - Audio View -->
     <string name="multimedia_editor_audio_permission_denied">Nie uzyskano uprawnienia do nagrywania dźwięków</string>
-    <string name="mutimedia_editor_assertion_failed">Wystąpił nieznany błąd podczas wyświetlania zaawansowanego edytora</string>
+    <string name="permission_denied">Brak uprawnień</string>
+    <string name="recording_permission_denied_message">Microphone permission is necessary for the “Record voice” feature. Please grant it in the app settings.</string>
     <!-- Database Integrity Check -->
     <string name="integrity_check_startup_title">AnkiDroid został zaktualizowany</string>
     <string name="integrity_check_startup_content">AnkiDroid został zaktualizowany. Ta aktualizacja zawiera poprawki dotyczące ewentualnych problemów z bazą danych. Zalecamy teraz sprawdzenie bazy danych.</string>
@@ -171,13 +155,11 @@
     <string name="error_deleting_image">Błąd podczas usuwania obrazu</string>
     <string name="failed_to_apply_background_image">Nie udało się ustawić obrazu w tle%s</string>
     <string name="background_image_too_large">Tło ekranu wyboru talii zbyt duże</string>
-    <string name="image_max_size_allowed">Maksymalny dozwolony rozmiar obrazu: %d MB </string>
+    <string name="image_max_size_allowed" comment="Consider keeping the unbreakable space after the digit">Maksymalny dozwolony rozmiar obrazu: %d MB</string>
     <string name="image_dimensions_too_large">Rozmiary obrazu są zbyt duże (%1$d × %2$d)</string>
     <!-- Global Intent handler -->
     <!-- Also used by Card Browser, not renaming to save translators effort -->
     <string name="intent_handler_failed_no_storage_permission">Brak wymaganych uprawnień do przechowywania danych. Proszę przyznać uprawnienia do pamięci, a następnie ponowić próbę.</string>
-    <!-- Browser Appearance -->
-    <string name="card_template_editor_card_browser_appearance_failed">Nie można załadować wyglądu przeglądarki kart</string>
     <!-- Boot Service -->
     <string name="boot_service_failed_to_schedule_notifications">Nie udało się ustawić przypomnień</string>
     <string name="boot_service_too_many_notifications">Ustawiono zbyt dużo przypomnień. Niektóre się nie pojawią</string>
@@ -193,7 +175,7 @@
     <string name="help_item_mailing_list">Lista mailingowa</string>
     <string name="help_item_reddit">Reddit</string>
     <string name="help_item_report_bug">Zgłoś błąd</string>
-    <string name="help_title_support_ankidroid">Wesprzyj AnkiDroid</string>
+    <string name="help_title_support_ankidroid" maxLength="28">Wesprzyj AnkiDroid</string>
     <string name="help_item_support_opencollective_donate">Wesprzyj</string>
     <string name="help_item_support_develop_ankidroid">Rozbuduj</string>
     <string name="help_item_support_rate_ankidroid">Oceń</string>
@@ -213,10 +195,10 @@
     <string name="help_dialog_exception_report_sent">Raport został wysłany!</string>
     <!--Sync-->
     <plurals name="sync_automatic_sync_needs_more_time">
-        <item quantity="one">Automatyczna synchronizacja może zostać uruchomiona za %d sekundę</item>
+        <item quantity="one" comment="Consider keeping the unbreakable space after the digit">Automatyczna synchronizacja może zostać uruchomiona za %d sekundę</item>
         <item quantity="few">Automatyczna synchronizacja może zostać uruchomiona za %d sekundy</item>
         <item quantity="many">Automatyczna synchronizacja może zostać uruchomiona za %d sekund</item>
-        <item quantity="other">Automatyczna synchronizacja może zostać uruchomiona za %d sekund</item>
+        <item quantity="other" comment="Consider keeping the unbreakable space after the digit">An automatic sync may be triggered in %d seconds</item>
     </plurals>
     <string name="metered_sync_data_warning">Twój dostawca Internetu może pobierać opłaty za korzystanie z danych</string>
     <string name="deck_picker_new">Liczba nowych kart do zobaczenia dziś w tej talii.</string>
@@ -229,49 +211,69 @@
     <string name="import_deck_package">Pakiet talii (.apkg)</string>
     <string name="import_collection_package">Pakiet kolekcji (.colpkg)</string>
     <string name="import_csv">Plik tekstowy (.txt, .csv)</string>
-    <!-- Deck selection dialog -->
-    <string name="cannot_create_subdeck_for_all_decks">Nie można utworzyć podtalii dla wszystkich talii</string>
     <!-- scoped storage -->
     <string name="backup_your_collection">Utwórz kopię zapasową swojej kolekcji</string>
     <string name="backup_collection_message">Nie wykonałeś kopii zapasowej swojej kolekcji przez jakiś czas. Powinieneś to zrobić teraz, aby zapobiec utracie danych</string>
-    <string name="button_backup">Kopia zapasowa</string>
+    <string name="button_backup" maxLength="41">Kopia zapasowa</string>
     <string name="button_disable_reminder">Wyłącz przypomnienie</string>
     <string name="button_backup_later" comment="dismiss the \'Backup\' dialog for around 2 weeks">Później</string>
     <string name="button_do_not_show_again" comment="permanently dismisses a dialog">Nie pokazuj ponownie</string>
     <string name="dismiss_backup_warning_title">Ostrzeżenie o utracie danych</string>
-    <string name="dismiss_backup_warning_new_user">        Ze względu na zmiany prywatności w systemie Android Twoje dane i automatyczne kopie zapasowe zostaną usunięte z telefonu, jeśli aplikacja zostanie odinstalowana
-    </string>
-    <string name="dismiss_backup_warning_upgrade">        Ze względu na zmiany prywatności w systemie Android Twoje dane i automatyczne kopie zapasowe będą niedostępne, jeśli aplikacja zostanie odinstalowana
-    </string>
+    <string name="dismiss_backup_warning_new_user">Ze względu na zmiany prywatności w systemie Android, twoje dane i automatyczne kopie zapasowe zostaną usunięte z telefonu, jeśli aplikacja zostanie odinstalowana</string>
+    <string name="dismiss_backup_warning_upgrade">Ze względu na zmiany prywatności w systemie Android Twoje dane i automatyczne kopie zapasowe będą niedostępne, jeśli aplikacja zostanie odinstalowana</string>
     <string name="deck_already_exists">Taka talia już istnieje</string>
-    <string name="create_deck_numeric_hint">If you have deck ordering issues (e.g. ‘10’ appears before ‘2’), replace ‘2’ with ‘02’</string>
+    <string name="empty_deck_name">Nazwa talii nie może być pusta</string>
+    <string name="create_deck_numeric_hint">W przypadku wystąpienia problemów związanych z kolejnością talii (np. „10” pojawia się przed „2”), „2” należy zastąpić „02”.</string>
     <!-- Set Due Date -->
-    <string name="set_due_date_match_interval" comment="when setting a card\'s due date, this checkbox also changes the interval of the card">Set interval to same value</string>
+    <string name="set_due_date_match_interval" comment="when setting a card\'s due date, this checkbox also changes the interval of the card">Ustaw interwał na tę samą wartość</string>
     <plurals name="set_due_date_single_day_label" comment="a date control is provided afterwards">
-        <item quantity="one">Show card in</item>
-        <item quantity="few">Show cards in</item>
-        <item quantity="many">Show cards in</item>
-        <item quantity="other">Show cards in</item>
+        <item quantity="one">Pokaż kartę za</item>
+        <item quantity="few">Pokaż karty za</item>
+        <item quantity="many">Pokaż karty za</item>
+        <item quantity="other">Pokaż karty za</item>
     </plurals>
     <plurals name="set_due_date_range_label" comment="a date control is provided afterwards">
-        <item quantity="one">Show card in range</item>
-        <item quantity="few">Show cards in range</item>
-        <item quantity="many">Show cards in range</item>
-        <item quantity="other">Show cards in range</item>
+        <item quantity="one">Pokaż kartę w przedziale</item>
+        <item quantity="few">Pokaż karty w przedziale</item>
+        <item quantity="many">Pokaż karty w przedziale</item>
+        <item quantity="other">Pokaż karty w przedziale</item>
     </plurals>
     <plurals name="set_due_date_label_suffix" comment="a suffix on a text field allowing a user to enter a number of days">
-        <item quantity="one">day</item>
-        <item quantity="few">days</item>
-        <item quantity="many">days</item>
-        <item quantity="other">days</item>
+        <item quantity="one">dzień</item>
+        <item quantity="few">dni</item>
+        <item quantity="many">dni</item>
+        <item quantity="other">dni</item>
+    </plurals>
+    <plurals name="set_due_date_current_interval">
+        <item quantity="one">Aktualna przerwa: %d dzień</item>
+        <item quantity="few">Aktualna przerwa: %d dni</item>
+        <item quantity="many">Aktualna przerwa: %d dni</item>
+        <item quantity="other">Current interval: %d days</item>
     </plurals>
     <string name="range_delimiter" comment="Placed between two input boxes to denote a range">–</string>
-    <string name="set_due_date_range_start" comment="\'Set Due Date\' may change the due date of a card to a random number of days in the future. This labels the \'minimum\' value of this range (inclusive)">From</string>
-    <string name="set_due_date_range_end" comment="\'Set Due Date\' may change the due date of a card to a random number of days in the future. This labels the \'maximum\' value of this range (inclusive)">To</string>
+    <string name="set_due_date_range_start" comment="\'Set Due Date\' may change the due date of a card to a random number of days in the future. This labels the \'minimum\' value of this range (inclusive)">Od</string>
+    <string name="set_due_date_range_end" comment="\'Set Due Date\' may change the due date of a card to a random number of days in the future. This labels the \'maximum\' value of this range (inclusive)">Do</string>
     <!-- Instant Note Editor -->
-    <string name="cloze_note_required">Cloze Type Note Required</string>
-    <string name="cloze_not_found_message">No Cloze type note found, open the Note Editor or try again after adding a Cloze type note.</string>
-    <string name="open">Open</string>
+    <string name="cloze_note_required">Wymagana Notatka typu \"Luka\"</string>
+    <string name="cloze_not_found_message">Nie znaleziono notatki typu Cloze, otwórz edytor notatek lub spróbuj ponownie po dodaniu notatki typu Cloze.</string>
+    <string name="open">Otwórz</string>
+    <string name="change_cloze_number">Zmień numer zamykający</string>
+    <string name="cloze_number">Numer zamknięcia:</string>
+    <string name="change_editor_mode">Zmień tryb edytora</string>
+    <string name="open_note_editor">Otwórz edytor notatek</string>
+    <string name="change_cloze_mode">Zmień numer zamykający</string>
     <!-- Outdated WebView dialog -->
-    <string name="webview_update_message">The system WebView is outdated. Some features won’t work correctly. Please update it.\n\nInstalled version: %1$d\nMinimum required version: %2$d</string>
+    <string name="webview_update_message">System WebView jest nieaktualny. Niektóre funkcje nie będą działać poprawnie. Zaktualizuj go.\n\nZainstalowana wersja: %1$d\nMinimalna wymagana wersja: %2$d</string>
+    <string name="compress">Kompresuj</string>
+    <!-- Tts playback error dialog -->
+    <string name="tts_error_dialog_title">Ten język nie jest obsługiwany</string>
+    <string name="tts_error_dialog_reason_text">Silnik zamiany tekstu na mowę <b>%1$s</b> nie obsługuje następującego języka: <b>%2$s</b></string>
+    <string name="tts_error_dialog_change_button_text">Zmień silnik</string>
+    <string name="tts_error_dialog_supported_voices_button_text">Opcje głosów</string>
+    <!-- import_cache_error_resolutions -->
+    <string name="import_error_resolution_try_again">Re-import the file</string>
+    <string name="import_error_resolution_free_up_space">Ensure there is sufficient free space on your device</string>
+    <string name="import_error_resolution_check_internet">Ensure you are connected to the internet</string>
+    <string name="import_error_resolution_copy_to_device">Copy the file to your device and try again with the local file</string>
+    <string name="import_error_resolution_select_file">Open the file using your device’s file browser app</string>
 </resources>

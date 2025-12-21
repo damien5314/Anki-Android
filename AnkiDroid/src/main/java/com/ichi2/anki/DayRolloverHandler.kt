@@ -26,16 +26,20 @@ package com.ichi2.anki
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.Intent.*
+import android.content.Intent.ACTION_TIMEZONE_CHANGED
+import android.content.Intent.ACTION_TIME_CHANGED
+import android.content.Intent.ACTION_TIME_TICK
 import android.content.IntentFilter
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import anki.collection.OpChanges
 import anki.collection.opChanges
 import com.ichi2.anki.CollectionManager.withOpenColOrNull
-import com.ichi2.libanki.ChangeManager
-import com.ichi2.libanki.EpochSeconds
-import com.ichi2.libanki.sched.Scheduler
+import com.ichi2.anki.exception.ManuallyReportedException
+import com.ichi2.anki.libanki.EpochSeconds
+import com.ichi2.anki.libanki.sched.Scheduler
+import com.ichi2.anki.observability.ChangeManager
+import com.ichi2.widget.WidgetStatus
 import kotlinx.coroutines.Dispatchers
 import timber.log.Timber
 
@@ -53,8 +57,7 @@ object DayRolloverHandler : BroadcastReceiver() {
 
     /** Receive an event each minute AND for time/timezone changes */
     fun listenForRolloverEvents(context: Context) {
-        fun register(filter: IntentFilter) =
-            ContextCompat.registerReceiver(context, DayRolloverHandler, filter, RECEIVER_EXPORTED)
+        fun register(filter: IntentFilter) = ContextCompat.registerReceiver(context, DayRolloverHandler, filter, RECEIVER_EXPORTED)
 
         Timber.d("listening for rollover events")
         // ACTION_TIME_TICK occurs every time the displayed time changes (once per minute)
@@ -64,12 +67,21 @@ object DayRolloverHandler : BroadcastReceiver() {
         register(IntentFilter(ACTION_TIMEZONE_CHANGED))
     }
 
-    override fun onReceive(context: Context?, intent: Intent?) {
+    override fun onReceive(
+        context: Context?,
+        intent: Intent?,
+    ) {
         // potential race condition if a timezone/tick change occur simultaneously
         // the outcome would be two calls to notifySubscribers, which is acceptable
         Timber.v("received ${intent?.action}")
         // launch coroutine as we need access to `col.sched`
-        AnkiDroidApp.applicationScope.launchCatching(Dispatchers.IO, errorMessageHandler = { Timber.w(it) }) {
+        AnkiDroidApp.applicationScope.launchCatching(Dispatchers.IO, errorMessageHandler = { msg ->
+            CrashReportService.sendExceptionReport(
+                e = ManuallyReportedException(msg),
+                origin = "DayRolloverHandler::onReceive",
+                onlyIfSilent = true,
+            )
+        }) {
             handleTimeChange()
         }
     }
@@ -91,9 +103,22 @@ object DayRolloverHandler : BroadcastReceiver() {
         Timber.i("day cutoff changed %d -> %d", lastCutoff, currentCutoff)
         // we do not want to send a "study queues changes" message initially
         if (lastCutoff != null) {
-            Timber.i("updating study queues")
-            ChangeManager.notifySubscribers(opChanges { studyQueues = true }, initiator = null)
+            handleDayRollover()
         }
         this.lastCutoff = currentCutoff
+    }
+
+    private fun handleDayRollover() {
+        Timber.i("day rollover occurred")
+
+        Timber.i("updating study queues")
+        ChangeManager.notifySubscribers(opChanges { studyQueues = true }, initiator = null)
+
+        Timber.i("day rollover: updating widgets")
+        try {
+            WidgetStatus.updateInBackground(AnkiDroidApp.instance)
+        } catch (e: Exception) {
+            Timber.w(e, "failed to update widgets")
+        }
     }
 }

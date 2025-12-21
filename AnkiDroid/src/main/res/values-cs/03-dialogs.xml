@@ -46,20 +46,18 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="check_db_title">Zkontrolovat databázi?</string>
     <string name="check_db_warning">Toto může trvat dlouhou dobu</string>
-    <string name="contextmenu_deckpicker_delete_deck">Odstranit balíček</string>
+    <string name="contextmenu_deckpicker_delete_deck" maxLength="28">Odstranit balíček</string>
     <string name="delete_deck_title">Odstranit balíček?</string>
+    <plurals name="delete_deck_message">
+        <item quantity="one">Vymazat všechny karty v %1$s? Obsahuje %2$d kartu</item>
+        <item quantity="few">Vymazat všechny karty v %1$s? Obsahuje %2$d karty</item>
+        <item quantity="many">Vymazat všechny karty v %1$s? Obsahuje %2$d karet</item>
+        <item quantity="other">Vymazat všechny karty v %1$s? Obsahuje %2$d karet</item>
+    </plurals>
+    <string name="delete_cram_deck_message">Vymazat filtrovaný balíček %s a poslat všechny karty zpět do jejich původních balíčků?</string>
     <string name="no_tts_available_message">Není dostupný žádný jazyk převodu textu na řeč</string>
     <string name="tts_no_tts">Nemluv</string>
-    <string name="unused_strings">\n\nNepoužité soubory:\n</string>
-    <string name="reposition_card_dialog_title">Změnit pořadí nové karty</string>
-    <string name="reposition_card_dialog_message">Počáteční pozice:</string>
     <string name="reposition_card_not_new_error">Změnit pořadí lze pouze u nových karet</string>
-    <plurals name="reposition_card_dialog_acknowledge">
-        <item quantity="one">%d karta přesunuta</item>
-        <item quantity="few">%d karty přesunuty</item>
-        <item quantity="many">%d karty přesunuto</item>
-        <item quantity="other">%d karet přesunuto</item>
-    </plurals>
     <string name="reset_card_dialog_title">Obnovit proces učení karty</string>
     <plurals name="reset_cards_dialog_acknowledge">
         <item quantity="one">%d karta obnovena</item>
@@ -67,29 +65,19 @@
         <item quantity="many">%d karty obnoveno</item>
         <item quantity="other">%d karet obnoveno</item>
     </plurals>
-    <!-- Reschedule Card Dialog -->
-    <plurals name="reschedule_cards_dialog_acknowledge">
-        <item quantity="one">%d karta přeplánována</item>
-        <item quantity="few">%d karty přeplánovány</item>
-        <item quantity="many">%d karty přeplánováno</item>
-        <item quantity="other">%d karet přeplánováno</item>
-    </plurals>
     <string name="answering_error_title">Chyba databáze</string>
     <string name="answering_error_message">Zápis do kolekce se nezdařil. Databáze může být poškozena nebo nemusí být dostatek prázdného místa na disku.\n\nPokud se to děje častěji, zkuste zkontrolovat databázi, opravit kolekci nebo ji obnovit ze zálohy. Klepněte na „možnosti“.\n\nNebo to může být také chyba AnkiDroid, prosím nahlaste chybu, abychom to mohli zkontrolovat.</string>
-    <string name="answering_error_report">Hlášení chyby</string>
-    <string name="storage_full_message">Není dostatek volného místa v úložišti pro otevření AnkiDroid. Uvolněte nějaké místo, abyste mohli pokračovat. </string>
+    <string name="answering_error_report">Nahlásit chybu</string>
+    <string name="storage_full_message">Není dostatek volného místa v úložišti pro otevření AnkiDroid. Uvolněte nějaké místo, abyste mohli pokračovat.</string>
     <string name="repair_deck_dialog">Opravdu se chcete pokusit opravit databázi?\n\nPřed obnovou bude vytvořena kopie v podadresáři „%s“.</string>
     <string name="intent_aedict_empty">Kategorie „výchozí“ je prázdná</string>
     <string name="intent_aedict_category">Chcete-li přidat karty do AnkiDroid, odstraňte všechny kategorie Poznámkového bloku nebo přidejte jednu s názvem „default“</string>
-    <string name="custom_study_new_total_new">Nové karty v balíčku: %d</string>
-    <string name="custom_study_rev_total_rev">K opakování v balíčku: %d</string>
     <string name="custom_study_new_extend">Zvýšit/snížit („-3“) dnešní limit nových karet o</string>
     <string name="custom_study_rev_extend">Zvýšit/snížit („-3“) dnešní limit opakování o</string>
     <string name="custom_study_forgotten">Opakovat zapomenuté karty z posledních x dnů:</string>
     <string name="custom_study_ahead">Opakovat dopředu o x dnů:</string>
-    <string name="custom_study_random">Vybrat náhodně x karet z balíčku:</string>
     <string name="custom_study_preview">Zkoušení nových karet přidaných v posledních x dnech:</string>
-    <string name="custom_study_rebuild_deck_corrupt">Nelze znovu sestavit balíček vlastního studia</string>
+    <string name="custom_study_tags">Vybrat x karet z balíčku:</string>
     <string name="storage_full_title">Úložiště je plné</string>
     <string name="storage_almost_full_title">Úložiště téměř plné</string>
     <string name="no_space_to_downgrade_title" tools:ignore="UnusedResources">Není místo</string>
@@ -107,24 +95,22 @@
     <string name="dialog_continue">Pokračovat</string>
     <string name="dialog_processing">Zpracovává se&#8230;</string>
     <string name="dialog_positive_create" comment="Create a new collection, probably erasing the previous one, may be necessary in case of error.">Vytvořit</string>
-    <string name="dialog_positive_delete">Odstranit</string>
+    <string name="dialog_positive_delete" maxLength="28">Odstranit</string>
     <!-- Currently unsued, should be useful in the future -->
     <string name="dialog_positive_disable" tools:ignore="UnusedResources">Zakázat</string>
     <string name="dialog_positive_overwrite">Přepsat</string>
     <string name="dialog_positive_repair">Opravit</string>
     <string name="dialog_positive_replace">Nahradit</string>
     <string name="dialog_collection_path_not_dir">Zadaná cesta není platný adresář</string>
+    <string name="dialog_invalid_custom_certificate">Zadaný text neposkytuje platný certifikát X509 v kódování PEM.</string>
+    <string name="dialog_invalid_custom_certificate_title">Chyba zpracování certifikátu</string>
+    <string name="dialog_updated_custom_certificate">Certifikát aktualizován</string>
     <!-- Media checking -->
     <string name="check_media_title">Zkontrolovat multimédia?</string>
     <string name="check_media_warning">Toto může trvat dlouhou dobu u velké sbírky multimédií</string>
     <string name="check_media_message">Kontrolují se multimédia&#8230;</string>
-    <string name="check_media_acknowledge">Multimédia zkontrolována</string>
-    <string name="check_media_invalid">Soubory s neplatným kódováním: %d</string>
-    <string name="check_media_unused">Soubory ve složce s multimédii, ale nejsou používány na žádné kartě: %d</string>
-    <string name="check_media_nohave">Soubory používané na kartách, ale nejsou ve složce s multimédii: %d</string>
-    <string name="check_media_no_unused_missing">Nenalezeny žádné nepoužívané nebo chybějící soubory</string>
-    <string name="check_media_db_updated">Multimediální databáze opravena</string>
-    <string name="check_media_delete_unused">Odstranit nepoužité</string>
+    <string name="check_media_adding_missing_tag">Přidávání štítků&#8230;</string>
+    <string name="check_media_tags_added">Štítky přidány</string>
     <string name="delete_media_message">Odstraňují se multimédia&#8230;</string>
     <string name="delete_media_result_title">Výsledek odstraňování</string>
     <plurals name="delete_media_result_message">
@@ -139,15 +125,13 @@
     <string name="tags_dialog_option_due_cards" comment="Name of cards that are already been reviewed in the past, and that should be reviewed again">Ke zkoušení</string>
     <!-- Empty cards -->
     <string name="emtpy_cards_finding">Hledají se prázdné karty&#8230;</string>
-    <string name="empty_cards_count">Karet k odstranění: %d</string>
-    <string name="empty_cards_deleted">Odstraněno karet: %d</string>
     <!-- Multimedia - Edit Field Activity -->
     <string name="multimedia_editor_audio_permission_refused">Nelze získat oprávnění k mikrofonu.</string>
-    <string name="multimedia_editor_camera_permission_refused">Nelze získat oprávnění k fotoaparátu. Funkcionalita byla zakázána.</string>
     <string name="multimedia_editor_failed">Nepodařilo se otevřít multimediální editor</string>
     <!-- Multimedia - Audio View -->
     <string name="multimedia_editor_audio_permission_denied">Oprávnění k nahrávání zvuku bylo odepřeno</string>
-    <string name="mutimedia_editor_assertion_failed">Nastala neznámá chyba při zobrazování pokročilého editoru</string>
+    <string name="permission_denied">Oprávnění zamítnuto</string>
+    <string name="recording_permission_denied_message">Oprávnění k mikrofonu je nezbytné pro funkci „Nahrávat hlas“. Prosím, povolte jej v nastavení aplikace.</string>
     <!-- Database Integrity Check -->
     <string name="integrity_check_startup_title">AnkiDroid aktualizován</string>
     <string name="integrity_check_startup_content">AnkiDroid byl aktualizován. Tato aktualizace obsahuje opravy možných problémů databáze, a doporučuje se nyní spustit kontrolu databáze.</string>
@@ -171,13 +155,11 @@
     <string name="error_deleting_image">Chyba při odstraňování obrázku</string>
     <string name="failed_to_apply_background_image">Nepodařilo se použít obrázek pozadí %s</string>
     <string name="background_image_too_large">Pozadí výběru balíčků je příliš velké</string>
-    <string name="image_max_size_allowed">Povolená maximální velikost obrázku %d MB</string>
+    <string name="image_max_size_allowed" comment="Consider keeping the unbreakable space after the digit">Povolená maximální velikost obrázku %d MB</string>
     <string name="image_dimensions_too_large">Rozměry obrázku jsou příliš velké (%1$d × %2$d)</string>
     <!-- Global Intent handler -->
     <!-- Also used by Card Browser, not renaming to save translators effort -->
     <string name="intent_handler_failed_no_storage_permission">Chybí požadované oprávnění k úložišti. Prosím udělte oprávnění k úložišti a zkuste to znovu.</string>
-    <!-- Browser Appearance -->
-    <string name="card_template_editor_card_browser_appearance_failed">Nelze načíst vzhled prohlížeče karet</string>
     <!-- Boot Service -->
     <string name="boot_service_failed_to_schedule_notifications">Nepodařilo se naplánovat upomínky</string>
     <string name="boot_service_too_many_notifications">Naplánováno příliš mnoho upomínek. Některé se nezobrazí</string>
@@ -193,7 +175,7 @@
     <string name="help_item_mailing_list">Emailová diskuzní skupina</string>
     <string name="help_item_reddit">Reddit</string>
     <string name="help_item_report_bug">Nahlásit chybu</string>
-    <string name="help_title_support_ankidroid">Podpořit AnkiDroid</string>
+    <string name="help_title_support_ankidroid" maxLength="28">Podpořit AnkiDroid</string>
     <string name="help_item_support_opencollective_donate">Přispět</string>
     <string name="help_item_support_develop_ankidroid">Vyvíjet</string>
     <string name="help_item_support_rate_ankidroid">Ohodnotit</string>
@@ -213,10 +195,10 @@
     <string name="help_dialog_exception_report_sent">Nahlášení bylo odesláno!</string>
     <!--Sync-->
     <plurals name="sync_automatic_sync_needs_more_time">
-        <item quantity="one">Automatická synchronizace může být spuštěna za %d sekundu</item>
+        <item quantity="one" comment="Consider keeping the unbreakable space after the digit">Automatická synchronizace může být spuštěna za %d sekundu</item>
         <item quantity="few">Automatická synchronizace může být spuštěna za %d sekundy</item>
-        <item quantity="many">Automatická synchronizace může být spuštěna za %d sekundy</item>
-        <item quantity="other">Automatická synchronizace může být spuštěna za %d sekund</item>
+        <item quantity="many">Automatická synchronizace může být spuštěna za %d sekund</item>
+        <item quantity="other" comment="Consider keeping the unbreakable space after the digit">Automatická synchronizace může být spuštěna za %d sekund</item>
     </plurals>
     <string name="metered_sync_data_warning">Váš poskytovatel internetu si může účtovat poplatky za používání dat</string>
     <string name="deck_picker_new">Počet nových karet dnes k učení v tomto balíčku.</string>
@@ -229,21 +211,18 @@
     <string name="import_deck_package">Balíček (.apkg)</string>
     <string name="import_collection_package">Kolekce (.colpkg)</string>
     <string name="import_csv">Textový soubor (.txt, .csv)</string>
-    <!-- Deck selection dialog -->
-    <string name="cannot_create_subdeck_for_all_decks">Nemůžete vytvořit podřízený balíček pro všechny balíčky</string>
     <!-- scoped storage -->
     <string name="backup_your_collection">Zálohovat vaši kolekci</string>
     <string name="backup_collection_message">Nějakou dobu jste nezálohovali svou kolekci. Měli byste to udělat teď, abyste zabránili ztrátě dat</string>
-    <string name="button_backup">Zálohovat</string>
+    <string name="button_backup" maxLength="41">Zálohovat</string>
     <string name="button_disable_reminder">Zrušit upomínku</string>
     <string name="button_backup_later" comment="dismiss the \'Backup\' dialog for around 2 weeks">Později</string>
     <string name="button_do_not_show_again" comment="permanently dismisses a dialog">Znovu nezobrazovat</string>
     <string name="dismiss_backup_warning_title">Varování před ztrátou dat</string>
-    <string name="dismiss_backup_warning_new_user">        V důsledku změn ochrany osobních údajů systému Android budou vaše data a automatické zálohy odstraněny z telefonu, pokud bude aplikace odinstalována
-    </string>
-    <string name="dismiss_backup_warning_upgrade">        V důsledku změn ochrany osobních údajů systému Android budou vaše data a automatické zálohy nedostupné, pokud bude aplikace odinstalována
-    </string>
+    <string name="dismiss_backup_warning_new_user">V důsledku změn ochrany osobních údajů systému Android budou vaše data a automatické zálohy odstraněny z telefonu, pokud bude aplikace odinstalována</string>
+    <string name="dismiss_backup_warning_upgrade">V důsledku změn ochrany osobních údajů systému Android budou vaše data a automatické zálohy nedostupné, pokud bude aplikace odinstalována</string>
     <string name="deck_already_exists">Balíček již existuje</string>
+    <string name="empty_deck_name">Název balíčku nemůže být prázdný</string>
     <string name="create_deck_numeric_hint">Pokud máte problémy s pořadím balíčků (např. „10“ je před „2“), nahraďte „2“ číslem „02“</string>
     <!-- Set Due Date -->
     <string name="set_due_date_match_interval" comment="when setting a card\'s due date, this checkbox also changes the interval of the card">Nastavit interval na stejnou hodnotu</string>
@@ -265,13 +244,36 @@
         <item quantity="many">dne</item>
         <item quantity="other">dní</item>
     </plurals>
+    <plurals name="set_due_date_current_interval">
+        <item quantity="one">Současný interval: %d den</item>
+        <item quantity="few">Současný interval: %d dny</item>
+        <item quantity="many">Současný interval: %d dní</item>
+        <item quantity="other">Současný interval: %d dní</item>
+    </plurals>
     <string name="range_delimiter" comment="Placed between two input boxes to denote a range">–</string>
     <string name="set_due_date_range_start" comment="\'Set Due Date\' may change the due date of a card to a random number of days in the future. This labels the \'minimum\' value of this range (inclusive)">Od</string>
     <string name="set_due_date_range_end" comment="\'Set Due Date\' may change the due date of a card to a random number of days in the future. This labels the \'maximum\' value of this range (inclusive)">Do</string>
     <!-- Instant Note Editor -->
-    <string name="cloze_note_required">Cloze Type Note Required</string>
-    <string name="cloze_not_found_message">No Cloze type note found, open the Note Editor or try again after adding a Cloze type note.</string>
-    <string name="open">Open</string>
+    <string name="cloze_note_required">Je vyžadována poznámka typu doplňovačka</string>
+    <string name="cloze_not_found_message">Nebyla nalezena žádná poznámka typu doplňovačka, otevřete editor poznámek nebo to zkuste znovu po přidání poznámky typu doplňovačka.</string>
+    <string name="open">Otevřít</string>
+    <string name="change_cloze_number">Změnit číslo doplňovačky</string>
+    <string name="cloze_number">Číslo doplňovačky</string>
+    <string name="change_editor_mode">Změnit režim editoru</string>
+    <string name="open_note_editor">Otevřít editor poznámek</string>
+    <string name="change_cloze_mode">Změnit režim doplňovačky</string>
     <!-- Outdated WebView dialog -->
     <string name="webview_update_message">Systémový WebView je zastaralý. Některé funkce nebudou fungovat správně. Aktualizujte jej prosím.\n\nNainstalovaná verze: %1$d\nMinimální požadovaná verze: %2$d</string>
+    <string name="compress">Komprimovat</string>
+    <!-- Tts playback error dialog -->
+    <string name="tts_error_dialog_title">Jazyk není podporován</string>
+    <string name="tts_error_dialog_reason_text">Modul převodu textu na řeč <b>%1$s</b> nepodporuje následující jazyk: <b>%2$s</b></string>
+    <string name="tts_error_dialog_change_button_text">Změnit modul</string>
+    <string name="tts_error_dialog_supported_voices_button_text">Možnosti hlasu</string>
+    <!-- import_cache_error_resolutions -->
+    <string name="import_error_resolution_try_again">Znovu importovat soubor</string>
+    <string name="import_error_resolution_free_up_space">Ujistěte se, že je na vašem zařízení dostatek volného místa</string>
+    <string name="import_error_resolution_check_internet">Ujistěte se, že jste připojeni k internetu</string>
+    <string name="import_error_resolution_copy_to_device">Zkopírujte soubor do vašeho zařízení a zkuste to znovu s tímto místním souborem</string>
+    <string name="import_error_resolution_select_file">Otevřete soubor pomocí aplikace prohlížeč souborů ve vašem zařízení</string>
 </resources>

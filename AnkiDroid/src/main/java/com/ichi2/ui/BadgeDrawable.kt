@@ -22,12 +22,20 @@ import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.DrawableWrapper
 
-class BadgeDrawable(dr: Drawable?) : DrawableWrapper(dr) {
+/**
+ * Creates a new wrapper around the specified drawable.
+ *
+ * @param dr the drawable to wrap
+ */
+class BadgeDrawable(
+    dr: Drawable?,
+) : DrawableWrapper(dr) {
     private val paint: Paint = Paint()
     private var badge: Drawable? = null
     private var text: String? = null
     private var textX = 0f
     private var textY = 0f
+
     fun setBadgeDrawable(view: Drawable) {
         badge = view
         invalidateSize()
@@ -68,11 +76,12 @@ class BadgeDrawable(dr: Drawable?) : DrawableWrapper(dr) {
             }
         }
     private val iconScale: Double
-        get() = if (isShowingText) {
-            ICON_SCALE_TEXT
-        } else {
-            ICON_SCALE_BARE
-        }
+        get() =
+            if (isShowingText) {
+                ICON_SCALE_TEXT
+            } else {
+                ICON_SCALE_BARE
+            }
     private val isShowingText: Boolean
         get() = text != null && text!!.isNotEmpty()
 
@@ -96,11 +105,6 @@ class BadgeDrawable(dr: Drawable?) : DrawableWrapper(dr) {
         const val ICON_SCALE_BARE = 0.40
     }
 
-    /**
-     * Creates a new wrapper around the specified drawable.
-     *
-     * @param dr the drawable to wrap
-     */
     init {
         paint.typeface = Typeface.DEFAULT_BOLD
         paint.textAlign = Paint.Align.CENTER

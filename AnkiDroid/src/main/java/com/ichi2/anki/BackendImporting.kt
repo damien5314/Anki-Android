@@ -1,18 +1,18 @@
-/***************************************************************************************
- * Copyright (c) 2022 Ankitects Pty Ltd <http://apps.ankiweb.net>                       *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2022 Ankitects Pty Ltd <http://apps.ankiweb.net>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 package com.ichi2.anki
 
@@ -21,11 +21,10 @@ import android.net.Uri
 import androidx.fragment.app.FragmentActivity
 import anki.collection.OpChangesOnly
 import anki.import_export.ImportAnkiPackageRequest
+import anki.search.SearchNode
 import com.ichi2.anki.CollectionManager.withCol
-import com.ichi2.libanki.buildSearchString
-import com.ichi2.libanki.importAnkiPackage
-import com.ichi2.libanki.importCsvRaw
-import com.ichi2.libanki.undoableOp
+import com.ichi2.anki.libanki.importCsvRaw
+import com.ichi2.anki.observability.undoableOp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -39,14 +38,13 @@ suspend fun importAnkiPackageUndoable(input: ByteArray): ByteArray {
     }
 }
 
-suspend fun importCsvRaw(input: ByteArray): ByteArray {
-    return withContext(Dispatchers.Main) {
+suspend fun importCsvRaw(input: ByteArray): ByteArray =
+    withContext(Dispatchers.Main) {
         val output = withCol { importCsvRaw(input) }
         val changes = OpChangesOnly.parseFrom(output)
         undoableOp { changes }
         output
     }
-}
 
 /**
  * Css to hide the "Show" button from the final backend import page. As the user could import a lot
@@ -56,7 +54,8 @@ suspend fun importCsvRaw(input: ByteArray): ByteArray {
  *
  * NOTE: this should be used only with [android.webkit.WebView.evaluateJavascript].
  */
-val hideShowButtonCss = """
+val hideShowButtonCss =
+    """
     javascript:(
         function() {
             var hideShowButtonStyle = '.desktop-only { display: none !important; }';
@@ -65,18 +64,19 @@ val hideShowButtonCss = """
             document.head.appendChild(newStyle);       
         }
     )()
-""".trimIndent()
+    """.trimIndent()
 
 /**
  * Calls the native [CardBrowser] to display the results of the search query constructed from the
  * input. This method will always return the received input.
  */
 suspend fun FragmentActivity.searchInBrowser(input: ByteArray): ByteArray {
-    val searchString = withCol { buildSearchString(input) }
-    val starterIntent = Intent(this, CardBrowser::class.java).apply {
-        putExtra("search_query", searchString)
-        putExtra("all_decks", true)
-    }
+    val searchString = withCol { buildSearchString(listOf(SearchNode.parseFrom(input))) }
+    val starterIntent =
+        Intent(this, CardBrowser::class.java).apply {
+            putExtra("search_query", searchString)
+            putExtra("all_decks", true)
+        }
     startActivity(starterIntent)
     return input
 }

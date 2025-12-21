@@ -1,6 +1,6 @@
 AnkiDroid ᱛᱮ ᱪᱮᱫ ᱦᱚᱸ ᱢᱚᱱᱮ ᱫᱚᱦᱚᱭ ᱢᱮ!
 
-Ankidroid ᱟᱢ ᱦᱤᱲᱤᱧ ᱢᱟᱲᱟᱝ ᱨᱮ ᱟᱢ ᱥᱚᱢᱟᱝ ᱨᱮ ᱯᱷᱞᱟᱥᱠᱟᱰ ᱫᱮᱠᱷᱟᱣᱠᱟᱛᱮ ᱢᱚᱱᱮ ᱫᱚᱦᱚᱼᱦᱚᱪᱚᱭ ᱢᱮᱭᱟᱭ ᱾  ᱱᱚᱶᱟ ᱫᱚ ᱡᱟᱭᱜᱟ ᱟᱲᱟᱜ ᱫᱩᱦᱲᱟᱹ ᱥᱚᱯᱷᱴᱣᱮᱨ Anki(ᱟᱹᱛᱩᱨ ᱟᱬᱜᱚ ᱢᱮᱥᱟ) ᱥᱟᱞᱟᱜ ᱛᱮ ᱵᱮᱥ ᱪᱚᱨᱚᱠ ᱠᱟᱹᱢᱤ ᱟᱭ, ᱱᱚᱶᱟ ᱫᱚ Windows, Linix ᱟᱨ MacOS ᱞᱟᱹᱜᱤᱫ ᱢᱮᱱᱟᱜᱼᱟ ᱾
+Ankidroid ᱟᱢ ᱦᱤᱲᱤᱧ ᱢᱟᱲᱟᱝ ᱨᱮ ᱟᱢ ᱥᱚᱢᱟᱝ ᱨᱮ ᱯᱷᱞᱟᱥᱠᱟᱰ ᱫᱮᱠᱷᱟᱣᱠᱟᱛᱮ ᱢᱚᱱᱮ ᱫᱚᱦᱚᱼᱦᱚᱪᱚᱭ ᱢᱮᱭᱟᱭ ᱾  It is fully compatible with the spaced repetition software Anki (including synchronization), which is available for Windows, Linux and macOS.
 
 ᱡᱟᱦᱟᱸ ᱨᱮ ᱡᱟᱦᱟᱱᱟᱜ ᱜᱮ ᱡᱟᱦᱟᱸᱛᱤᱨᱮᱦᱚᱸ ᱯᱟᱲᱦᱟᱣ ᱢᱮ ᱾ᱹ ᱵᱚᱥ ᱨᱮ ᱪᱟᱞᱟᱜ ᱡᱷᱚᱜ , ᱥᱩᱯᱟᱹᱨᱢᱟᱨᱠᱮᱴ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱭᱤᱱ ᱟᱨ ᱵᱟᱝ ᱚᱞᱜᱟ ᱛᱟᱹᱝᱜᱤ ᱡᱷᱚᱜ ᱠᱷᱟᱹᱞᱤ ᱥᱚᱢᱚᱭ ᱨᱮᱭᱟᱜ ᱵᱮᱵᱦᱟᱨ  ᱢᱮ! 
 
@@ -10,9 +10,9 @@ Ankidroid ᱟᱢ ᱦᱤᱲᱤᱧ ᱢᱟᱲᱟᱝ ᱨᱮ ᱟᱢ ᱥᱚᱢᱟᱝ �
 
 ★ ᱚᱥᱚᱞ  ᱯᱷᱤᱪᱚᱨ ᱠᱚ:
 • ᱯᱷᱞᱟᱥᱠᱟᱰ ᱥᱟᱯᱚᱴ ᱡᱤᱱᱤᱥ ᱠᱚ: text, images, sounds,  LaTeX
-• ᱥᱯᱮᱥ ᱨᱤᱯᱤᱴᱮᱥᱚᱱ ᱠᱚ  (supermemo 2 algorithm)
+• spaced repetition (AI-optimized FSRS algorithm)
 • ᱚᱞ-ᱠᱷᱚᱱ-ᱨᱚᱲ ᱢᱮᱥᱟ ᱢᱤᱫ
-• ᱖᱐᱐᱐ ᱠᱷᱚᱱ ᱡᱟᱹᱥᱛᱤ ᱢᱟᱲᱟᱝ ᱠᱷᱚᱱ  ᱛᱮᱭᱟᱨ ᱰᱮᱠ ᱠᱚ
+• more than 10,000 premade decks
 • ᱞᱟᱦᱟᱜ ᱠᱟᱱ  ᱣᱤᱰᱡᱮᱴ
 • ᱵᱤᱵᱨᱚᱬ ᱮᱞᱠᱷᱟ  ᱛᱟᱹᱞᱤᱠᱟ
 • AnkiWeb  ᱥᱟᱞᱟᱜ ᱟᱹᱭᱩᱨ ᱢᱤᱫ

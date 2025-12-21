@@ -1,4 +1,4 @@
-name: Publish
+name: 🚀 Publish
 
 on:
   workflow_dispatch:
@@ -8,13 +8,22 @@ on:
         required: false
         type: string
 
+
+# We want concurrency control to allow multiple runs, but serially
+# Otherwise if you run two publishes that upload to google at same time
+# (for instance on a release branch for beta, and main for alpha), google
+# will error as it can only handle one edit in publish account at once
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   release_app:
     name: 'Release App'
     timeout-minutes: 120
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/cache@v4
         name: Gradle Cache
@@ -23,18 +32,13 @@ jobs:
           key: gradle-${{ hashFiles('**/*.gradle*') }}-v1
 
       - name: Configure JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: "temurin"
           java-version: "21"
 
       - name: Install Release Utilities
         run: |
-          mkdir ~/bin/
-          curl -L -o ~/bin/github-release.bz2 https://github.com/github-release/github-release/releases/download/v0.10.0/linux-amd64-github-release.bz2
-          cd ~/bin
-          bunzip2 github-release.bz2
-          chmod 755 ~/bin/github-release
           sudo chown -R $USER /var/lib/gems/
           sudo chown -R $USER /usr/local/bin
           gem install asciidoctor
@@ -47,21 +51,23 @@ jobs:
           git remote set-url origin git@github.com:$GITHUB_REPOSITORY
         shell: bash
 
-      - uses: webfactory/ssh-agent@v0.9.0
+      - uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Credential Prep
         run: |
-          echo "KSTOREPWD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "KEYSTOREPATH=$HOME/src/android-keystore" >> $GITHUB_ENV
+          echo "KEYALIAS=nrkeystorealias" >> $GITHUB_ENV
+          echo "KEYSTOREPWD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
           echo "KEYPWD=${{ secrets.KEYSTORE_KEY_PASSWORD }}" >> $GITHUB_ENV
           mkdir ~/src
-          echo "${{ secrets.AMAZON_PUBLISH_CREDENTIALS }}" | base64 -d > ~/src/AnkiDroid-Amazon-Publish-Security-Profile.json.gz
-          echo "${{ secrets.GOOGLE_PUBLISH_CREDENTIALS }}" | base64 -d > ~/src/AnkiDroid-GCP-Publish-Credentials.json.gz
-          echo "${{ secrets.RELEASES_PUBLISH_TOKEN }}" | base64 -d > ~/src/my-github-personal-access-token.gz
-          echo "${{ secrets.KEYSTORE }}" | base64 -d > ~/src/android-keystore.gz
           cd ~/src
-          gunzip *gz
+          echo "${{ secrets.AMAZON_PUBLISH_CREDENTIALS }}" | base64 -d > ./AnkiDroid-Amazon-Publish-Security-Profile.json.gz
+          echo "${{ secrets.GOOGLE_PUBLISH_CREDENTIALS }}" | base64 -d > ./AnkiDroid-GCP-Publish-Credentials.json.gz
+          echo "${{ secrets.RELEASES_PUBLISH_TOKEN }}" | base64 -d > ./my-github-personal-access-token.gz
+          echo "${{ secrets.KEYSTORE }}" | base64 -d > ./android-keystore.gz
+          gunzip *.gz
         shell: bash
 
       - name: Build and Release public release

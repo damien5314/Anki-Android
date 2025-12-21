@@ -26,8 +26,8 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceViewHolder
 import com.google.android.material.slider.Slider
 import com.ichi2.anki.R
+import com.ichi2.anki.common.annotations.NeedsTest
 import com.ichi2.anki.utils.getFormattedStringOrPlurals
-import com.ichi2.annotations.NeedsTest
 
 /**
  * Similar to [androidx.preference.SeekBarPreference],
@@ -48,14 +48,17 @@ import com.ichi2.annotations.NeedsTest
  *       Format `string` or `plurals` to be used as template to display the value in the preference summary.
  *       There must be ONLY ONE placeholder, which will be replaced by the preference value.
  * * app:displayValue (*optional*): whether to show the current preference value on a TextView
- *       by the end of the slider
+ *       by the end of the preference
  * * app:displayFormat (*optional*): Format string to be used as template to display the value by
  *       the end of the slider. There must be ONLY ONE placeholder,
  *       which will be replaced by the preference value.
  *       `displayValue` is always true if a `displayFormat` is provided.
  */
 @NeedsTest("onTouchListener is only called once")
-class SliderPreference(context: Context, attrs: AttributeSet? = null) : Preference(context, attrs) {
+class SliderPreference(
+    context: Context,
+    attrs: AttributeSet? = null,
+) : Preference(context, attrs) {
     private var valueFrom: Int = 0
     private var valueTo: Int = 0
     private var stepSize: Float = 1F
@@ -67,16 +70,17 @@ class SliderPreference(context: Context, attrs: AttributeSet? = null) : Preferen
     // flyweight pattern: all listeners for an instance of the class as the same
     // We also need to avoid any method-level closures: this callback is unused
     // the second time `onBindViewHolder` is called
-    private val onTouchListener = object : Slider.OnSliderTouchListener {
-        override fun onStartTrackingTouch(slider: Slider) {}
+    private val onTouchListener =
+        object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {}
 
-        override fun onStopTrackingTouch(slider: Slider) {
-            val sliderValue = slider.value.toInt()
-            if (sliderValue != value && callChangeListener(sliderValue)) {
-                value = sliderValue
+            override fun onStopTrackingTouch(slider: Slider) {
+                val sliderValue = slider.value.toInt()
+                if (sliderValue != value && callChangeListener(sliderValue)) {
+                    value = sliderValue
+                }
             }
         }
-    }
 
     var value: Int = valueFrom
         set(value) {
@@ -101,8 +105,9 @@ class SliderPreference(context: Context, attrs: AttributeSet? = null) : Preferen
         }
 
         context.withStyledAttributes(attrs, R.styleable.CustomPreference) {
-            summaryFormatResource = getResourceId(R.styleable.CustomPreference_summaryFormat, 0)
-                .takeIf { it != 0 }
+            summaryFormatResource =
+                getResourceId(R.styleable.CustomPreference_summaryFormat, 0)
+                    .takeIf { it != 0 }
         }
 
         context.withStyledAttributes(attrs, R.styleable.SliderPreference) {
@@ -112,9 +117,11 @@ class SliderPreference(context: Context, attrs: AttributeSet? = null) : Preferen
         }
     }
 
-    override fun onGetDefaultValue(a: TypedArray, index: Int): Any {
-        return a.getInt(index, valueFrom)
-    }
+    override fun onGetDefaultValue(
+        a: TypedArray,
+        index: Int,
+    ): Any = a.getInt(index, valueFrom)
+
     override fun onSetInitialValue(defaultValue: Any?) {
         value = getPersistedInt(defaultValue as Int? ?: valueFrom)
     }
@@ -137,12 +144,26 @@ class SliderPreference(context: Context, attrs: AttributeSet? = null) : Preferen
             summaryView.visibility = View.VISIBLE
         }
 
-        val displayValueTextView = holder.findViewById(R.id.valueDisplay) as TextView
+        val displayValueTextView = holder.findViewById(R.id.value_display) as TextView
         if (displayValue) {
             displayValueTextView.text = displayFormat?.let { String.format(it, value) }
                 ?: value.toString()
         } else {
             displayValueTextView.visibility = View.GONE
+        }
+    }
+
+    /**
+     * Sets the callback to be invoked when this preference is changed by the user
+     * (but before the internal state has been updated) on the internal onPreferenceChangeListener,
+     * returning true on it by default
+     * @param onPreferenceChangeListener The callback to be invoked
+     */
+    fun setOnPreferenceChangeListener(onPreferenceChangeListener: (newValue: Int) -> Unit) {
+        setOnPreferenceChangeListener { _, newValue ->
+            if (newValue !is Int) return@setOnPreferenceChangeListener false
+            onPreferenceChangeListener(newValue)
+            true
         }
     }
 

@@ -10,14 +10,8 @@
     android:paddingTop="12dp">
 
     <!-- Editor -->
-    <com.ichi2.ui.FixedTextView
-        android:id="@+id/title_edit"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="5dp"
-        android:focusable="true"
-        android:text="@string/card_template_editor_front" />
     <ScrollView
+        android:id="@+id/scroll_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -29,7 +23,7 @@
             android:gravity="center"
             android:orientation="vertical" >
             <com.ichi2.ui.FixedEditText
-                android:id="@+id/editor_editText"
+                android:id="@+id/edit_text"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_margin="5dp"
@@ -42,12 +36,12 @@
     </ScrollView>
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/card_template_editor_bottom_navigation"
+        android:id="@+id/bottom_navigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         style="@style/BottomNavigationViewStyle"
-        android:background="?attr/appBarColor"
+        android:background="?attr/alternativeBackgroundColor"
         app:menu="@menu/card_template_editor_navigation_bar_menu"
         />
 

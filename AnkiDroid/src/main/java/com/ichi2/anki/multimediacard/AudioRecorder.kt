@@ -22,21 +22,25 @@ package com.ichi2.anki.multimediacard
 
 import android.content.Context
 import android.media.MediaRecorder
-import android.os.Build
 import com.ichi2.compat.CompatHelper
 import timber.log.Timber
+import java.io.File
 import java.io.IOException
 
 class AudioRecorder {
     private lateinit var recorder: MediaRecorder
     private var onRecordingInitialized: Runnable? = null
     private var previousNonZeroAmplitude = 0
-    private fun initMediaRecorder(context: Context, audioPath: String): MediaRecorder {
+
+    private fun initMediaRecorder(
+        context: Context,
+        audioPath: File,
+    ): MediaRecorder {
         val mr = CompatHelper.compat.getMediaRecorder(context)
         mr.setAudioSource(MediaRecorder.AudioSource.MIC)
         mr.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
         onRecordingInitialized()
-        mr.setOutputFile(audioPath) // audioPath could change
+        mr.setOutputFile(audioPath.absolutePath) // audioPath could change
         return mr
     }
 
@@ -45,7 +49,18 @@ class AudioRecorder {
     }
 
     @Throws(IOException::class)
-    fun startRecording(context: Context, audioPath: String) {
+    fun startRecording(
+        context: Context,
+        audioPath: String,
+    ) {
+        startRecording(context, File(audioPath))
+    }
+
+    @Throws(IOException::class)
+    fun startRecording(
+        context: Context,
+        audioPath: File,
+    ) {
         var highSampling = false
         try {
             // try high quality AAC @ 44.1kHz / 192kbps first
@@ -90,11 +105,12 @@ class AudioRecorder {
     }
 
     fun maxAmplitude(): Int {
-        val currentAmplitude = if (this::recorder.isInitialized) {
-            recorder.maxAmplitude
-        } else {
-            0
-        }
+        val currentAmplitude =
+            if (this::recorder.isInitialized) {
+                recorder.maxAmplitude
+            } else {
+                0
+            }
         return if (currentAmplitude == 0) {
             previousNonZeroAmplitude
         } else {
@@ -104,23 +120,12 @@ class AudioRecorder {
     }
 
     fun pause() {
-        if (!this::recorder.isInitialized) {
-            return
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            recorder.pause()
-        } else {
-            recorder.stop()
-        }
+        if (!this::recorder.isInitialized) return
+        recorder.pause()
     }
 
     fun resume() {
-        if (this::recorder.isInitialized) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                recorder.resume()
-            } else {
-                recorder.start()
-            }
-        }
+        if (!this::recorder.isInitialized) return
+        recorder.resume()
     }
 }

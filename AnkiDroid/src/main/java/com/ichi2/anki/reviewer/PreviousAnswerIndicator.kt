@@ -17,11 +17,9 @@
 package com.ichi2.anki.reviewer
 
 import android.widget.TextView
-import com.ichi2.anki.AbstractFlashcardViewer
+import anki.scheduler.CardAnswer.Rating
 import com.ichi2.anki.R
-import com.ichi2.anki.reviewer.PreviousAnswerIndicator.Companion.CHOSEN_ANSWER_DURATION_MS
 import com.ichi2.utils.HandlerUtils.newHandler
-import timber.log.Timber
 
 /**
  * A visual element in the top bar showing a number of colored dots based on the previous answer
@@ -30,8 +28,9 @@ import timber.log.Timber
  *
  * This is hidden after a timer ([CHOSEN_ANSWER_DURATION_MS])
  */
-class PreviousAnswerIndicator(private val chosenAnswerText: TextView) {
-
+class PreviousAnswerIndicator(
+    private val chosenAnswerText: TextView,
+) {
     /** After the indicator is displayed, it is hidden after a timeout */
     private val timerHandler = newHandler()
 
@@ -47,27 +46,27 @@ class PreviousAnswerIndicator(private val chosenAnswerText: TextView) {
      * Note that the ordinal does not define the color on its own:
      * in SchedV1, button 2 could be hard or good
      *
-     * @param ease The ordinal of the button answered
+     * @param rating The ordinal of the button answered
      */
-    fun displayAnswerIndicator(ease: Int) {
-        when (ease) {
-            AbstractFlashcardViewer.EASE_1 -> {
+    fun displayAnswerIndicator(rating: Rating) {
+        when (rating) {
+            Rating.AGAIN -> {
                 chosenAnswerText.text = "\u2022"
                 chosenAnswerText.setTextColor(getColor(R.color.material_red_500))
             }
-            AbstractFlashcardViewer.EASE_2 -> {
+            Rating.HARD -> {
                 chosenAnswerText.text = "\u2022\u2022"
                 chosenAnswerText.setTextColor(getColor(R.color.material_blue_grey_600))
             }
-            AbstractFlashcardViewer.EASE_3 -> {
+            Rating.GOOD -> {
                 chosenAnswerText.text = "\u2022\u2022\u2022"
                 chosenAnswerText.setTextColor(getColor(R.color.material_green_500))
             }
-            AbstractFlashcardViewer.EASE_4 -> {
+            Rating.EASY -> {
                 chosenAnswerText.text = "\u2022\u2022\u2022\u2022"
                 chosenAnswerText.setTextColor(getColor(R.color.material_light_blue_500))
             }
-            else -> Timber.w("Unknown easy type %s", ease)
+            Rating.UNRECOGNIZED -> {}
         }
 
         // remove chosen answer hint after a while

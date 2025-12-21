@@ -1,4 +1,5 @@
 // noinspection MissingCopyrightHeader #8659
+
 /*
  * Copyright (C) 2014 The Android Open Source Project
  *
@@ -18,28 +19,46 @@
 
 package com.ichi2.ui
 
-import android.content.*
+import android.content.BroadcastReceiver
+import android.content.ContentValues
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.preference.PreferenceActivity
-import android.view.*
+import android.view.KeyEvent
+import android.view.MenuInflater
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
+import android.window.OnBackInvokedDispatcher.PRIORITY_OVERLAY
 import androidx.annotation.LayoutRes
 import androidx.appcompat.app.ActionBar
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.Toolbar
+import androidx.core.content.ContextCompat
 import com.ichi2.anki.CollectionManager
 import com.ichi2.anki.R
+import com.ichi2.anki.common.utils.annotation.KotlinCleanup
+import com.ichi2.anki.libanki.Collection
+import com.ichi2.anki.libanki.Deck
 import com.ichi2.anki.receiver.SdCardReceiver
-import com.ichi2.libanki.Collection
-import com.ichi2.libanki.Deck
-import com.ichi2.utils.*
+import com.ichi2.compat.CompatHelper.Companion.registerReceiverCompat
+import com.ichi2.utils.HashUtil
+import com.ichi2.utils.message
+import com.ichi2.utils.positiveButton
+import com.ichi2.utils.show
+import com.ichi2.utils.title
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import net.ankiweb.rsdroid.BackendException
 import timber.log.Timber
-import java.util.*
+import java.util.LinkedList
 
 /**
  * A [android.preference.PreferenceActivity] which implements and proxies the necessary calls
@@ -53,10 +72,13 @@ abstract class AppCompatPreferenceActivity<PreferenceHack : AppCompatPreferenceA
     PreferenceActivity(),
     CoroutineScope by MainScope(),
     SharedPreferences.OnSharedPreferenceChangeListener {
+    @Suppress("ktlint:standard:backing-property-naming")
     private var _delegate: AppCompatDelegate? = null
+
     fun isColInitialized() = ::col.isInitialized
+
     protected var prefChanged = false
-    lateinit var unmountReceiver: BroadcastReceiver
+    private lateinit var unmountReceiver: BroadcastReceiver
     protected lateinit var col: Collection
         private set
     protected lateinit var pref: PreferenceHack
@@ -79,27 +101,42 @@ abstract class AppCompatPreferenceActivity<PreferenceHack : AppCompatPreferenceA
                 return this
             }
 
-            override fun putBoolean(key: String, value: Boolean): SharedPreferences.Editor {
+            override fun putBoolean(
+                key: String,
+                value: Boolean,
+            ): SharedPreferences.Editor {
                 update.put(key, value)
                 return this
             }
 
-            override fun putFloat(key: String, value: Float): SharedPreferences.Editor {
+            override fun putFloat(
+                key: String,
+                value: Float,
+            ): SharedPreferences.Editor {
                 update.put(key, value)
                 return this
             }
 
-            override fun putInt(key: String, value: Int): SharedPreferences.Editor {
+            override fun putInt(
+                key: String,
+                value: Int,
+            ): SharedPreferences.Editor {
                 update.put(key, value)
                 return this
             }
 
-            override fun putLong(key: String, value: Long): SharedPreferences.Editor {
+            override fun putLong(
+                key: String,
+                value: Long,
+            ): SharedPreferences.Editor {
                 update.put(key, value)
                 return this
             }
 
-            override fun putString(key: String, value: String?): SharedPreferences.Editor {
+            override fun putString(
+                key: String,
+                value: String?,
+            ): SharedPreferences.Editor {
                 update.put(key, value)
                 return this
             }
@@ -115,7 +152,10 @@ abstract class AppCompatPreferenceActivity<PreferenceHack : AppCompatPreferenceA
             }
 
             // @Override On Android 1.5 this is not Override
-            override fun putStringSet(arg0: String, arg1: Set<String>?): SharedPreferences.Editor? {
+            override fun putStringSet(
+                arg0: String,
+                arg1: Set<String>?,
+            ): SharedPreferences.Editor? {
                 // TODO Auto-generated method stub
                 return null
             }
@@ -126,31 +166,34 @@ abstract class AppCompatPreferenceActivity<PreferenceHack : AppCompatPreferenceA
                 get() = this@AbstractPreferenceHack
         }
 
-        override fun contains(key: String): Boolean {
-            return values.containsKey(key)
-        }
+        override fun contains(key: String): Boolean = values.containsKey(key)
 
-        override fun getAll(): Map<String, *> {
-            return values
-        }
+        override fun getAll(): Map<String, *> = values
 
-        override fun getBoolean(key: String, defValue: Boolean): Boolean {
-            return java.lang.Boolean.parseBoolean(this.getString(key, java.lang.Boolean.toString(defValue)))
-        }
+        override fun getBoolean(
+            key: String,
+            defValue: Boolean,
+        ): Boolean = java.lang.Boolean.parseBoolean(this.getString(key, java.lang.Boolean.toString(defValue)))
 
-        override fun getFloat(key: String, defValue: Float): Float {
-            return this.getString(key, defValue.toString())!!.toFloat()
-        }
+        override fun getFloat(
+            key: String,
+            defValue: Float,
+        ): Float = this.getString(key, defValue.toString())!!.toFloat()
 
-        override fun getInt(key: String, defValue: Int): Int {
-            return this.getString(key, defValue.toString())!!.toInt()
-        }
+        override fun getInt(
+            key: String,
+            defValue: Int,
+        ): Int = this.getString(key, defValue.toString())!!.toInt()
 
-        override fun getLong(key: String, defValue: Long): Long {
-            return this.getString(key, defValue.toString())!!.toLong()
-        }
+        override fun getLong(
+            key: String,
+            defValue: Long,
+        ): Long = this.getString(key, defValue.toString())!!.toLong()
 
-        override fun getString(key: String, defValue: String?): String? {
+        override fun getString(
+            key: String,
+            defValue: String?,
+        ): String? {
             Timber.d("getString(key=%s, defValue=%s)", key, defValue)
             return if (!values.containsKey(key)) {
                 defValue
@@ -168,7 +211,10 @@ abstract class AppCompatPreferenceActivity<PreferenceHack : AppCompatPreferenceA
         }
 
         // @Override On Android 1.5 this is not Override
-        override fun getStringSet(arg0: String, arg1: Set<String>?): Set<String>? {
+        override fun getStringSet(
+            arg0: String,
+            arg1: Set<String>?,
+        ): Set<String>? {
             // TODO Auto-generated method stub
             return null
         }
@@ -184,6 +230,13 @@ abstract class AppCompatPreferenceActivity<PreferenceHack : AppCompatPreferenceA
         delegate.onCreate(savedInstanceState)
         super.onCreate(savedInstanceState)
         this.col = CollectionManager.getColUnsafe()
+        // HACK: PreferenceActivity does not have a back dispatcher
+        // on API <= 32, onKeyDown is called; on API 33+, this is needed
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(PRIORITY_OVERLAY) {
+                tryCloseWithResult()
+            }
+        }
     }
 
     override fun onPostCreate(savedInstanceState: Bundle?) {
@@ -198,11 +251,11 @@ abstract class AppCompatPreferenceActivity<PreferenceHack : AppCompatPreferenceA
         delegate.setSupportActionBar(toolbar)
     }
 
-    override fun getMenuInflater(): MenuInflater {
-        return delegate.menuInflater
-    }
+    override fun getMenuInflater(): MenuInflater = delegate.menuInflater
 
-    override fun setContentView(@LayoutRes layoutResID: Int) {
+    override fun setContentView(
+        @LayoutRes layoutResID: Int,
+    ) {
         delegate.setContentView(layoutResID)
     }
 
@@ -210,11 +263,17 @@ abstract class AppCompatPreferenceActivity<PreferenceHack : AppCompatPreferenceA
         delegate.setContentView(view)
     }
 
-    override fun setContentView(view: View, params: ViewGroup.LayoutParams) {
+    override fun setContentView(
+        view: View,
+        params: ViewGroup.LayoutParams,
+    ) {
         delegate.setContentView(view, params)
     }
 
-    override fun addContentView(view: View, params: ViewGroup.LayoutParams) {
+    override fun addContentView(
+        view: View,
+        params: ViewGroup.LayoutParams,
+    ) {
         delegate.addContentView(view, params)
     }
 
@@ -223,7 +282,10 @@ abstract class AppCompatPreferenceActivity<PreferenceHack : AppCompatPreferenceA
         delegate.onPostResume()
     }
 
-    override fun onTitleChanged(title: CharSequence, color: Int) {
+    override fun onTitleChanged(
+        title: CharSequence,
+        color: Int,
+    ) {
         super.onTitleChanged(title, color)
         delegate.setTitle(title)
     }
@@ -252,7 +314,11 @@ abstract class AppCompatPreferenceActivity<PreferenceHack : AppCompatPreferenceA
     }
 
     protected abstract fun updateSummaries()
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
+
+    override fun onSharedPreferenceChanged(
+        sharedPreferences: SharedPreferences,
+        key: String?,
+    ) {
         // update values on changed preference
         prefChanged = true
         updateSummaries()
@@ -270,22 +336,24 @@ abstract class AppCompatPreferenceActivity<PreferenceHack : AppCompatPreferenceA
      * Call exactly once, during creation
      * to ensure that if the SD card is ejected
      * this activity finish.
-     */
-
-    /**
+     *
      * finish when sd card is ejected
      */
     fun registerExternalStorageListener() {
-        unmountReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                if (intent.action == SdCardReceiver.MEDIA_EJECT) {
-                    finish()
+        unmountReceiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context,
+                    intent: Intent,
+                ) {
+                    if (intent.action == SdCardReceiver.MEDIA_EJECT) {
+                        finish()
+                    }
                 }
             }
-        }
         val iFilter = IntentFilter()
         iFilter.addAction(SdCardReceiver.MEDIA_EJECT)
-        registerReceiver(unmountReceiver, iFilter)
+        registerReceiverCompat(unmountReceiver, iFilter, ContextCompat.RECEIVER_EXPORTED)
     }
 
     protected abstract fun closeWithResult()
@@ -299,7 +367,10 @@ abstract class AppCompatPreferenceActivity<PreferenceHack : AppCompatPreferenceA
         return false
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+    override fun onKeyDown(
+        keyCode: Int,
+        event: KeyEvent,
+    ): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK && event.repeatCount == 0) {
             Timber.i("DeckOptions - onBackPressed()")
             tryCloseWithResult()
@@ -323,7 +394,10 @@ abstract class AppCompatPreferenceActivity<PreferenceHack : AppCompatPreferenceA
         }
     }
 
-    override fun getSharedPreferences(name: String, mode: Int): SharedPreferences {
+    override fun getSharedPreferences(
+        name: String,
+        mode: Int,
+    ): SharedPreferences {
         Timber.d("getSharedPreferences(name=%s)", name)
         return pref
     }

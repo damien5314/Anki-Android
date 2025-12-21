@@ -21,9 +21,11 @@ import com.google.android.material.snackbar.Snackbar
 import com.ichi2.anki.CollectionManager.TR
 import com.ichi2.anki.CollectionManager.withCol
 import com.ichi2.anki.R
-import com.ichi2.anki.customSyncBase
+import com.ichi2.anki.account.AccountActivity
 import com.ichi2.anki.launchCatchingTask
+import com.ichi2.anki.settings.Prefs
 import com.ichi2.anki.snackbar.showSnackbar
+import com.ichi2.anki.utils.ext.ifNullOrEmpty
 import com.ichi2.utils.show
 
 /**
@@ -60,23 +62,29 @@ class SyncSettingsFragment : SettingsFragment() {
                 false
             }
         }
+
+        requirePreference<Preference>(R.string.sync_account_key).apply {
+            setOnPreferenceClickListener {
+                val accountActivityIntent = AccountActivity.getIntent(requireContext())
+                startActivity(accountActivityIntent)
+                true
+            }
+        }
+
         // Custom sync server
         requirePreference<Preference>(R.string.custom_sync_server_key).setSummaryProvider {
-            val preferences = requireContext().sharedPrefs()
-            val url = customSyncBase(preferences)
-
-            url ?: getString(R.string.custom_sync_server_summary_none_of_the_two_servers_used)
+            customSyncBase() ?: getString(R.string.custom_sync_server_summary_none_of_the_two_servers_used)
         }
     }
 
     private fun updateSyncAccountSummary() {
         requirePreference<Preference>(R.string.sync_account_key)
-            .summary = preferenceManager.sharedPreferences!!.getString("username", "")!!
-            .ifEmpty { getString(R.string.sync_account_summ_logged_out) }
+            .summary =
+            Prefs.username.ifNullOrEmpty { getString(R.string.sync_account_summ_logged_out) }
     }
 
     private fun updateOneWaySyncEnabledState() {
-        val isLoggedIn = Preferences.hasAnkiWebAccount(requireContext().sharedPrefs())
+        val isLoggedIn = !Prefs.username.isNullOrEmpty()
         requirePreference<Preference>(R.string.one_way_sync_key).isEnabled = isLoggedIn
     }
 
@@ -86,5 +94,10 @@ class SyncSettingsFragment : SettingsFragment() {
         updateSyncAccountSummary()
         updateOneWaySyncEnabledState()
         super.onResume()
+    }
+
+    private fun customSyncBase(): String? {
+        if (!Prefs.isCustomSyncEnabled) return null
+        return Prefs.customSyncUri?.ifEmpty { null }
     }
 }

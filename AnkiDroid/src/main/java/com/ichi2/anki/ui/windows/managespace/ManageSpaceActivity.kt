@@ -1,5 +1,4 @@
-/****************************************************************************************
- *                                                                                      *
+/*                                                                                      *
  * Copyright (c) 2022 Brian Da Silva <brianjose2010@gmail.com>                          *
  *                                                                                      *
  * This program is free software; you can redistribute it and/or modify it under        *
@@ -13,25 +12,18 @@
  *                                                                                      *
  * You should have received a copy of the GNU General Public License along with         *
  * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+ */
 
 package com.ichi2.anki.ui.windows.managespace
 
-import android.os.Bundle
-import com.ichi2.anki.AnkiActivity
-import com.ichi2.anki.R
-import com.ichi2.themes.setTransparentStatusBar
+import com.ichi2.anki.SingleFragmentActivity
 
-class ManageSpaceActivity : AnkiActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        if (showedActivityFailedScreen(savedInstanceState)) {
-            return
-        }
-
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_manage_space)
-        setTransparentStatusBar()
-
-        enableToolbar().setDisplayHomeAsUpEnabled(true)
-    }
-}
+/**
+ * This activity is called by the system from the app settings to let the user manage the app's
+ * used space. The actual work is done in [ManageSpaceFragment] and the fragment is bound to this
+ * activity automatically in [SingleFragmentActivity].
+ *
+ * @see ManageSpaceFragment
+ * @see SingleFragmentActivity.onCreate
+ */
+class ManageSpaceActivity : SingleFragmentActivity()

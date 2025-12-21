@@ -15,64 +15,80 @@
  */
 package com.ichi2.anki.previewer
 
-import androidx.activity.result.ActivityResult
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.annotation.VisibleForTesting
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.viewModelScope
+import anki.collection.OpChanges
 import com.ichi2.anki.CollectionManager.withCol
 import com.ichi2.anki.Flag
-import com.ichi2.anki.NoteEditor
-import com.ichi2.anki.OnErrorListener
 import com.ichi2.anki.asyncIO
-import com.ichi2.anki.browser.PreviewerIdsFile
-import com.ichi2.anki.cardviewer.CardMediaPlayer
+import com.ichi2.anki.browser.IdsFile
 import com.ichi2.anki.cardviewer.SingleCardSide
+import com.ichi2.anki.common.annotations.NeedsTest
 import com.ichi2.anki.launchCatchingIO
+import com.ichi2.anki.libanki.Card
+import com.ichi2.anki.noteeditor.NoteEditorLauncher
+import com.ichi2.anki.observability.ChangeManager
+import com.ichi2.anki.observability.undoableOp
 import com.ichi2.anki.pages.AnkiServer
 import com.ichi2.anki.reviewer.CardSide
 import com.ichi2.anki.servicelayer.MARKED_TAG
 import com.ichi2.anki.servicelayer.NoteService
-import com.ichi2.annotations.NeedsTest
-import com.ichi2.libanki.Card
-import com.ichi2.libanki.hasTag
-import com.ichi2.libanki.note
-import com.ichi2.libanki.undoableOp
+import com.ichi2.anki.utils.ext.collectIn
+import com.ichi2.anki.utils.ext.flag
+import com.ichi2.anki.utils.ext.require
+import com.ichi2.anki.utils.ext.setUserFlagForCards
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
-import org.intellij.lang.annotations.Language
-import org.jetbrains.annotations.VisibleForTesting
 import timber.log.Timber
 
-class PreviewerViewModel(previewerIdsFile: PreviewerIdsFile, firstIndex: Int, cardMediaPlayer: CardMediaPlayer) :
-    CardViewerViewModel(cardMediaPlayer),
-    OnErrorListener {
-
-    val currentIndex = MutableStateFlow(firstIndex)
-    val backSideOnly = MutableStateFlow(false)
+class PreviewerViewModel(
+    savedStateHandle: SavedStateHandle,
+) : CardViewerViewModel(),
+    ChangeManager.Subscriber {
+    val currentIndex =
+        savedStateHandle.getMutableStateFlow(
+            KEY_CURRENT_INDEX,
+            initialValue = savedStateHandle.require<Int>(PreviewerFragment.CURRENT_INDEX_ARG),
+        )
+    val backSideOnly = savedStateHandle.getMutableStateFlow(KEY_BACKSIDE_ONLY, false)
     val isMarked = MutableStateFlow(false)
-    val flagCode: MutableStateFlow<Int> = MutableStateFlow(Flag.NONE.code)
-    private val selectedCardIds: List<Long> = previewerIdsFile.getCardIds()
+    val flag: MutableStateFlow<Flag> = MutableStateFlow(Flag.NONE)
+
+    @VisibleForTesting
+    val selectedCardIds: List<Long> = savedStateHandle.require<IdsFile>(PreviewerFragment.CARD_IDS_FILE_ARG).getIds()
+
+    override val showingAnswer = MutableStateFlow(savedStateHandle[SHOWING_ANSWER_KEY] ?: false)
     val isBackButtonEnabled =
         combine(currentIndex, showingAnswer, backSideOnly) { index, showingAnswer, isBackSideOnly ->
             index != 0 || (showingAnswer && !isBackSideOnly)
         }
-    val isNextButtonEnabled = combine(currentIndex, showingAnswer) { index, showingAnswer ->
-        index != selectedCardIds.lastIndex || !showingAnswer
-    }
+    val isNextButtonEnabled =
+        combine(currentIndex, showingAnswer) { index, showingAnswer ->
+            index != selectedCardIds.lastIndex || !showingAnswer
+        }
 
     private val showAnswerOnReload get() = showingAnswer.value || backSideOnly.value
 
-    override var currentCard: Deferred<Card> = asyncIO {
-        withCol { getCard(selectedCardIds[firstIndex]) }
-    }
+    override var currentCard: Deferred<Card> =
+        asyncIO {
+            withCol { getCard(selectedCardIds[savedStateHandle.require(PreviewerFragment.CURRENT_INDEX_ARG)]) }
+        }
     override val server = AnkiServer(this).also { it.start() }
 
+    init {
+        ChangeManager.subscribe(this)
+        showingAnswer.collectIn(viewModelScope) {
+            savedStateHandle[SHOWING_ANSWER_KEY] = it
+        }
+    }
+
     /* *********************************************************************************************
-    ************************ Public methods: meant to be used by the View **************************
-    ********************************************************************************************* */
+     ************************ Public methods: meant to be used by the View **************************
+     ********************************************************************************************* */
 
     /** Call this after the webView has finished loading the page */
     @NeedsTest("16302 - a sound-only card on the back/flipped with 'don't keep activities'")
@@ -86,7 +102,7 @@ class PreviewerViewModel(previewerIdsFile: PreviewerIdsFile, firstIndex: Int, ca
                 // * after recreation (ViewModel did not exist)
                 // if the ViewModel existed, we want to continue playing audio
                 // if not, we want to setup the sound player
-                cardMediaPlayer.ensureCardSoundsLoaded(currentCard.await())
+                cardMediaPlayer.ensureAvTagsLoaded(currentCard.await())
             }
             return
         }
@@ -104,10 +120,10 @@ class PreviewerViewModel(previewerIdsFile: PreviewerIdsFile, firstIndex: Int, ca
             backSideOnly.emit(!backSideOnly.value)
             if (!backSideOnly.value && showingAnswer.value) {
                 showQuestion()
-                cardMediaPlayer.playAllSoundsForSide(CardSide.QUESTION)
+                cardMediaPlayer.autoplayAllForSide(CardSide.QUESTION)
             } else if (backSideOnly.value && !showingAnswer.value) {
-                showAnswerInternal()
-                cardMediaPlayer.playAllSoundsForSide(CardSide.ANSWER)
+                showAnswer()
+                cardMediaPlayer.autoplayAllForSide(CardSide.ANSWER)
             }
         }
     }
@@ -115,7 +131,7 @@ class PreviewerViewModel(previewerIdsFile: PreviewerIdsFile, firstIndex: Int, ca
     fun toggleMark() {
         launchCatchingIO {
             val card = currentCard.await()
-            val note = withCol { card.note() }
+            val note = withCol { card.note(this@withCol) }
             NoteService.toggleMark(note)
             isMarked.emit(NoteService.isMarked(note))
         }
@@ -125,14 +141,14 @@ class PreviewerViewModel(previewerIdsFile: PreviewerIdsFile, firstIndex: Int, ca
         launchCatchingIO {
             val card = currentCard.await()
             undoableOp {
-                setUserFlagForCards(listOf(card.id), flag.code)
+                setUserFlagForCards(cids = listOf(card.id), flag = flag)
             }
-            flagCode.emit(flag.code)
+            this.flag.emit(flag)
         }
     }
 
     fun toggleFlag(flag: Flag) {
-        if (flagCode.value == flag.code) {
+        if (this@PreviewerViewModel.flag.value == flag) {
             setFlag(Flag.NONE)
         } else {
             setFlag(flag)
@@ -146,8 +162,8 @@ class PreviewerViewModel(previewerIdsFile: PreviewerIdsFile, firstIndex: Int, ca
     fun onNextButtonClick() {
         launchCatchingIO {
             if (!showingAnswer.value && !backSideOnly.value) {
-                showAnswerInternal()
-                cardMediaPlayer.playAllSoundsForSide(CardSide.ANSWER)
+                showAnswer()
+                cardMediaPlayer.autoplayAllForSide(CardSide.ANSWER)
             } else {
                 currentIndex.update { it + 1 }
             }
@@ -168,105 +184,100 @@ class PreviewerViewModel(previewerIdsFile: PreviewerIdsFile, firstIndex: Int, ca
         }
     }
 
-    suspend fun getNoteEditorDestination() = NoteEditorDestination(currentCard.await().id)
+    suspend fun getNoteEditorDestination() = NoteEditorLauncher.EditNoteFromPreviewer(currentCard.await().id)
 
-    fun handleEditCardResult(result: ActivityResult) {
-        if (result.data?.getBooleanExtra(NoteEditor.RELOAD_REQUIRED_EXTRA_KEY, false) == true ||
-            result.data?.getBooleanExtra(NoteEditor.NOTE_CHANGED_EXTRA_KEY, false) == true
-        ) {
-            Timber.v("handleEditCardResult()")
-            launchCatchingIO {
-                showCard(showAnswerOnReload)
-                loadAndPlaySounds()
-            }
-        }
-    }
-
-    fun replayAudios() {
+    fun replayMedia() {
         launchCatchingIO {
             val side = if (showingAnswer.value) SingleCardSide.BACK else SingleCardSide.FRONT
-            cardMediaPlayer.replayAllSounds(side)
+            cardMediaPlayer.replayAll(side)
         }
     }
 
     fun cardsCount() = selectedCardIds.count()
 
-    fun onSliderChange(value: Int) {
+    /**
+     * @param sliderPosition the value of the slider (i.e. Slider::value). It's NOT the card index.
+     */
+    fun onSliderChange(sliderPosition: Int) {
+        val index = sliderPosition - 1
+        if (index !in selectedCardIds.indices) return
         launchCatchingIO {
-            currentIndex.emit(value - 1)
+            currentIndex.emit(index)
         }
     }
 
     /* *********************************************************************************************
-    *************************************** Internal methods ***************************************
-    ********************************************************************************************* */
+     *************************************** Internal methods ***************************************
+     ********************************************************************************************* */
 
     private suspend fun showCard(showAnswer: Boolean) {
-        currentCard = asyncIO {
-            withCol { getCard(selectedCardIds[currentIndex.value]) }
-        }
-        if (showAnswer) showAnswerInternal() else showQuestion()
+        currentCard =
+            asyncIO {
+                withCol { getCard(selectedCardIds[currentIndex.value]) }
+            }
+        if (showAnswer) showAnswer() else showQuestion()
         updateFlagIcon()
         updateMarkIcon()
     }
 
     private suspend fun updateFlagIcon() {
-        flagCode.emit(currentCard.await().userFlag())
+        flag.emit(currentCard.await().flag)
     }
 
     private suspend fun updateMarkIcon() {
         val card = currentCard.await()
-        val isMarkedValue = withCol { card.note().hasTag(MARKED_TAG) }
+        val isMarkedValue = withCol { card.note(this@withCol).hasTag(this@withCol, MARKED_TAG) }
         isMarked.emit(isMarkedValue)
     }
 
     private suspend fun loadAndPlaySounds() {
-        val side: CardSide = when {
-            backSideOnly.value -> CardSide.BOTH
-            showingAnswer.value -> CardSide.ANSWER
-            else -> CardSide.QUESTION
-        }
-        cardMediaPlayer.loadCardSounds(currentCard.await())
-        cardMediaPlayer.playAllSoundsForSide(side)
+        val side: CardSide =
+            when {
+                backSideOnly.value -> CardSide.BOTH
+                showingAnswer.value -> CardSide.ANSWER
+                else -> CardSide.QUESTION
+            }
+        cardMediaPlayer.loadCardAvTags(currentCard.await())
+        cardMediaPlayer.autoplayAllForSide(side)
     }
 
     /** From the [desktop code](https://github.com/ankitects/anki/blob/1ff55475b93ac43748d513794bcaabd5d7df6d9d/qt/aqt/reviewer.py#L671) */
-    override suspend fun typeAnsFilter(text: String): String {
-        return if (showingAnswer.value) {
-            typeAnsAnswerFilter(currentCard.await(), text)
+    override suspend fun typeAnsFilter(text: String): String =
+        if (showingAnswer.value) {
+            val typeAnswer = TypeAnswer.getInstance(currentCard.await(), text)
+            typeAnswer?.answerFilter() ?: text
         } else {
-            typeAnsQuestionFilter(text)
+            TypeAnswer.removeTags(text)
+        }
+
+    override fun opExecuted(
+        changes: OpChanges,
+        handler: Any?,
+    ) {
+        launchCatchingIO {
+            when {
+                changes.noteText -> {
+                    val card = currentCard.await()
+                    withCol { card.load(this) }
+                    updateMarkIcon()
+                    if (showingAnswer.value) {
+                        showAnswer()
+                    } else {
+                        showQuestion()
+                    }
+                }
+                changes.card -> {
+                    val card = currentCard.await()
+                    withCol { card.load(this) }
+                    updateFlagIcon()
+                }
+            }
         }
     }
 
     companion object {
-        fun factory(previewerIdsFile: PreviewerIdsFile, currentIndex: Int, cardMediaPlayer: CardMediaPlayer): ViewModelProvider.Factory {
-            return viewModelFactory {
-                initializer {
-                    PreviewerViewModel(previewerIdsFile, currentIndex, cardMediaPlayer)
-                }
-            }
-        }
-
-        /** removes `[[type:]]` blocks in questions */
-        @VisibleForTesting
-        fun typeAnsQuestionFilter(text: String) =
-            typeAnsRe.replace(text, "")
-
-        /** Adapted from the [desktop code](https://github.com/ankitects/anki/blob/1ff55475b93ac43748d513794bcaabd5d7df6d9d/qt/aqt/reviewer.py#L720) */
-        suspend fun typeAnsAnswerFilter(card: Card, text: String): String {
-            val typeAnswerField = getTypeAnswerField(card, text)
-                ?: return typeAnsRe.replace(text, "")
-            val expectedAnswer = getExpectedTypeInAnswer(card, typeAnswerField)
-                ?: return typeAnsRe.replace(text, "")
-            val typeFont = typeAnswerField.getString("font")
-            val typeSize = getFontSize(typeAnswerField)
-            val answerComparison = withCol { compareAnswer(expectedAnswer, provided = "") }
-
-            @Language("HTML")
-            val output =
-                """<div style="font-family: '$typeFont'; font-size: ${typeSize}px">$answerComparison</div>"""
-            return typeAnsRe.replace(text, output)
-        }
+        private const val KEY_BACKSIDE_ONLY = "backsideOnly"
+        private const val KEY_CURRENT_INDEX = "currentIndex"
+        private const val SHOWING_ANSWER_KEY = "showingAnswer"
     }
 }

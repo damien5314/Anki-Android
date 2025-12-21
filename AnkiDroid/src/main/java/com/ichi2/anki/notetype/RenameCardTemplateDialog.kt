@@ -24,17 +24,23 @@ import com.ichi2.utils.input
 import com.ichi2.utils.negativeButton
 import com.ichi2.utils.positiveButton
 import com.ichi2.utils.show
+import com.ichi2.utils.title
 
 class RenameCardTemplateDialog {
-
     companion object {
-        fun showInstance(context: Context, prefill: String, block: (result: String) -> Unit) {
-            AlertDialog.Builder(context).show {
-                positiveButton(R.string.dialog_ok) { }
-                negativeButton(R.string.dialog_cancel)
-                setView(R.layout.dialog_generic_text_input)
-            }
-                .input(
+        fun showInstance(
+            context: Context,
+            prefill: String,
+            block: (result: String) -> Unit,
+        ) {
+            AlertDialog
+                .Builder(context)
+                .show {
+                    title(R.string.rename_card_type)
+                    positiveButton(R.string.dialog_ok) { }
+                    negativeButton(R.string.dialog_cancel)
+                    setView(R.layout.dialog_generic_text_input)
+                }.input(
                     hint = CollectionManager.TR.actionsNewName(),
                     displayKeyboard = true,
                     allowEmpty = false,
@@ -43,7 +49,7 @@ class RenameCardTemplateDialog {
                     callback = { dialog, result ->
                         block(result.toString())
                         dialog.dismiss()
-                    }
+                    },
                 )
         }
     }

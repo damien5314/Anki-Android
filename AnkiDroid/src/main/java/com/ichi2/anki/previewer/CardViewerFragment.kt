@@ -16,16 +16,15 @@
 package com.ichi2.anki.previewer
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
-import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.annotation.CallSuper
 import androidx.annotation.LayoutRes
@@ -41,21 +40,36 @@ import com.ichi2.anki.ViewerResourceHandler
 import com.ichi2.anki.dialogs.TtsVoicesDialogFragment
 import com.ichi2.anki.localizedErrorMessage
 import com.ichi2.anki.snackbar.showSnackbar
+import com.ichi2.anki.utils.ext.collectIn
 import com.ichi2.anki.utils.ext.packageManager
+import com.ichi2.anki.utils.openUrl
+import com.ichi2.anki.workarounds.OnWebViewRecreatedListener
+import com.ichi2.anki.workarounds.SafeWebViewClient
+import com.ichi2.anki.workarounds.SafeWebViewLayout
 import com.ichi2.compat.CompatHelper.Companion.resolveActivityCompat
 import com.ichi2.themes.Themes
+import com.ichi2.utils.show
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import timber.log.Timber
 
-abstract class CardViewerFragment(@LayoutRes layout: Int) : Fragment(layout) {
-    protected abstract val viewModel: CardViewerViewModel
-    protected abstract val webView: WebView
+abstract class CardViewerFragment(
+    @LayoutRes layout: Int,
+) : Fragment(layout),
+    OnWebViewRecreatedListener {
+    abstract val viewModel: CardViewerViewModel
+    protected abstract val webViewLayout: SafeWebViewLayout
 
     @CallSuper
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         setupWebView(savedInstanceState)
         setupErrorListeners()
+        viewModel.eval.collectIn(lifecycleScope) { eval ->
+            webViewLayout.evaluateJavascript(eval)
+        }
     }
 
     override fun onStart() {
@@ -70,12 +84,23 @@ abstract class CardViewerFragment(@LayoutRes layout: Int) : Fragment(layout) {
         }
     }
 
+    override fun onDestroyView() {
+        super.onDestroyView()
+        webViewLayout.destroy() // stops <audio> playbacks
+    }
+
+    protected open fun onLoadInitialHtml(): String =
+        stdHtml(
+            context = requireContext(),
+            nightMode = Themes.currentTheme.isNightMode,
+        )
+
     private fun setupWebView(savedInstanceState: Bundle?) {
-        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
-        with(webView) {
-            webViewClient = onCreateWebViewClient(savedInstanceState)
-            webChromeClient = onCreateWebChromeClient()
-            scrollBarStyle = View.SCROLLBARS_OUTSIDE_OVERLAY
+        with(webViewLayout) {
+            setWebViewClient(onCreateWebViewClient(savedInstanceState))
+            setWebChromeClient(onCreateWebChromeClient())
+            scrollBars = View.SCROLLBARS_OUTSIDE_OVERLAY
+            setAcceptThirdPartyCookies(true)
             with(settings) {
                 javaScriptEnabled = true
                 loadWithOverviewMode = true
@@ -86,33 +111,26 @@ abstract class CardViewerFragment(@LayoutRes layout: Int) : Fragment(layout) {
                 // allow videos to autoplay via our JavaScript eval
                 mediaPlaybackRequiresUserGesture = false
             }
-
             loadDataWithBaseURL(
                 viewModel.baseUrl(),
-                stdHtml(requireContext(), Themes.currentTheme.isNightMode),
+                onLoadInitialHtml(),
                 "text/html",
                 null,
-                null
+                null,
             )
         }
-        viewModel.eval
-            .flowWithLifecycle(lifecycle)
-            .onEach { eval ->
-                webView.evaluateJavascript(eval, null)
-            }
-            .launchIn(lifecycleScope)
     }
 
     private fun setupErrorListeners() {
         viewModel.onError
             .flowWithLifecycle(lifecycle)
             .onEach { errorMessage ->
-                AlertDialog.Builder(requireContext())
+                AlertDialog
+                    .Builder(requireContext())
                     .setTitle(R.string.vague_error)
                     .setMessage(errorMessage)
                     .show()
-            }
-            .launchIn(lifecycleScope)
+            }.launchIn(lifecycleScope)
 
         viewModel.onMediaError
             .onEach { showMediaErrorSnackbar(it) }
@@ -123,126 +141,158 @@ abstract class CardViewerFragment(@LayoutRes layout: Int) : Fragment(layout) {
             .launchIn(lifecycleScope)
     }
 
-    private fun onCreateWebViewClient(savedInstanceState: Bundle?): WebViewClient {
-        val resourceHandler = ViewerResourceHandler(requireContext())
-        return object : WebViewClient() {
-            override fun shouldInterceptRequest(
-                view: WebView?,
-                request: WebResourceRequest
-            ): WebResourceResponse? {
-                return resourceHandler.shouldInterceptRequest(request)
-            }
+    protected open fun onCreateWebViewClient(savedInstanceState: Bundle?): CardViewerWebViewClient =
+        CardViewerWebViewClient(savedInstanceState)
 
-            override fun onPageFinished(view: WebView?, url: String?) {
+    protected open fun onCreateWebChromeClient() = CardViewerWebChromeClient()
+
+    override fun onWebViewRecreated(webView: WebView) {
+        setupWebView(null)
+    }
+
+    open inner class CardViewerWebViewClient(
+        val savedInstanceState: Bundle?,
+    ) : SafeWebViewClient() {
+        private val resourceHandler = ViewerResourceHandler(requireContext())
+        private var hasLoaded = false
+
+        override fun shouldInterceptRequest(
+            view: WebView?,
+            request: WebResourceRequest,
+        ): WebResourceResponse? = resourceHandler.shouldInterceptRequest(request)
+
+        override fun onPageStarted(
+            view: WebView?,
+            url: String?,
+            favicon: Bitmap?,
+        ) {
+            hasLoaded = false
+        }
+
+        override fun onPageFinished(
+            view: WebView?,
+            url: String?,
+        ) {
+            // clicking a `<a href="#">` link calls onPageFinished without calling onPageStarted,
+            // so avoid reloading the card content after clicking such a link.
+            if (!hasLoaded) {
                 viewModel.onPageFinished(isAfterRecreation = savedInstanceState != null)
             }
+            hasLoaded = true
+        }
 
-            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                return handleUrl(request.url)
-            }
+        override fun shouldOverrideUrlLoading(
+            view: WebView,
+            request: WebResourceRequest,
+        ): Boolean = handleUrl(view, request.url)
 
-            @Suppress("DEPRECATION") // necessary in API 23
-            @Deprecated("Deprecated in Java")
-            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                if (view == null || url == null) return super.shouldOverrideUrlLoading(view, url)
-                return handleUrl(url.toUri())
-            }
-
-            private fun handleUrl(url: Uri): Boolean {
-                when (url.scheme) {
-                    "playsound" -> viewModel.playSoundFromUrl(url.toString())
-                    "videoended" -> viewModel.onVideoFinished()
-                    "videopause" -> viewModel.onVideoPaused()
-                    "tts-voices" -> TtsVoicesDialogFragment().show(childFragmentManager, null)
-                    "android-app" -> handleIntentUrl(url, Intent.URI_ANDROID_APP_SCHEME)
-                    "intent" -> handleIntentUrl(url, Intent.URI_INTENT_SCHEME)
-                    else -> {
-                        try {
-                            openUrl(url)
-                        } catch (_: Throwable) {
-                            Timber.w("Could not open url")
-                            return false
+        protected open fun handleUrl(
+            webView: WebView,
+            url: Uri,
+        ): Boolean {
+            when (url.scheme) {
+                "playsound" -> viewModel.playSoundFromUrl(url.toString())
+                "videoended" -> viewModel.onVideoFinished()
+                "videopause" -> viewModel.onVideoPaused()
+                "tts-voices" -> TtsVoicesDialogFragment().show(childFragmentManager, null)
+                "android-app" -> handleIntentUrl(url, Intent.URI_ANDROID_APP_SCHEME)
+                "intent" -> handleIntentUrl(url, Intent.URI_INTENT_SCHEME)
+                "missing-user-action" -> {
+                    val actionNumber = url.toString().substringAfter(":")
+                    val message = getString(R.string.missing_user_action_dialog_message, actionNumber)
+                    AlertDialog.Builder(requireContext()).show {
+                        setMessage(message)
+                        setPositiveButton(R.string.dialog_ok) { _, _ -> }
+                        setNeutralButton(R.string.help) { _, _ ->
+                            openUrl(R.string.link_user_actions_help)
                         }
                     }
                 }
-                return true
-            }
-
-            private fun handleIntentUrl(url: Uri, flags: Int) {
-                try {
-                    val intent = Intent.parseUri(url.toString(), flags)
-                    if (packageManager.resolveActivityCompat(intent) != null) {
-                        startActivity(intent)
-                    } else {
-                        val packageName = intent.getPackage() ?: return
-                        val marketUri = Uri.parse("market://details?id=$packageName")
-                        val marketIntent = Intent(Intent.ACTION_VIEW, marketUri)
-                        Timber.d("Trying to open market uri %s", marketUri)
-                        if (packageManager.resolveActivityCompat(marketIntent) != null) {
-                            startActivity(marketIntent)
-                        }
+                else -> {
+                    try {
+                        openUrl(url)
+                    } catch (_: Throwable) {
+                        Timber.w("Could not open url")
+                        return false
                     }
-                } catch (t: Throwable) {
-                    Timber.w("Unable to parse intent uri: %s because: %s", url, t.message)
                 }
             }
+            return true
+        }
 
-            override fun onReceivedError(
-                view: WebView,
-                request: WebResourceRequest,
-                error: WebResourceError
-            ) {
-                viewModel.mediaErrorHandler.processFailure(request) { filename: String ->
-                    showMediaErrorSnackbar(filename)
+        private fun handleIntentUrl(
+            url: Uri,
+            flags: Int,
+        ) {
+            try {
+                val intent = Intent.parseUri(url.toString(), flags)
+                if (packageManager.resolveActivityCompat(intent) != null) {
+                    startActivity(intent)
+                } else {
+                    val packageName = intent.getPackage() ?: return
+                    val marketUri = "market://details?id=$packageName".toUri()
+                    val marketIntent = Intent(Intent.ACTION_VIEW, marketUri)
+                    Timber.d("Trying to open market uri %s", marketUri)
+                    if (packageManager.resolveActivityCompat(marketIntent) != null) {
+                        startActivity(marketIntent)
+                    }
                 }
+            } catch (t: Throwable) {
+                Timber.w("Unable to parse intent uri: %s because: %s", url, t.message)
+            }
+        }
+
+        override fun onReceivedError(
+            view: WebView,
+            request: WebResourceRequest,
+            error: WebResourceError,
+        ) {
+            viewModel.mediaErrorHandler.processFailure(request) { filename: String ->
+                showMediaErrorSnackbar(filename)
             }
         }
     }
 
-    private fun onCreateWebChromeClient(): WebChromeClient {
-        return object : WebChromeClient() {
-            private lateinit var customView: View
+    open inner class CardViewerWebChromeClient : WebChromeClient() {
+        protected lateinit var paramView: View
 
-            // used for displaying `<video>` in fullscreen.
-            // This implementation requires configChanges="orientation" in the manifest
-            // to avoid destroying the View if the device is rotated
-            override fun onShowCustomView(
-                paramView: View,
-                paramCustomViewCallback: CustomViewCallback?
-            ) {
-                customView = paramView
-                val window = requireActivity().window
-                (window.decorView as FrameLayout).addView(
-                    customView,
-                    FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT
-                    )
-                )
-                // hide system bars
-                with(WindowInsetsControllerCompat(window, window.decorView)) {
-                    systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                    hide(WindowInsetsCompat.Type.systemBars())
-                }
+        // used for displaying `<video>` in fullscreen.
+        // This implementation requires configChanges="orientation" in the manifest
+        // to avoid destroying the View if the device is rotated
+        override fun onShowCustomView(
+            paramView: View,
+            paramCustomViewCallback: CustomViewCallback?,
+        ) {
+            this@CardViewerWebChromeClient.paramView = paramView
+            val window = requireActivity().window
+            (window.decorView as FrameLayout).addView(
+                paramView,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                ),
+            )
+            // hide system bars
+            with(WindowInsetsControllerCompat(window, window.decorView)) {
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                hide(WindowInsetsCompat.Type.systemBars())
             }
+        }
 
-            override fun onHideCustomView() {
-                val window = requireActivity().window
-                (window.decorView as FrameLayout).removeView(customView)
-                // show system bars back
-                with(WindowInsetsControllerCompat(window, window.decorView)) {
-                    systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
-                    show(WindowInsetsCompat.Type.systemBars())
-                }
+        override fun onHideCustomView() {
+            val window = requireActivity().window
+            (window.decorView as FrameLayout).removeView(paramView)
+            // show system bars back
+            with(WindowInsetsControllerCompat(window, window.decorView)) {
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+                show(WindowInsetsCompat.Type.systemBars())
             }
         }
     }
 
     private fun showMediaErrorSnackbar(filename: String) {
         showSnackbar(getString(R.string.card_viewer_could_not_find_image, filename)) {
-            setAction(R.string.help) { openUrl(Uri.parse(getString(R.string.link_faq_missing_media))) }
+            setAction(R.string.help) { openUrl(R.string.link_faq_missing_media) }
         }
     }
-
-    private fun openUrl(uri: Uri) = startActivity(Intent(Intent.ACTION_VIEW, uri))
 }

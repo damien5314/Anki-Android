@@ -17,18 +17,19 @@ package com.ichi2.anki.services
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ichi2.anki.RobolectricTest
+import com.ichi2.anki.libanki.Note
+import com.ichi2.anki.libanki.NotetypeJson
 import com.ichi2.anki.multimediacard.IMultimediaEditableNote
 import com.ichi2.anki.multimediacard.fields.ImageField
 import com.ichi2.anki.multimediacard.fields.MediaClipField
 import com.ichi2.anki.servicelayer.NoteService
-import com.ichi2.libanki.Consts
-import com.ichi2.libanki.Note
-import com.ichi2.libanki.NotetypeJson
 import com.ichi2.testutils.createTransientFile
-import org.hamcrest.CoreMatchers.*
+import org.hamcrest.CoreMatchers.equalTo
+import org.hamcrest.CoreMatchers.not
 import org.hamcrest.MatcherAssert.assertThat
-import org.hamcrest.io.FileMatchers.*
-import org.junit.Assert.*
+import org.hamcrest.io.FileMatchers.anExistingFile
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -40,7 +41,8 @@ import java.io.IOException
 
 @RunWith(AndroidJUnit4::class)
 class NoteServiceTest : RobolectricTest() {
-    override fun useInMemoryDatabase(): Boolean = false
+    // TODO: Storage.kt needs a different openCollection override, and accepting media files
+    override fun getCollectionStorageMode() = CollectionStorageMode.ON_DISK
 
     // temporary directory to test importMediaToDirectory function
     @get:Rule
@@ -52,15 +54,16 @@ class NoteServiceTest : RobolectricTest() {
     // tests if the text fields of the notes are the same after calling updateJsonNoteFromMultimediaNote
     @Test
     fun updateJsonNoteTest() {
-        val testModel = col.notetypes.byName("Basic")
-        val multiMediaNote: IMultimediaEditableNote? = NoteService.createEmptyNote(testModel!!)
+        val testNoteType = col.notetypes.byName("Basic")
+        val multiMediaNote: IMultimediaEditableNote? = NoteService.createEmptyNote(testNoteType!!)
         multiMediaNote!!.getField(0)!!.text = "foo"
         multiMediaNote.getField(1)!!.text = "bar"
 
-        val basicNote = col.run { Note.fromNotetypeId(testModel.id) }.apply {
-            setField(0, "this should be changed to foo")
-            setField(1, "this should be changed to bar")
-        }
+        val basicNote =
+            Note.fromNotetypeId(col, testNoteType.id).apply {
+                setField(0, "this should be changed to foo")
+                setField(1, "this should be changed to bar")
+            }
 
         NoteService.updateJsonNoteFromMultimediaNote(multiMediaNote, basicNote)
         assertEquals(basicNote.fields[0], multiMediaNote.getField(0)!!.text)
@@ -70,16 +73,19 @@ class NoteServiceTest : RobolectricTest() {
     // tests if updateJsonNoteFromMultimediaNote throws a RuntimeException if the ID's of the notes don't match
     @Test
     fun updateJsonNoteRuntimeErrorTest() {
-        // model with ID 42
+        // note type with ID 42
         var testNotetype = NotetypeJson("""{"flds": [{"name": "foo bar", "ord": "1"}], "id": "42"}""")
         val multiMediaNoteWithID42: IMultimediaEditableNote? = NoteService.createEmptyNote(testNotetype)
 
-        // model with ID 45
+        // note type with ID 45
         testNotetype = col.notetypes.newBasicNotetype()
         testNotetype.id = 45
         col.notetypes.add(testNotetype)
-        val noteWithID45 = col.run { Note.fromNotetypeId(testNotetype.id) }
-        val expectedException: Throwable = assertThrows(RuntimeException::class.java) { NoteService.updateJsonNoteFromMultimediaNote(multiMediaNoteWithID42, noteWithID45) }
+        val noteWithID45 = Note.fromNotetypeId(col, testNotetype.id)
+        val expectedException: Throwable =
+            assertThrows(
+                RuntimeException::class.java,
+            ) { NoteService.updateJsonNoteFromMultimediaNote(multiMediaNoteWithID42, noteWithID45) }
         assertEquals(expectedException.message, "Source and Destination Note ID do not match.")
     }
 
@@ -92,13 +98,17 @@ class NoteServiceTest : RobolectricTest() {
         FileWriter(fileAudio).use { fileWriter -> fileWriter.write("line1") }
 
         val audioField = MediaClipField()
-        audioField.audioPath = fileAudio.absolutePath
+        audioField.mediaFile = fileAudio
 
         NoteService.importMediaToDirectory(col, audioField)
 
         val outFile = File(col.media.dir, fileAudio.name)
 
-        assertThat("path should be equal to new file made in NoteService.importMediaToDirectory", outFile, aFileWithAbsolutePath(equalTo(audioField.audioPath)))
+        assertThat(
+            "path should be equal to new file made in NoteService.importMediaToDirectory",
+            outFile,
+            equalTo(audioField.mediaFile),
+        )
     }
 
     // Similar test like above, but with an ImageField instead of a MediaClipField
@@ -111,13 +121,17 @@ class NoteServiceTest : RobolectricTest() {
         FileWriter(fileImage).use { fileWriter -> fileWriter.write("line1") }
 
         val imgField = ImageField()
-        imgField.extraImagePathRef = fileImage.absolutePath
+        imgField.extraImageFileRef = fileImage
 
         NoteService.importMediaToDirectory(col, imgField)
 
         val outFile = File(col.media.dir, fileImage.name)
 
-        assertThat("path should be equal to new file made in NoteService.importMediaToDirectory", outFile, aFileWithAbsolutePath(equalTo(imgField.extraImagePathRef)))
+        assertThat(
+            "path should be equal to new file made in NoteService.importMediaToDirectory",
+            outFile,
+            equalTo(imgField.extraImageFileRef),
+        )
     }
 
     /**
@@ -141,16 +155,16 @@ class NoteServiceTest : RobolectricTest() {
         FileWriter(f2).use { fileWriter -> fileWriter.write("2") }
 
         val fld1 = MediaClipField()
-        fld1.audioPath = f1.absolutePath
+        fld1.mediaFile = f1
 
         val fld2 = MediaClipField()
-        fld2.audioPath = f2.absolutePath
+        fld2.mediaFile = f2
 
         // third field to test if name is kept after reimporting the same file
         val fld3 = MediaClipField()
-        fld3.audioPath = f1.absolutePath
+        fld3.mediaFile = f1
 
-        Timber.e("media folder is %s %b", col.media.dir, File(col.media.dir).exists())
+        Timber.e("media folder is %s %b", col.media.dir, col.media.dir.exists())
         NoteService.importMediaToDirectory(col, fld1)
         val o1 = File(col.media.dir, f1.name)
 
@@ -160,9 +174,21 @@ class NoteServiceTest : RobolectricTest() {
         NoteService.importMediaToDirectory(col, fld3)
         // creating a third outfile isn't necessary because it should be equal to the first one
 
-        assertThat("path should be equal to new file made in NoteService.importMediaToDirectory", o1, aFileWithAbsolutePath(equalTo(fld1.audioPath)))
-        assertThat("path should be different to new file made in NoteService.importMediaToDirectory", o2, aFileWithAbsolutePath(not(fld2.audioPath)))
-        assertThat("path should be equal to new file made in NoteService.importMediaToDirectory", o1, aFileWithAbsolutePath(equalTo(fld3.audioPath)))
+        assertThat(
+            "path should be equal to new file made in NoteService.importMediaToDirectory",
+            o1,
+            equalTo(fld1.mediaFile),
+        )
+        assertThat(
+            "path should be different to new file made in NoteService.importMediaToDirectory",
+            o2,
+            not(fld2.mediaFile),
+        )
+        assertThat(
+            "path should be equal to new file made in NoteService.importMediaToDirectory",
+            o1,
+            equalTo(fld3.mediaFile),
+        )
     }
 
     // Similar test like above, but with an ImageField instead of a MediaClipField
@@ -178,14 +204,14 @@ class NoteServiceTest : RobolectricTest() {
         FileWriter(f2).use { fileWriter -> fileWriter.write("2") }
 
         val fld1 = ImageField()
-        fld1.extraImagePathRef = f1.absolutePath
+        fld1.extraImageFileRef = f1
 
         val fld2 = ImageField()
-        fld2.extraImagePathRef = f2.absolutePath
+        fld2.extraImageFileRef = f2
 
         // third field to test if name is kept after reimporting the same file
         val fld3 = ImageField()
-        fld3.extraImagePathRef = f1.absolutePath
+        fld3.extraImageFileRef = f1
 
         NoteService.importMediaToDirectory(col, fld1)
         val o1 = File(col.media.dir, f1.name)
@@ -196,9 +222,21 @@ class NoteServiceTest : RobolectricTest() {
         NoteService.importMediaToDirectory(col, fld3)
         // creating a third outfile isn't necessary because it should be equal to the first one
 
-        assertThat("path should be equal to new file made in NoteService.importMediaToDirectory", o1, aFileWithAbsolutePath(equalTo(fld1.extraImagePathRef)))
-        assertThat("path should be different to new file made in NoteService.importMediaToDirectory", o2, aFileWithAbsolutePath(not(fld2.extraImagePathRef)))
-        assertThat("path should be equal to new file made in NoteService.importMediaToDirectory", o1, aFileWithAbsolutePath(equalTo(fld3.extraImagePathRef)))
+        assertThat(
+            "path should be equal to new file made in NoteService.importMediaToDirectory",
+            o1,
+            equalTo(fld1.extraImageFileRef),
+        )
+        assertThat(
+            "path should be different to new file made in NoteService.importMediaToDirectory",
+            o2,
+            not(fld2.extraImageFileRef),
+        )
+        assertThat(
+            "path should be equal to new file made in NoteService.importMediaToDirectory",
+            o1,
+            equalTo(fld3.extraImageFileRef),
+        )
     }
 
     /**
@@ -210,10 +248,11 @@ class NoteServiceTest : RobolectricTest() {
     fun tempAudioIsDeletedAfterImport() {
         val file = createTransientFile("foo")
 
-        val field = MediaClipField().apply {
-            audioPath = file.absolutePath
-            hasTemporaryMedia = true
-        }
+        val field =
+            MediaClipField().apply {
+                mediaFile = file
+                hasTemporaryMedia = true
+            }
 
         NoteService.importMediaToDirectory(col, field)
 
@@ -225,73 +264,14 @@ class NoteServiceTest : RobolectricTest() {
     fun tempImageIsDeletedAfterImport() {
         val file = createTransientFile("foo")
 
-        val field = ImageField().apply {
-            extraImagePathRef = file.absolutePath
-            hasTemporaryMedia = true
-        }
+        val field =
+            ImageField().apply {
+                extraImageFileRef = file
+                hasTemporaryMedia = true
+            }
 
         NoteService.importMediaToDirectory(col, field)
 
         assertThat("Image temporary file should have been deleted after importing", file, not(anExistingFile()))
-    }
-
-    @Test
-    fun testAvgEase() {
-        // basic case: no cards are new
-        val note = addNoteUsingModelName("Cloze", "{{c1::Hello}}{{c2::World}}{{c3::foo}}{{c4::bar}}", "extra")
-        // factor for cards: 3000, 1500, 1000, 750
-        for ((i, card) in note.cards().withIndex()) {
-            card.update {
-                type = Consts.CARD_TYPE_REV
-                factor = 3000 / (i + 1)
-            }
-        }
-        // avg ease = (3000/10 + 1500/10 + 100/10 + 750/10) / 4 = [156.25] = 156
-        assertEquals(156, NoteService.avgEase(col, note))
-
-        // test case: one card is new
-        note.cards()[2].update {
-            type = Consts.CARD_TYPE_NEW
-        }
-        // avg ease = (3000/10 + 1500/10 + 750/10) / 3 = [175] = 175
-        assertEquals(175, NoteService.avgEase(col, note))
-
-        // test case: all cards are new
-        note.updateCards { type = Consts.CARD_TYPE_NEW }
-        // no cards are rev, so avg ease cannot be calculated
-        assertEquals(null, NoteService.avgEase(col, note))
-    }
-
-    @Test
-    fun testAvgInterval() {
-        // basic case: all cards are relearning or review
-        val note = addNoteUsingModelName("Cloze", "{{c1::Hello}}{{c2::World}}{{c3::foo}}{{c4::bar}}", "extra")
-        val reviewOrRelearningList = listOf(Consts.CARD_TYPE_REV, Consts.CARD_TYPE_RELEARNING)
-        val newOrLearningList = listOf(Consts.CARD_TYPE_NEW, Consts.CARD_TYPE_LRN)
-
-        // interval for cards: 3000, 1500, 1000, 750
-        for ((i, card) in note.cards().withIndex()) {
-            card.update {
-                type = reviewOrRelearningList.shuffled().first()
-                ivl = 3000 / (i + 1)
-            }
-        }
-
-        // avg interval = (3000 + 1500 + 1000 + 750) / 4 = [1562.5] = 1562
-        assertEquals(1562, NoteService.avgInterval(col, note))
-
-        // case: one card is new or learning
-        note.cards()[2].update {
-            type = newOrLearningList.shuffled().first()
-        }
-
-        // avg interval = (3000 + 1500 + 750) / 3 = [1750] = 1750
-        assertEquals(1750, NoteService.avgInterval(col, note))
-
-        // case: all cards are new or learning
-        note.updateCards { type = newOrLearningList.shuffled().first() }
-
-        // no cards are rev or relearning, so avg interval cannot be calculated
-        assertEquals(null, NoteService.avgInterval(col, note))
     }
 }

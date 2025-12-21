@@ -17,16 +17,18 @@ package com.ichi2.testutils
 
 import android.content.Context
 import com.ichi2.anki.CollectionHelper
-import com.ichi2.libanki.DB
-import com.ichi2.libanki.Storage
+import com.ichi2.anki.backend.createDatabaseUsingAndroidFramework
+import com.ichi2.anki.libanki.DB
 
 object DbUtils {
     /** performs a query on an unopened collection  */
-    fun performQuery(context: Context, query: String) {
-        check(!Storage.isInMemory) { "cannot use performQuery in memory" }
+    fun performQuery(
+        context: Context,
+        query: String,
+    ) {
         var db: DB? = null
         try {
-            db = DB.withAndroidFramework(context, CollectionHelper.getCollectionPath(context))
+            db = createDatabaseUsingAndroidFramework(context, CollectionHelper.getCollectionPath(context))
             db.executeScript(query)
         } finally {
             db?.close()

@@ -32,6 +32,8 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.ichi2.anki.Flag
 import com.ichi2.anki.R
+import com.ichi2.anki.utils.ext.findViewById
+import com.ichi2.utils.moveCursorToEnd
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -40,28 +42,36 @@ import kotlinx.coroutines.launch
  *
  * @param lifecycleScope The CoroutineScope used for launching coroutines.
  */
-class FlagAdapter(private val lifecycleScope: CoroutineScope) :
-    ListAdapter<FlagItem, FlagAdapter.FlagViewHolder>(FlagItemDiffCallback()) {
+class FlagAdapter(
+    private val lifecycleScope: CoroutineScope,
+) : ListAdapter<FlagItem, FlagAdapter.FlagViewHolder>(FlagItemDiffCallback()) {
+    inner class FlagViewHolder(
+        itemView: View,
+    ) : RecyclerView.ViewHolder(itemView) {
+        val flagImageView: ImageView = findViewById(R.id.ic_flag)
+        val flagNameText: TextView = findViewById(R.id.flag_name)
+        val flagNameEdit: TextInputEditText = findViewById(R.id.flag_name_edit_text)
+        val editButton: MaterialButton = findViewById(R.id.action_edit_flag)
+        val saveButton: MaterialButton = findViewById(R.id.action_save_flag_name)
+        val cancelButton: MaterialButton = findViewById(R.id.action_cancel_flag_rename)
 
-    inner class FlagViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val flagImageView: ImageView = itemView.findViewById(R.id.ic_flag)
-        val flagNameText: TextView = itemView.findViewById(R.id.flag_name)
-        val flagNameEdit: TextInputEditText = itemView.findViewById(R.id.flag_name_edit_text)
-        val editButton: MaterialButton = itemView.findViewById(R.id.action_edit_flag)
-        val saveButton: MaterialButton = itemView.findViewById(R.id.action_save_flag_name)
-        val cancelButton: MaterialButton = itemView.findViewById(R.id.action_cancel_flag_rename)
-
-        val flagNameViewLayout: LinearLayout = itemView.findViewById(R.id.flag_name_view_layout)
-        val flagNameEditLayout: LinearLayout = itemView.findViewById(R.id.edit_flag_name_layout)
+        val flagNameViewLayout: LinearLayout = findViewById(R.id.flag_name_view_layout)
+        val flagNameEditLayout: LinearLayout = findViewById(R.id.edit_flag_name_layout)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FlagViewHolder {
+    override fun onCreateViewHolder(
+        parent: ViewGroup,
+        viewType: Int,
+    ): FlagViewHolder {
         val view =
             LayoutInflater.from(parent.context).inflate(R.layout.edit_flag_item, parent, false)
         return FlagViewHolder(view)
     }
 
-    override fun onBindViewHolder(holder: FlagViewHolder, position: Int) {
+    override fun onBindViewHolder(
+        holder: FlagViewHolder,
+        position: Int,
+    ) {
         val flagItem = getItem(position)
 
         holder.flagImageView.setImageResource(flagItem.icon)
@@ -76,19 +86,24 @@ class FlagAdapter(private val lifecycleScope: CoroutineScope) :
             holder.flagNameViewLayout.visibility = View.GONE
             holder.flagNameEditLayout.visibility = View.VISIBLE
             holder.flagNameEdit.requestFocus()
-            holder.flagNameEdit.text?.let { text -> holder.flagNameEdit.setSelection(text.length) }
+            holder.flagNameEdit.moveCursorToEnd()
             val inputMethodManager = holder.flagNameEdit.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             inputMethodManager.showSoftInput(holder.flagNameEdit, InputMethodManager.SHOW_IMPLICIT)
         }
 
         holder.saveButton.setOnClickListener {
-            val updatedTextName = holder.flagNameEdit.text.toString()
+            val updatedTextName =
+                holder.flagNameEdit.text
+                    .toString()
+                    .ifEmpty { flagItem.title }
             holder.flagNameViewLayout.visibility = View.VISIBLE
             holder.flagNameEditLayout.visibility = View.GONE
             val updatedFlagItem = flagItem.copy(title = updatedTextName)
             val updatedDataset = currentList.toMutableList()
-            lifecycleScope.launch {
-                flagItem.renameTo(updatedTextName)
+            if (updatedFlagItem.title != flagItem.title) {
+                lifecycleScope.launch {
+                    flagItem.renameTo(updatedTextName)
+                }
             }
             updatedFlagItem.isInEditMode = false
             updatedDataset[position] = updatedFlagItem
@@ -103,34 +118,36 @@ class FlagAdapter(private val lifecycleScope: CoroutineScope) :
     }
 
     class FlagItemDiffCallback : DiffUtil.ItemCallback<FlagItem>() {
-        override fun areItemsTheSame(oldItem: FlagItem, newItem: FlagItem): Boolean {
-            return oldItem.ordinal == newItem.ordinal
-        }
+        override fun areItemsTheSame(
+            oldItem: FlagItem,
+            newItem: FlagItem,
+        ): Boolean = oldItem.flag == newItem.flag
 
-        override fun areContentsTheSame(oldItem: FlagItem, newItem: FlagItem): Boolean {
-            return oldItem.title == newItem.title
-        }
+        override fun areContentsTheSame(
+            oldItem: FlagItem,
+            newItem: FlagItem,
+        ): Boolean = oldItem.title == newItem.title
     }
 }
 
 /**
  * Data class representing a flag item.
  *
- * @property ordinal The ordinal value of the flag.
+ * @property flag The ordinal value of the flag.
  * @property title The title or name of the flag.
  * @property icon The icon resource ID of the flag.
  * @property isInEditMode Whether the flag is being edited.
  */
 data class FlagItem(
-    val ordinal: Int,
+    val flag: Flag,
     val title: String,
     val icon: Int,
-    var isInEditMode: Boolean = false
+    var isInEditMode: Boolean = false,
 ) {
     /**
      * Renames the flag
      *
      * @param newName The new name for the flag.
      */
-    suspend fun renameTo(newName: String) = Flag.fromCode(ordinal).rename(newName)
+    suspend fun renameTo(newName: String) = flag.rename(newName)
 }

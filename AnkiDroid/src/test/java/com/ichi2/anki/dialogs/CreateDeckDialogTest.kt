@@ -1,19 +1,19 @@
-/****************************************************************************************
- * Copyright (c) 2021 Akshay Jadhav <jadhavakshay0701@gmail.com>                        *
- * Copyright (c) 2024 David Allison <davidallisongithub@gmail.com>                      *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2021 Akshay Jadhav <jadhavakshay0701@gmail.com>
+ * Copyright (c) 2024 David Allison <davidallisongithub@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 package com.ichi2.anki.dialogs
 
@@ -28,7 +28,7 @@ import com.ichi2.anki.R
 import com.ichi2.anki.RobolectricTest
 import com.ichi2.anki.dialogs.CreateDeckDialog.DeckDialogType
 import com.ichi2.anki.dialogs.utils.input
-import com.ichi2.libanki.DeckId
+import com.ichi2.anki.libanki.DeckId
 import com.ichi2.utils.getInputTextLayout
 import com.ichi2.utils.positiveButton
 import okhttp3.internal.closeQuietly
@@ -36,6 +36,7 @@ import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.CoreMatchers.nullValue
 import org.hamcrest.Matcher
 import org.hamcrest.MatcherAssert.assertThat
+import org.hamcrest.Matchers.hasItem
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -49,13 +50,15 @@ import kotlin.test.assertFalse
 @RunWith(RobolectricTestRunner::class)
 class CreateDeckDialogTest : RobolectricTest() {
     private lateinit var activityScenario: ActivityScenario<DeckPicker>
+
     override fun setUp() {
         super.setUp()
         getPreferences().edit { putBoolean(IntroductionActivity.INTRODUCTION_SLIDES_SHOWN, true) }
         ensureCollectionLoadIsSynchronous()
-        activityScenario = ActivityScenario.launch(DeckPicker::class.java).apply {
-            moveToState(Lifecycle.State.STARTED)
-        }
+        activityScenario =
+            ActivityScenario.launch(DeckPicker::class.java).apply {
+                moveToState(Lifecycle.State.STARTED)
+            }
     }
 
     override fun tearDown() {
@@ -104,6 +107,23 @@ class CreateDeckDialogTest : RobolectricTest() {
     }
 
     @Test
+    fun testCreateDeckWithQuotes() {
+        val deckNameWithQuotes = "New \"Quoted\" Deck"
+        ensureExecutionOfScenario(DeckDialogType.DECK) { createDeckDialog, assertionCalled ->
+            createDeckDialog.onNewDeckCreated = { id: DeckId ->
+                // Verify that quotes are preserved in deck names when creating
+                assertThat(
+                    "Quotes should be preserved in deck names when creating",
+                    col.decks.name(id),
+                    equalTo(deckNameWithQuotes),
+                )
+                assertionCalled()
+            }
+            createDeckDialog.createDeck(deckNameWithQuotes)
+        }
+    }
+
+    @Test
     fun testRenameDeckFunction() {
         val deckName = "Deck Name"
         val deckNewName = "New Deck Name"
@@ -119,12 +139,33 @@ class CreateDeckDialogTest : RobolectricTest() {
     }
 
     @Test
+    fun testRenameDeckWithQuotes() {
+        val deckName = "Deck Name"
+        val deckNewNameWithQuotes = "New \"Quoted\" Deck Name"
+        ensureExecutionOfScenario(DeckDialogType.RENAME_DECK) { createDeckDialog, assertionCalled ->
+            createDeckDialog.deckName = deckName
+            createDeckDialog.onNewDeckCreated = { id: DeckId ->
+                // Verify that the quotes are preserved in the renamed deck
+                assertThat(
+                    "Quotes should be preserved in deck names when renaming",
+                    col.decks.name(id),
+                    equalTo(deckNewNameWithQuotes),
+                )
+                assertionCalled()
+            }
+            createDeckDialog.renameDeck(deckNewNameWithQuotes)
+        }
+    }
+
+    @Test
     fun `deck ordering hint`() {
         // The correct way to order a deck is ['01', '02', '10']
         val expectedText = "If you have deck ordering issues (e.g. ‘10’ appears before ‘2’), replace ‘2’ with ‘02’"
         testDialog(DeckDialogType.DECK) {
-            fun assertHelperText(reason: String?, matcher: Matcher<in CharSequence?>) =
-                assertThat(reason, getInputTextLayout().helperText, matcher)
+            fun assertHelperText(
+                reason: String?,
+                matcher: Matcher<in CharSequence?>,
+            ) = assertThat(reason, getInputTextLayout().helperText, matcher)
 
             input = "test"
             assertHelperText("no number suggestion if text-only", nullValue())
@@ -133,7 +174,7 @@ class CreateDeckDialogTest : RobolectricTest() {
             input = "10. Cheese"
             assertHelperText(
                 "Number suggestion if number is greater than or equal to 10",
-                equalTo(expectedText)
+                equalTo(expectedText),
             )
             input = "1. Cheese"
             assertHelperText("hint is removed if the number is removed", nullValue())
@@ -152,52 +193,56 @@ class CreateDeckDialogTest : RobolectricTest() {
     }
 
     @Test
-    fun searchDecksIconVisibilityDeckCreationTest() = runTest {
-        // await deckpicker
-        val deckPicker = suspendCoroutine { coro ->
-            activityScenario.onActivity { deckPicker ->
-                coro.resume(deckPicker)
-            }
-        }
-
-        suspend fun decksCount() = withCol { decks.count() }
-        val deckCounter = AtomicInteger(1)
-
-        for (i in 0 until 10) {
-            val createDeckDialog = CreateDeckDialog(
-                deckPicker,
-                R.string.new_deck,
-                DeckDialogType.DECK,
-                null
-            )
-            val did = suspendCoroutine { coro ->
-                createDeckDialog.onNewDeckCreated = { did: DeckId ->
-                    coro.resume(did)
+    fun searchDecksIconVisibilityDeckCreationTest() =
+        runTest {
+            // await deckpicker
+            val deckPicker =
+                suspendCoroutine { coro ->
+                    activityScenario.onActivity { deckPicker ->
+                        coro.resume(deckPicker)
+                    }
                 }
-                createDeckDialog.createDeck("Deck$i")
-            }
-            assertEquals(deckCounter.incrementAndGet(), decksCount())
 
-            assertEquals(deckCounter.get(), decksCount())
+            suspend fun decksCount() = withCol { decks.count() }
+            val deckCounter = AtomicInteger(1)
 
-            updateSearchDecksIcon(deckPicker)
-            assertEquals(
-                deckPicker.optionsMenuState?.searchIcon,
-                decksCount() >= 10
-            )
-
-            // After the last deck was created, delete a deck
-            if (decksCount() >= 10) {
-                deckPicker.confirmDeckDeletion(did)
-                assertEquals(deckCounter.decrementAndGet(), decksCount())
+            for (i in 0 until 10) {
+                val createDeckDialog =
+                    CreateDeckDialog(
+                        deckPicker,
+                        R.string.new_deck,
+                        DeckDialogType.DECK,
+                        null,
+                    )
+                val did =
+                    suspendCoroutine { coro ->
+                        createDeckDialog.onNewDeckCreated = { did: DeckId ->
+                            coro.resume(did)
+                        }
+                        createDeckDialog.createDeck("Deck$i")
+                    }
+                assertEquals(deckCounter.incrementAndGet(), decksCount())
 
                 assertEquals(deckCounter.get(), decksCount())
 
                 updateSearchDecksIcon(deckPicker)
-                assertFalse(deckPicker.optionsMenuState?.searchIcon ?: true)
+                assertEquals(
+                    deckPicker.optionsMenuState?.searchIcon,
+                    decksCount() >= 10,
+                )
+
+                // After the last deck was created, delete a deck
+                if (decksCount() >= 10) {
+                    deckPicker.viewModel.deleteDeck(did).join()
+                    assertEquals(deckCounter.decrementAndGet(), decksCount())
+
+                    assertEquals(deckCounter.get(), decksCount())
+
+                    updateSearchDecksIcon(deckPicker)
+                    assertFalse(deckPicker.optionsMenuState?.searchIcon ?: true)
+                }
             }
         }
-    }
 
     private suspend fun updateSearchDecksIcon(deckPicker: DeckPicker) {
         // the icon update requires a call to refreshState() and subsequent menu
@@ -206,18 +251,19 @@ class CreateDeckDialogTest : RobolectricTest() {
     }
 
     @Test
-    fun searchDecksIconVisibilitySubdeckCreationTest() = runTest {
-        val deckPicker =
-            suspendCoroutine { coro -> activityScenario.onActivity { coro.resume(it) } }
-        deckPicker.updateMenuState()
-        assertEquals(deckPicker.optionsMenuState!!.searchIcon, false)
-        // a single top-level deck with lots of subdecks should turn the icon on
-        withCol {
-            decks.id(deckTreeName(0, 10, "Deck"))
+    fun searchDecksIconVisibilitySubdeckCreationTest() =
+        runTest {
+            val deckPicker =
+                suspendCoroutine { coro -> activityScenario.onActivity { coro.resume(it) } }
+            deckPicker.updateMenuState()
+            assertEquals(deckPicker.optionsMenuState!!.searchIcon, false)
+            // a single top-level deck with lots of subdecks should turn the icon on
+            withCol {
+                decks.id(deckTreeName(0, 10, "Deck"))
+            }
+            deckPicker.updateMenuState()
+            assertEquals(deckPicker.optionsMenuState!!.searchIcon, true)
         }
-        deckPicker.updateMenuState()
-        assertEquals(deckPicker.optionsMenuState!!.searchIcon, true)
-    }
 
     @Test
     fun positiveButtonEnabledOnMatchingDeckNames() {
@@ -228,13 +274,61 @@ class CreateDeckDialogTest : RobolectricTest() {
         }
     }
 
+    @Test
+    fun `filtered decks - duplicate creation`() {
+        fun allDeckNames() = col.decks.allNamesAndIds().map { it.name }
+
+        fun createDeck(
+            deckName: String,
+            expectedReturnValue: Boolean = true,
+        ) {
+            withCreateDeckDialog(DeckDialogType.FILTERED_DECK) {
+                onNewDeckCreated = { }
+                assertThat("createFilteredDeck", createFilteredDeck(deckName), equalTo(expectedReturnValue))
+            }
+        }
+
+        val duplicatedName = col.sched.getOrCreateFilteredDeck(did = 0).name
+
+        createDeck(duplicatedName)
+        assertThat("initial filtered deck created", allDeckNames(), hasItem(duplicatedName))
+
+        createDeck(duplicatedName)
+        assertThat("initial filtered deck", allDeckNames(), hasItem(duplicatedName))
+        assertThat("duplicate deck is created", allDeckNames(), hasItem("$duplicatedName+"))
+
+        repeat(9) {
+            createDeck(duplicatedName)
+        }
+
+        assertThat("final duplicate deck is created", allDeckNames(), hasItem("$duplicatedName${"+".repeat(10)}"))
+        createDeck(duplicatedName, expectedReturnValue = false)
+    }
+
     /**
      * Executes [callback] on the [AlertDialog] created from [CreateDeckDialog]
      */
-    private fun testDialog(deckDialogType: DeckDialogType, parentId: DeckId? = null, callback: (AlertDialog.() -> Unit)) {
+    private fun testDialog(
+        deckDialogType: DeckDialogType,
+        parentId: DeckId? = null,
+        callback: (AlertDialog.() -> Unit),
+    ) {
+        withCreateDeckDialog(deckDialogType, parentId) {
+            callback(this.showDialog())
+        }
+    }
+
+    /**
+     * Creates a test instance of [CreateDeckDialog]
+     */
+    private fun withCreateDeckDialog(
+        deckDialogType: DeckDialogType,
+        parentId: DeckId? = null,
+        callback: (CreateDeckDialog.() -> Unit),
+    ) {
         activityScenario.onActivity { activity: DeckPicker ->
-            val dialog = CreateDeckDialog(activity, R.string.new_deck, deckDialogType, parentId).showDialog()
-            callback(dialog)
+            val createDeckDialog = CreateDeckDialog(activity, R.string.new_deck, deckDialogType, parentId)
+            callback(createDeckDialog)
         }
     }
 
@@ -242,7 +336,11 @@ class CreateDeckDialogTest : RobolectricTest() {
      * Tests a scenario with a [DeckPicker] hosting a [CreateDeckDialog].
      * The second parameter of the callback ('assertionCalled') must be called for this to pass
      */
-    private fun ensureExecutionOfScenario(deckDialogType: DeckDialogType, parentId: DeckId? = null, callback: ((CreateDeckDialog, (() -> Unit)) -> Unit)) {
+    private fun ensureExecutionOfScenario(
+        deckDialogType: DeckDialogType,
+        parentId: DeckId? = null,
+        callback: ((CreateDeckDialog, (() -> Unit)) -> Unit),
+    ) {
         activityScenario.onActivity { activity: DeckPicker ->
             val assertionCalled = AtomicReference(false)
             callback(CreateDeckDialog(activity, R.string.new_deck, deckDialogType, parentId)) {
@@ -253,18 +351,24 @@ class CreateDeckDialogTest : RobolectricTest() {
     }
 
     @Suppress("SameParameterValue")
-    private fun deckTreeName(start: Int, end: Int, prefix: String): String {
-        return List(end - start + 1) { "${prefix}${it + start}" }
+    private fun deckTreeName(
+        start: Int,
+        end: Int,
+        prefix: String,
+    ): String =
+        List(end - start + 1) { "${prefix}${it + start}" }
             .joinToString("::")
-    }
 }
 
 /** Test of [CreateDeckDialog] */
 class CreateDeckDialogNonAndroidTest {
     @Test
     fun `number larger than nine detection`() {
-        fun assertLargerThanNine(reason: String?, input: String, result: Boolean) =
-            assertThat(reason, input.containsNumberLargerThanNine(), equalTo(result))
+        fun assertLargerThanNine(
+            reason: String?,
+            input: String,
+            result: Boolean,
+        ) = assertThat(reason, input.containsNumberLargerThanNine(), equalTo(result))
 
         assertLargerThanNine("empty string", "", false)
         assertLargerThanNine("text", "deck name", false)

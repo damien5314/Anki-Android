@@ -16,9 +16,9 @@
 
 package com.ichi2.anki.cardviewer
 
-import android.text.TextUtils
-import com.ichi2.libanki.AvRef
-import com.ichi2.libanki.SoundOrVideoTag
+import com.ichi2.anki.common.utils.htmlEncode
+import com.ichi2.anki.libanki.AvRef
+import com.ichi2.anki.libanki.SoundOrVideoTag
 import kotlinx.coroutines.CancellableContinuation
 import timber.log.Timber
 import kotlin.coroutines.resume
@@ -33,14 +33,16 @@ import kotlin.coroutines.resumeWithException
  *
  * `data-file` was selected to select the file to play, as we do not have the [AvRef] to play here
  *
- * @see com.ichi2.libanki.Sound.expandSounds
+ * @see com.ichi2.anki.libanki.Sound.expandSounds
  */
-class VideoPlayer(private val jsEval: () -> JavascriptEvaluator?) {
+class VideoPlayer(
+    private val jsEval: JavascriptEvaluator,
+) {
     private var continuation: CancellableContinuation<Unit>? = null
 
     fun playVideo(
         continuation: CancellableContinuation<Unit>,
-        tag: SoundOrVideoTag
+        tag: SoundOrVideoTag,
     ) {
         this.continuation = continuation
 
@@ -49,19 +51,19 @@ class VideoPlayer(private val jsEval: () -> JavascriptEvaluator?) {
 
         // BUG: We don't have the index of the tag in the list
         // so the wrong video would be played if contained twice in the card content
-        jsEval()?.evaluateAfterDOMContentLoaded(
+        jsEval.evaluateAfterDOMContentLoaded(
             """
                     var videos = document.getElementsByTagName("video")
             
                     for (i = 0; i < videos.length; i++) {
                        var video = videos[i];
-                       if (video.attributes['data-file'].value == "${TextUtils.htmlEncode(fileNameToFind)}") {
+                       if (video.attributes['data-file'].value == "${fileNameToFind.htmlEncode()}") {
                            console.log("playing video: " + video.attributes['data-play'].value);
                            video.play();
                            break;
                        }
                     }
-                """
+                """,
         )
     }
 
@@ -73,7 +75,7 @@ class VideoPlayer(private val jsEval: () -> JavascriptEvaluator?) {
 
     fun onVideoPaused() {
         Timber.i("video paused")
-        continuation?.resumeWithException(SoundException(SoundErrorBehavior.STOP_AUDIO))
+        continuation?.resumeWithException(MediaException(MediaErrorBehavior.STOP_MEDIA))
         continuation = null
     }
 }

@@ -33,7 +33,7 @@
         app:layout_constraintStart_toStartOf="parent" />
 
     <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/set_due_date_single_day_text"
+        android:id="@+id/set_due_date_single_day_input_layout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
@@ -44,14 +44,17 @@
         app:layout_constraintStart_toStartOf="@+id/date_single_label"
         app:layout_constraintTop_toBottomOf="@+id/date_single_label"
         app:expandedHintEnabled="false"
-        tools:helperText="Today is ‘0 days’, tomorrow is ‘1 day’, etc…">
-        tools:suffixText="days">
+        tools:helperText="Today is ‘0 days’, tomorrow is ‘1 day’, etc…"
+        tools:suffixText="days"
+        >
 
         <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/set_due_date_single_day_edit_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="number"
-            tools:text="2" />
+            tools:text="2"
+            android:imeOptions="actionDone" />
     </com.google.android.material.textfield.TextInputLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

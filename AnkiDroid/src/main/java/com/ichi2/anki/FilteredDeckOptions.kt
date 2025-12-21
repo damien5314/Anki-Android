@@ -1,37 +1,54 @@
+@file:Suppress("DEPRECATION") // #3625 android.preference deprecation
+
+/*
+ * Copyright (c) 2009 Casey Link <unnamedrambler@gmail.com>
+ * Copyright (c) 2012 Norbert Nagold <norbert.nagold@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package com.ichi2.anki
 
-/****************************************************************************************
- * Copyright (c) 2009 Casey Link <unnamedrambler@gmail.com>                             *
- * Copyright (c) 2012 Norbert Nagold <norbert.nagold@gmail.com>                         *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
-
+import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.preference.*
+import android.preference.CheckBoxPreference
+import android.preference.EditTextPreference
+import android.preference.ListPreference
+import android.preference.Preference
+import android.preference.PreferenceCategory
+import androidx.annotation.CheckResult
+import androidx.core.content.edit
+import anki.decks.Deck
+import com.ichi2.anki.CollectionManager.TR
 import com.ichi2.anki.analytics.UsageAnalytics
-import com.ichi2.annotations.NeedsTest
-import com.ichi2.libanki.Collection
+import com.ichi2.anki.common.annotations.NeedsTest
+import com.ichi2.anki.common.utils.ext.stringIterable
+import com.ichi2.anki.libanki.Collection
+import com.ichi2.anki.libanki.DeckId
+import com.ichi2.anki.libanki.toDisplayString
 import com.ichi2.preferences.StepsPreference.Companion.convertFromJSON
 import com.ichi2.preferences.StepsPreference.Companion.convertToJSON
 import com.ichi2.themes.Themes
 import com.ichi2.ui.AppCompatPreferenceActivity
-import com.ichi2.utils.stringIterable
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
+
+/** Available items for 'Cards selected by' */
+private typealias CardSelectionOrder = Deck.Filtered.SearchTerm.Order
 
 @NeedsTest("construction + onCreate - do this after converting to fragment-based preferences.")
 class FilteredDeckOptions :
@@ -40,19 +57,21 @@ class FilteredDeckOptions :
     private var allowCommit = true
 
     // TODO: not anymore used in libanki?
-    private val dynExamples = arrayOf(
-        null,
-        "{'search'=\"is:new\", 'resched'=False, 'steps'=\"1\", 'order'=5}",
-        "{'search'=\"added:1\", 'resched'=False, 'steps'=\"1\", 'order'=5}",
-        "{'search'=\"rated:1:1\", 'order'=4}",
-        "{'search'=\"prop:due<=2\", 'order'=6}",
-        "{'search'=\"is:due tag:TAG\", 'order'=6}",
-        "{'search'=\"is:due\", 'order'=3}",
-        "{'search'=\"\", 'steps'=\"1 10 20\", 'order'=0}"
-    )
+    private val dynExamples =
+        arrayOf(
+            null,
+            "{'search'=\"is:new\", 'resched'=False, 'steps'=\"1\", 'order'=5}",
+            "{'search'=\"added:1\", 'resched'=False, 'steps'=\"1\", 'order'=5}",
+            "{'search'=\"rated:1:1\", 'order'=4}",
+            "{'search'=\"prop:due<=2\", 'order'=6}",
+            "{'search'=\"is:due tag:TAG\", 'order'=6}",
+            "{'search'=\"is:due\", 'order'=3}",
+            "{'search'=\"\", 'steps'=\"1 10 20\", 'order'=0}",
+        )
 
     inner class DeckPreferenceHack : AppCompatPreferenceActivity<FilteredDeckOptions.DeckPreferenceHack>.AbstractPreferenceHack() {
         var secondFilter = false
+
         override fun cacheValues() {
             Timber.d("cacheValues()")
             val ar = deck.getJSONArray("terms").getJSONArray(0)
@@ -183,9 +202,7 @@ class FilteredDeckOptions :
             }
         }
 
-        override fun edit(): Editor {
-            return Editor()
-        }
+        override fun edit(): Editor = Editor()
 
         init {
             cacheValues()
@@ -203,8 +220,8 @@ class FilteredDeckOptions :
             return
         }
         val extras = intent.extras
-        deck = if (extras != null && extras.containsKey("did")) {
-            col.decks.get(extras.getLong("did"))
+        deck = if (extras != null && extras.containsKey(EXTRAS_DECK_ID)) {
+            col.decks.getLegacy(extras.getLong(EXTRAS_DECK_ID))
         } else {
             null
         } ?: col.decks.current()
@@ -216,6 +233,11 @@ class FilteredDeckOptions :
         } else {
             pref = DeckPreferenceHack()
             pref.registerOnSharedPreferenceChangeListener(this)
+            extras?.getString(EXTRAS_SEARCH)?.let { search ->
+                pref.edit {
+                    putString(EXTRAS_SEARCH, search)
+                }
+            }
             addPreferences(col)
             buildLists()
             updateSummaries()
@@ -224,12 +246,13 @@ class FilteredDeckOptions :
         // Set the activity title to include the name of the deck
         var title = resources.getString(R.string.deckpreferences_title)
         if (title.contains("XXX")) {
-            title = try {
-                title.replace("XXX", deck.getString("name"))
-            } catch (e: JSONException) {
-                Timber.w(e)
-                title.replace("XXX", "???")
-            }
+            title =
+                try {
+                    title.replace("XXX", deck.getString("name"))
+                } catch (e: JSONException) {
+                    Timber.w(e)
+                    title.replace("XXX", "???")
+                }
         }
         this.title = title
 
@@ -269,7 +292,7 @@ class FilteredDeckOptions :
         if (prefChanged) {
             // Rebuild the filtered deck if a setting has changed
             try {
-                col.sched.rebuildDyn(deck.getLong("id"))
+                col.sched.rebuildFilteredDeck(deck.getLong("id"))
             } catch (e: JSONException) {
                 Timber.e(e)
             }
@@ -284,16 +307,17 @@ class FilteredDeckOptions :
         val keys: Set<String> = pref.values.keys
         for (key in keys) {
             val pref = findPreference(key)
-            val value: String? = if (pref == null) {
-                continue
-            } else if (pref is CheckBoxPreference) {
-                continue
-            } else if (pref is ListPreference) {
-                val entry = pref.entry
-                entry?.toString() ?: ""
-            } else {
-                this.pref.getString(key, "")
-            }
+            val value: String? =
+                if (pref == null) {
+                    continue
+                } else if (pref is CheckBoxPreference) {
+                    continue
+                } else if (pref is ListPreference) {
+                    val entry = pref.entry
+                    entry?.toString() ?: ""
+                } else {
+                    this.pref.getString(key, "")
+                }
             // update value for EditTexts
             if (pref is EditTextPreference) {
                 pref.text = value
@@ -315,15 +339,23 @@ class FilteredDeckOptions :
 
     @Suppress("deprecation") // Tracked as #5019 on github
     private fun buildLists() {
-        val newOrderPref = findPreference("order") as ListPreference
-        val newOrderPrefSecond = findPreference("order_2") as ListPreference
-        newOrderPref.setEntries(R.array.cram_deck_conf_order_labels)
-        newOrderPref.setEntryValues(R.array.cram_deck_conf_order_values)
-        newOrderPref.value = pref.getString("order", "0")
-        newOrderPrefSecond.setEntries(R.array.cram_deck_conf_order_labels)
-        newOrderPrefSecond.setEntryValues(R.array.cram_deck_conf_order_values)
-        if (pref.secondFilter) {
-            newOrderPrefSecond.value = pref.getString("order_2", "5")
+        val selectionOrderValues = CardSelectionOrder.entries - CardSelectionOrder.UNRECOGNIZED
+
+        val displayStrings = selectionOrderValues.map { it.toDisplayString(TR) }.toTypedArray()
+        val values = selectionOrderValues.map { it.number.toString() }.toTypedArray()
+
+        (findPreference("order") as ListPreference).apply {
+            entries = displayStrings
+            entryValues = values
+            value = pref.getString("order", CardSelectionOrder.OLDEST_REVIEWED_FIRST.number.toString())
+        }
+
+        (findPreference("order_2") as ListPreference).apply {
+            entries = displayStrings
+            entryValues = values
+            if (pref.secondFilter) {
+                value = pref.getString("order_2", CardSelectionOrder.ADDED.number.toString())
+            }
         }
     }
 
@@ -335,25 +367,26 @@ class FilteredDeckOptions :
             secondFilter.isEnabled = true
             secondFilterSign.isChecked = true
         }
-        secondFilterSign.onPreferenceChangeListener = Preference.OnPreferenceChangeListener { _: Preference?, newValue: Any? ->
-            if (newValue !is Boolean) {
-                return@OnPreferenceChangeListener true
+        secondFilterSign.onPreferenceChangeListener =
+            Preference.OnPreferenceChangeListener { _: Preference?, newValue: Any? ->
+                if (newValue !is Boolean) {
+                    return@OnPreferenceChangeListener true
+                }
+                if (!newValue) {
+                    deck.getJSONArray("terms").remove(1)
+                    secondFilter.isEnabled = false
+                } else {
+                    secondFilter.isEnabled = true
+                    /**Link to the defaults used in AnkiDesktop
+                     * <https://github.com/ankitects/anki/blob/1b15069b248a8f86f9bd4b3c66a9bfeab8dfb2b8/qt/aqt/filtered_deck.py#L148-L149>
+                     */
+                    val narr = JSONArray(listOf("", 20, 5))
+                    deck.getJSONArray("terms").put(1, narr)
+                    val newOrderPrefSecond = findPreference("order_2") as ListPreference
+                    newOrderPrefSecond.value = CardSelectionOrder.ADDED.number.toString()
+                }
+                true
             }
-            if (!newValue) {
-                deck.getJSONArray("terms").remove(1)
-                secondFilter.isEnabled = false
-            } else {
-                secondFilter.isEnabled = true
-                /**Link to the defaults used in AnkiDesktop
-                 * <https://github.com/ankitects/anki/blob/1b15069b248a8f86f9bd4b3c66a9bfeab8dfb2b8/qt/aqt/filtered_deck.py#L148-L149>
-                 */
-                val narr = JSONArray(listOf("", 20, 5))
-                deck.getJSONArray("terms").put(1, narr)
-                val newOrderPrefSecond = findPreference("order_2") as ListPreference
-                newOrderPrefSecond.value = "5"
-            }
-            true
-        }
     }
 
     @Suppress("deprecation")
@@ -361,12 +394,28 @@ class FilteredDeckOptions :
         val reschedPref = findPreference(getString(R.string.filtered_deck_resched_key)) as CheckBoxPreference
         val delaysPrefCategory = findPreference(getString(R.string.filtered_deck_previewDelays_key)) as PreferenceCategory
         delaysPrefCategory.isEnabled = !reschedPref.isChecked
-        reschedPref.onPreferenceChangeListener = Preference.OnPreferenceChangeListener { _: Preference?, newValue: Any? ->
-            if (newValue !is Boolean) {
-                return@OnPreferenceChangeListener true
+        reschedPref.onPreferenceChangeListener =
+            Preference.OnPreferenceChangeListener { _: Preference?, newValue: Any? ->
+                if (newValue !is Boolean) {
+                    return@OnPreferenceChangeListener true
+                }
+                delaysPrefCategory.isEnabled = !newValue
+                true
             }
-            delaysPrefCategory.isEnabled = !newValue
-            true
+    }
+
+    companion object {
+        private const val EXTRAS_DECK_ID = "did"
+        private const val EXTRAS_SEARCH = "search"
+
+        @CheckResult
+        fun getIntent(
+            context: Context,
+            deckId: DeckId?,
+            searchTerms: String? = null,
+        ) = Intent(context, FilteredDeckOptions::class.java).apply {
+            deckId?.let { putExtra(EXTRAS_DECK_ID, it) }
+            searchTerms?.let { putExtra(EXTRAS_SEARCH, it) }
         }
     }
 }

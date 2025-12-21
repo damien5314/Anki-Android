@@ -16,27 +16,29 @@
 
 package com.ichi2.anki.model
 
+import android.os.Parcelable
 import anki.config.ConfigKey
-import com.ichi2.libanki.Collection
+import com.ichi2.anki.libanki.Collection
+import kotlinx.parcelize.Parcelize
 
 /**
  * Config: Whether the `CardBrowser` is in "Cards" or "Notes" mode
  *
  * @see ConfigKey.Bool.BROWSER_TABLE_SHOW_NOTES_MODE
  */
-enum class CardsOrNotes {
+@Parcelize
+enum class CardsOrNotes : Parcelable {
     CARDS,
-    NOTES;
+    NOTES,
+    ;
 
-    context (Collection)
-    fun saveToCollection() {
-        this@Collection.config.setBool(ConfigKey.Bool.BROWSER_TABLE_SHOW_NOTES_MODE, this == NOTES)
+    fun saveToCollection(col: Collection) {
+        col.config.setBool(ConfigKey.Bool.BROWSER_TABLE_SHOW_NOTES_MODE, this == NOTES)
     }
 
     companion object {
-        context (Collection)
-        fun fromCollection(): CardsOrNotes =
-            when (this@Collection.config.getBool(ConfigKey.Bool.BROWSER_TABLE_SHOW_NOTES_MODE)) {
+        fun fromCollection(col: Collection): CardsOrNotes =
+            when (col.config.getBool(ConfigKey.Bool.BROWSER_TABLE_SHOW_NOTES_MODE)) {
                 true -> NOTES
                 false -> CARDS
             }

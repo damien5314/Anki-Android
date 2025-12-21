@@ -1,18 +1,18 @@
-/***************************************************************************************
- * Copyright (c) 2015 Timothy Rae <perceptualchaos2@gmail.com>                          *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2015 Timothy Rae <perceptualchaos2@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 package com.ichi2.anki
 
@@ -23,46 +23,43 @@ import androidx.annotation.CheckResult
 import androidx.annotation.VisibleForTesting
 import androidx.core.content.edit
 import com.ichi2.anki.AnkiDroidFolder.AppPrivateFolder
+import com.ichi2.anki.CollectionHelper.PREF_COLLECTION_PATH
+import com.ichi2.anki.CollectionHelper.getCurrentAnkiDroidDirectory
+import com.ichi2.anki.backend.createDatabaseUsingAndroidFramework
 import com.ichi2.anki.exception.StorageAccessException
+import com.ichi2.anki.exception.SystemStorageException
 import com.ichi2.anki.exception.UnknownDatabaseVersionException
-import com.ichi2.anki.preferences.Preferences
+import com.ichi2.anki.libanki.Collection
+import com.ichi2.anki.libanki.CollectionFiles
+import com.ichi2.anki.libanki.DB
 import com.ichi2.anki.preferences.sharedPrefs
-import com.ichi2.libanki.Collection
-import com.ichi2.libanki.DB
 import com.ichi2.preferences.getOrSetString
 import timber.log.Timber
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
-import java.lang.Exception
-import kotlin.Throws
 
 object CollectionHelper {
-    // Name of anki2 file
-    const val COLLECTION_FILENAME = "collection.anki2"
-
     /**
      * The preference key for the path to the current AnkiDroid directory
      *
      * This directory contains all AnkiDroid data and media for a given collection
      * Except the Android preferences, cached files and [MetaDB]
      *
-     * This can be changed by the [Preferences] screen
+     * This can be changed by the Preferences screen
      * to allow a user to access a second collection via the same AnkiDroid app instance.
      *
      * The path also defines the collection that the AnkiDroid API accesses
      */
     const val PREF_COLLECTION_PATH = "deckPath"
 
-    fun getCollectionSize(context: Context): Long? {
-        return try {
-            val path = getCollectionPath(context)
-            File(path).length()
+    fun getCollectionSize(context: Context): Long? =
+        try {
+            getCollectionPath(context).length()
         } catch (e: Exception) {
             Timber.e(e, "Error getting collection Length")
             null
         }
-    }
 
     /**
      * Create the AnkiDroid directory if it doesn't exist and add a .nomedia file to it if needed.
@@ -76,19 +73,18 @@ object CollectionHelper {
      * level, so placing it in the AnkiDroid directory will ensure media scanners will also exclude
      * the collection.media sub-directory.
      *
-     * @param path  Directory to initialize
+     * @param dir  Directory to initialize
      * @throws StorageAccessException If no write access to directory
      */
     @Synchronized
     @Throws(StorageAccessException::class)
-    fun initializeAnkiDroidDirectory(path: String) {
+    fun initializeAnkiDroidDirectory(dir: File) {
         // Create specified directory if it doesn't exit
-        val dir = File(path)
         if (!dir.exists() && !dir.mkdirs()) {
-            throw StorageAccessException("Failed to create AnkiDroid directory $path")
+            throw StorageAccessException("Failed to create AnkiDroid directory $dir")
         }
         if (!dir.canWrite()) {
-            throw StorageAccessException("No write access to AnkiDroid directory $path")
+            throw StorageAccessException("No write access to AnkiDroid directory $dir")
         }
         // Add a .nomedia file to it if it doesn't exist
         val nomedia = File(dir, ".nomedia")
@@ -106,15 +102,14 @@ object CollectionHelper {
      * @return whether or not dir is accessible
      * @param context to get directory with
      */
-    fun isCurrentAnkiDroidDirAccessible(context: Context): Boolean {
-        return try {
+    fun isCurrentAnkiDroidDirAccessible(context: Context): Boolean =
+        try {
             initializeAnkiDroidDirectory(getCurrentAnkiDroidDirectory(context))
             true
         } catch (e: StorageAccessException) {
             Timber.w(e)
             false
         }
-    }
 
     /**
      * Get the absolute path to a directory that is suitable to be the default starting location
@@ -180,13 +175,15 @@ object CollectionHelper {
      * very different things as explained above.
      *
      * @return Absolute Path to the default location starting location for the AnkiDroid directory
+     *
+     * @throws SystemStorageException if `getExternalFilesDir` returns null
      */
     // TODO Tracked in https://github.com/ankidroid/Anki-Android/issues/5304
     @CheckResult
-    fun getDefaultAnkiDroidDirectory(context: Context): String {
+    fun getDefaultAnkiDroidDirectory(context: Context): File {
         val legacyStorage = selectAnkiDroidFolder(context) != AppPrivateFolder
         return if (!legacyStorage) {
-            File(getAppSpecificExternalAnkiDroidDirectory(context), "AnkiDroid").absolutePath
+            File(getAppSpecificExternalAnkiDroidDirectory(context), "AnkiDroid")
         } else {
             legacyAnkiDroidDirectory
         }
@@ -201,8 +198,8 @@ object CollectionHelper {
      *
      * @return Absolute path to the AnkiDroid directory in primary shared/external storage
      */
-    val legacyAnkiDroidDirectory: String
-        get() = File(Environment.getExternalStorageDirectory(), "AnkiDroid").absolutePath
+    private val legacyAnkiDroidDirectory: File
+        get() = File(Environment.getExternalStorageDirectory(), "AnkiDroid")
 
     /**
      * Returns the absolute path to the AnkiDroid directory under the app-specific, primary/shared external storage
@@ -220,18 +217,30 @@ object CollectionHelper {
      *
      * @param context Used to get the External App-Specific directory for AnkiDroid
      * @return Returns the absolute path to the App-Specific External AnkiDroid directory
+     *
+     * @throws SystemStorageException if `getExternalFilesDir` returns null
      */
-    private fun getAppSpecificExternalAnkiDroidDirectory(context: Context): String {
-        return context.getExternalFilesDir(null)!!.absolutePath
+    private fun getAppSpecificExternalAnkiDroidDirectory(context: Context): String? {
+        val externalFilesDir = context.getExternalFilesDir(null)
+
+        // This value *may* be null but we strictly require it. This has caused NullPointerException
+        // in previous releases as we dereference. We can't recover but for purposes of triage,
+        // we will now check for null and if so try to log more information about why.
+        if (externalFilesDir == null) {
+            Timber.e("Attempting to determine collection path, but no valid external storage?")
+            throw SystemStorageException.build(
+                errorDetail = "getExternalFilesDir unexpectedly returned null",
+                infoUri = "https://github.com/ankidroid/Anki-Android/issues/13207",
+            )
+        }
+        return externalFilesDir.absolutePath
     }
 
     /**
      * @return Returns an array of [File]s reflecting the directories that AnkiDroid can access without storage permissions
      * @see android.content.Context.getExternalFilesDirs
      */
-    fun getAppSpecificExternalDirectories(context: Context): List<File> {
-        return context.getExternalFilesDirs(null).filterNotNull()
-    }
+    fun getAppSpecificExternalDirectories(context: Context): List<File> = context.getExternalFilesDirs(null)?.filterNotNull() ?: listOf()
 
     /**
      * Returns the absolute path to the private AnkiDroid directory under the app-specific, internal storage directory.
@@ -243,31 +252,30 @@ object CollectionHelper {
      * @param context Used to get the Internal App-Specific directory for AnkiDroid
      * @return Returns the absolute path to the App-Specific Internal AnkiDroid Directory
      */
-    fun getAppSpecificInternalAnkiDroidDirectory(context: Context): String {
-        return context.filesDir.absolutePath
-    }
+    fun getAppSpecificInternalAnkiDroidDirectory(context: Context): String = context.filesDir.absolutePath
 
     /**
-     *
      * @return the path to the actual [Collection] file
+     *
+     * @throws UnsupportedOperationException if the collection is in-memory
      */
-    fun getCollectionPath(context: Context): String {
-        return File(getCurrentAnkiDroidDirectory(context), COLLECTION_FILENAME).absolutePath
-    }
+    fun getCollectionPath(context: Context) = getCollectionPaths(context).requireDiskBasedCollection().colDb
 
     /** A temporary override for [getCurrentAnkiDroidDirectory] */
-    var ankiDroidDirectoryOverride: String? = null
+    var ankiDroidDirectoryOverride: File? = null
 
     /**
      * @return the absolute path to the AnkiDroid directory.
+     *
+     * @throws SystemStorageException if `getExternalFilesDir` returns null
      */
-    fun getCurrentAnkiDroidDirectory(context: Context): String {
-        return getCurrentAnkiDroidDirectoryOptionalContext(context.sharedPrefs()) { context }
-    }
+    fun getCurrentAnkiDroidDirectory(context: Context): File =
+        getCurrentAnkiDroidDirectoryOptionalContext(context.sharedPrefs()) { context }
 
-    fun getMediaDirectory(context: Context): File {
-        return File(getCurrentAnkiDroidDirectory(context), "collection.media")
-    }
+    fun getCollectionPaths(context: Context): CollectionFiles = CollectionFiles.FolderBasedCollection(getCurrentAnkiDroidDirectory(context))
+
+    // TODO: Duplicates collection.mediaFolder
+    fun getMediaDirectory(context: Context) = getCollectionPaths(context).requireMediaFolder()
 
     /**
      * An accessor which makes [Context] optional in the case that [PREF_COLLECTION_PATH] is set
@@ -277,50 +285,57 @@ object CollectionHelper {
     // This uses a lambda as we typically depends on the `lateinit` AnkiDroidApp.instance
     // If we remove all Android references, we get a significant unit test speedup
     @VisibleForTesting(otherwise = VisibleForTesting.NONE)
-    internal fun getCurrentAnkiDroidDirectoryOptionalContext(preferences: SharedPreferences, context: () -> Context): String {
-        return if (AnkiDroidApp.INSTRUMENTATION_TESTING) {
+    internal fun getCurrentAnkiDroidDirectoryOptionalContext(
+        preferences: SharedPreferences,
+        context: () -> Context,
+    ): File =
+        if (AnkiDroidApp.INSTRUMENTATION_TESTING) {
             // create an "androidTest" directory inside the current collection directory which contains the test data
             // "/AnkiDroid/androidTest" would be a new collection path
-            val currentCollectionDirectory = preferences.getOrSetString(PREF_COLLECTION_PATH) {
-                getDefaultAnkiDroidDirectory(context())
-            }
+            val currentCollectionDirectory =
+                preferences.getOrSetString(PREF_COLLECTION_PATH) {
+                    getDefaultAnkiDroidDirectory(context()).absolutePath
+                }
             File(
                 currentCollectionDirectory,
-                "androidTest"
-            ).absolutePath
-        } else if (ankiDroidDirectoryOverride != null) {
-            ankiDroidDirectoryOverride!!
+                "androidTest",
+            )
         } else {
-            preferences.getOrSetString(PREF_COLLECTION_PATH) {
-                getDefaultAnkiDroidDirectory(
-                    context()
+            ankiDroidDirectoryOverride
+                ?: File(
+                    preferences.getOrSetString(PREF_COLLECTION_PATH) {
+                        getDefaultAnkiDroidDirectory(
+                            context(),
+                        ).absolutePath
+                    },
                 )
-            }
         }
-    }
 
     /**
-     * Resets the AnkiDroid directory to the [getDefaultAnkiDroidDirectory]
+     * Resets the AnkiDroid directory to [directory]
      * Note: if [android.R.attr.preserveLegacyExternalStorage] is in use
      * this will represent a change from `/AnkiDroid` to `/Android/data/...`
+     *
+     * @throws SystemStorageException if `getExternalFilesDir` returns null
      */
-    fun resetAnkiDroidDirectory(context: Context) {
-        val preferences = context.sharedPrefs()
-        val directory = getDefaultAnkiDroidDirectory(context)
+    fun resetAnkiDroidDirectory(
+        context: Context,
+        directory: File = getDefaultAnkiDroidDirectory(context),
+    ) {
         Timber.d("resetting AnkiDroid directory to %s", directory)
-        preferences.edit { putString(PREF_COLLECTION_PATH, directory) }
+        context.sharedPrefs().edit { putString(PREF_COLLECTION_PATH, directory.absolutePath) }
     }
 
     @Throws(UnknownDatabaseVersionException::class)
     fun getDatabaseVersion(context: Context): Int {
         // backend can't open a schema version outside range, so fall back to a pure DB implementation
         val colPath = getCollectionPath(context)
-        if (!File(colPath).exists()) {
-            throw UnknownDatabaseVersionException(FileNotFoundException(colPath))
+        if (!colPath.exists()) {
+            throw UnknownDatabaseVersionException(FileNotFoundException(colPath.absolutePath))
         }
         var db: DB? = null
         return try {
-            db = DB.withAndroidFramework(context, colPath)
+            db = createDatabaseUsingAndroidFramework(context, colPath)
             db.queryScalar("SELECT ver FROM col")
         } catch (e: Exception) {
             Timber.w(e, "Couldn't open the database to obtain collection version!")

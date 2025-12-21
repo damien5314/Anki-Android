@@ -1,18 +1,18 @@
-/****************************************************************************************
- * Copyright (c) 2013 Houssam Salem <houssam.salem.au@gmail.com>                        *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2013 Houssam Salem <houssam.salem.au@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 package com.ichi2.preferences
 
@@ -22,14 +22,16 @@ import android.util.AttributeSet
 import android.view.View
 import com.ichi2.anki.AnkiDroidApp
 import com.ichi2.anki.R
+import com.ichi2.anki.common.utils.ext.stringIterable
 import com.ichi2.anki.showThemedToast
-import com.ichi2.utils.stringIterable
 import org.json.JSONArray
 import org.json.JSONException
 import timber.log.Timber
 
 @Suppress("deprecation", "OVERRIDE_DEPRECATION") // TODO Tracked in https://github.com/ankidroid/Anki-Android/issues/5019
-class StepsPreference : android.preference.EditTextPreference, AutoFocusable {
+class StepsPreference :
+    android.preference.EditTextPreference,
+    AutoFocusable {
     private val allowEmpty: Boolean
 
     @Suppress("unused")
@@ -74,7 +76,7 @@ class StepsPreference : android.preference.EditTextPreference, AutoFocusable {
                 showThemedToast(
                     context,
                     context.resources.getString(R.string.steps_min_error),
-                    false
+                    false,
                 )
             } else {
                 text = validated
@@ -98,14 +100,13 @@ class StepsPreference : android.preference.EditTextPreference, AutoFocusable {
             for (step in stepsAr.stringIterable()) {
                 sb.append(step).append(" ")
             }
-            sb.toString().trim { it <= ' ' }
+            sb.toString().trim()
         }
     }
 
-    private fun getAllowEmptyFromAttributes(attrs: AttributeSet?): Boolean {
-        return attrs?.getAttributeBooleanValue(AnkiDroidApp.XML_CUSTOM_NAMESPACE, "allowEmpty", true)
+    private fun getAllowEmptyFromAttributes(attrs: AttributeSet?): Boolean =
+        attrs?.getAttributeBooleanValue(AnkiDroidApp.XML_CUSTOM_NAMESPACE, "allowEmpty", true)
             ?: true
-    }
 
     companion object {
         /**
@@ -119,7 +120,7 @@ class StepsPreference : android.preference.EditTextPreference, AutoFocusable {
             for (s in a.stringIterable()) {
                 sb.append(s).append(" ")
             }
-            return sb.toString().trim { it <= ' ' }
+            return sb.toString().trim()
         }
 
         /**
@@ -131,7 +132,7 @@ class StepsPreference : android.preference.EditTextPreference, AutoFocusable {
          */
         fun convertToJSON(steps: String): JSONArray? {
             val stepsAr = JSONArray()
-            val stepsTrim = steps.trim { it <= ' ' }
+            val stepsTrim = steps.trim()
             if (steps.isEmpty()) {
                 return stepsAr
             }

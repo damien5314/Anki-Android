@@ -1,6 +1,6 @@
 Memorize qualquer coisa com AnkiDroid!
 
-AnkiDroid permite-lhe memorizar fichas de pergunta/resposta eficientemente ao mostrá-las antes que as esqueça. É totalmente compatível com o software de repetição espaçada Anki (incluindo sincronização), que está disponível para Windows, Linux e MacOS.
+AnkiDroid permite-lhe memorizar fichas de pergunta/resposta eficientemente ao mostrá-las antes que as esqueça. It is fully compatible with the spaced repetition software Anki (including synchronization), which is available for Windows, Linux and macOS.
 
 Estude todo o tipo de coisas, onde e quando quiser. Faça bom uso do seu tempo livre em viagens de autocarro, em filas de supermercado ou em qualquer outra situação!
 
@@ -10,9 +10,9 @@ Adicione material através da aplicação Anki para Pc ou diretamente através d
 
 ★ Funcionalidades principais:
 • conteúdos de ficha suportados: texto, imagens, sons, LaTeX
-• repetição espaçada (algoritmo de supermemo 2)
+• repetição espaçada (algoritmo FSRS optimizado por IA)
 • integração de texto para voz
-• mais de 6000 baralhos já criados
+• mais de 10,000 baralhos já criados
 • widget de progresso
 • estatísticas detalhadas
 • sincronização com a AnkiWeb

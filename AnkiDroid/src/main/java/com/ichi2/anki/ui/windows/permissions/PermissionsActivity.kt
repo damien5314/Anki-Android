@@ -26,6 +26,9 @@ import androidx.fragment.app.commit
 import com.ichi2.anki.AnkiActivity
 import com.ichi2.anki.PermissionSet
 import com.ichi2.anki.R
+import com.ichi2.anki.ui.windows.permissions.PermissionsFragment.Companion.HAS_ALL_PERMISSIONS_KEY
+import com.ichi2.anki.ui.windows.permissions.PermissionsFragment.Companion.PERMISSIONS_FRAGMENT_RESULT_KEY
+import com.ichi2.anki.utils.ext.setFragmentResultListener
 import com.ichi2.themes.Themes
 import com.ichi2.themes.setTransparentStatusBar
 
@@ -55,11 +58,17 @@ class PermissionsActivity : AnkiActivity() {
             finish()
         }
 
-        val permissionSet = requireNotNull(IntentCompat.getParcelableExtra(intent, PERMISSIONS_SET_EXTRA, PermissionSet::class.java)) {
-            "PERMISSIONS_SET_EXTRA not set"
-        }
-        val permissionsFragment = requireNotNull(permissionSet.permissionsFragment?.getDeclaredConstructor()?.newInstance()) {
-            "invalid permissionsFragment"
+        val permissionSet =
+            requireNotNull(IntentCompat.getParcelableExtra(intent, PERMISSIONS_SET_EXTRA, PermissionSet::class.java)) {
+                "PERMISSIONS_SET_EXTRA not set"
+            }
+        val permissionsFragment =
+            requireNotNull(permissionSet.permissionsFragment?.getDeclaredConstructor()?.newInstance()) {
+                "invalid permissionsFragment"
+            }
+        setFragmentResultListener(PERMISSIONS_FRAGMENT_RESULT_KEY) { _, bundle ->
+            val hasAllPermissions = bundle.getBoolean(HAS_ALL_PERMISSIONS_KEY)
+            setContinueButtonEnabled(hasAllPermissions)
         }
 
         supportFragmentManager.commit {
@@ -76,10 +85,12 @@ class PermissionsActivity : AnkiActivity() {
     companion object {
         const val PERMISSIONS_SET_EXTRA = "permissionsSet"
 
-        fun getIntent(context: Context, permissionsSet: PermissionSet): Intent {
-            return Intent(context, PermissionsActivity::class.java).apply {
+        fun getIntent(
+            context: Context,
+            permissionsSet: PermissionSet,
+        ): Intent =
+            Intent(context, PermissionsActivity::class.java).apply {
                 putExtra(PERMISSIONS_SET_EXTRA, permissionsSet as Parcelable)
             }
-        }
     }
 }

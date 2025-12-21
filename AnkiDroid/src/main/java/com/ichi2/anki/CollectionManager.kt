@@ -1,32 +1,42 @@
-/***************************************************************************************
- * Copyright (c) 2022 Ankitects Pty Ltd <https://apps.ankiweb.net>                      *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2022 Ankitects Pty Ltd <https://apps.ankiweb.net>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 package com.ichi2.anki
 
 import android.annotation.SuppressLint
-import android.content.Context
 import androidx.annotation.VisibleForTesting
 import androidx.annotation.WorkerThread
 import anki.backend.backendError
+import com.ichi2.anki.CollectionManager.discardBackend
+import com.ichi2.anki.CollectionManager.ensureBackend
+import com.ichi2.anki.CollectionManager.ensureClosed
+import com.ichi2.anki.CollectionManager.ensureClosedInner
+import com.ichi2.anki.CollectionManager.ensureOpen
+import com.ichi2.anki.CollectionManager.ensureOpenInner
+import com.ichi2.anki.CollectionManager.getColUnsafe
+import com.ichi2.anki.CollectionManager.withCol
+import com.ichi2.anki.CollectionManager.withOpenColOrNull
+import com.ichi2.anki.CollectionManager.withQueue
+import com.ichi2.anki.backend.createDatabaseUsingRustBackend
 import com.ichi2.anki.common.utils.android.isRobolectric
-import com.ichi2.anki.servicelayer.ValidatedMigrationSourceAndDestination
-import com.ichi2.anki.servicelayer.scopedstorage.MigrateEssentialFiles
-import com.ichi2.libanki.Collection
-import com.ichi2.libanki.Storage.collection
-import com.ichi2.libanki.importCollectionPackage
+import com.ichi2.anki.libanki.Collection
+import com.ichi2.anki.libanki.CollectionFiles
+import com.ichi2.anki.libanki.LibAnki
+import com.ichi2.anki.libanki.Storage.collection
+import com.ichi2.anki.libanki.importCollectionPackage
 import com.ichi2.utils.Threads
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +48,6 @@ import net.ankiweb.rsdroid.BackendFactory
 import net.ankiweb.rsdroid.Translations
 import okio.withLock
 import timber.log.Timber
-import java.io.File
 import java.util.concurrent.locks.ReentrantLock
 
 object CollectionManager {
@@ -49,7 +58,13 @@ object CollectionManager {
      * languages or changing schema versions. A closed backend cannot be reused, and a new one
      * must be created.
      */
-    private var backend: Backend? = null
+    @Suppress("DEPRECATION") // deprecation is used to limit access
+    @get:JvmName("backend")
+    private var backend: Backend?
+        get() = LibAnki.backend
+        set(value) {
+            LibAnki.backend = value
+        }
 
     /**
      * The current collection, which is opened on demand via [withCol]. If you need to
@@ -57,14 +72,26 @@ object CollectionManager {
      * calls [withQueue], and then executes [ensureClosedInner] and [ensureOpenInner] inside it.
      * A closed collection can be detected via [withOpenColOrNull] or by checking [Collection.dbClosed].
      */
-    private var collection: Collection? = null
+    @Suppress("DEPRECATION") // deprecation is used to limit access
+    private var collection: Collection?
+        get() = LibAnki.collection
+        set(value) {
+            LibAnki.collection = value
+        }
 
     private var queue: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1)
 
+    /**
+     * Test-only: emulates a number of failure cases when opening the collection
+     *
+     * @see [CollectionOpenFailure]
+     */
     @VisibleForTesting
-    var emulateOpenFailure = false
+    var emulatedOpenFailure: CollectionOpenFailure? = null
 
     private val testMutex = ReentrantLock()
+
+    private var currentSyncCertificate: String = ""
 
     /**
      * Execute the provided block on a serial background queue, to ensure
@@ -88,7 +115,9 @@ object CollectionManager {
      *
      *       context(Queue) suspend fun canOnlyBeRunInWithQueue()
      */
-    private suspend fun<T> withQueue(@WorkerThread block: CollectionManager.() -> T): T {
+    private suspend fun <T> withQueue(
+        @WorkerThread block: CollectionManager.() -> T,
+    ): T {
         if (isRobolectric) {
             // #16253 Robolectric Windows: `withContext(queue)` is insufficient for serial execution
             return testMutex.withLock {
@@ -109,12 +138,13 @@ object CollectionManager {
      * sure the collection won't be closed or modified by another thread. This guarantee
      * does not hold if legacy code calls [getColUnsafe].
      */
-    suspend fun <T> withCol(@WorkerThread block: Collection.() -> T): T {
-        return withQueue {
+    suspend fun <T> withCol(
+        @WorkerThread block: Collection.() -> T,
+    ): T =
+        withQueue {
             ensureOpenInner()
             block(collection!!)
         }
-    }
 
     /**
      * Execute the provided block if the collection is already open. See [withCol] for more.
@@ -123,15 +153,16 @@ object CollectionManager {
      * these two cases, it should wrap the return value of the block in a class (eg Optional),
      * instead of returning a nullable object.
      */
-    suspend fun<T> withOpenColOrNull(@WorkerThread block: Collection.() -> T): T? {
-        return withQueue {
+    suspend fun <T> withOpenColOrNull(
+        @WorkerThread block: Collection.() -> T,
+    ): T? =
+        withQueue {
             if (collection != null && !collection!!.dbClosed) {
                 block(collection!!)
             } else {
                 null
             }
         }
-    }
 
     /**
      * Return a handle to the backend, creating if necessary. This should only be used
@@ -157,14 +188,17 @@ object CollectionManager {
             return getBackend().tr
         }
 
-    fun compareAnswer(expected: String, given: String): String {
+    fun compareAnswer(
+        expected: String,
+        given: String,
+        combining: Boolean = true,
+    ): String {
         // bypass the lock, as the type answer code is heavily nested in non-suspend functions
-        return getBackend().compareAnswer(expected, given)
+        return getBackend().compareAnswer(expected, given, combining)
     }
 
     /**
-     * Close the currently cached backend and discard it. Useful when enabling the V16 scheduler in the
-     * dev preferences, or if the active language changes. Saves and closes the collection if open.
+     * Close the currently cached backend and discard it. Saves and closes the collection if open.
      */
     suspend fun discardBackend() {
         withQueue {
@@ -225,7 +259,7 @@ object CollectionManager {
      * Automatically called by [withCol]. Can be called directly to ensure collection
      * is loaded at a certain point in time, or to ensure no errors occur.
      */
-    private suspend fun ensureOpen() {
+    suspend fun ensureOpen() {
         withQueue {
             ensureOpenInner()
         }
@@ -234,13 +268,15 @@ object CollectionManager {
     /** See [ensureOpen]. This must only be run inside the queue. */
     private fun ensureOpenInner() {
         ensureBackendInner()
-        if (emulateOpenFailure) {
-            throw BackendException.BackendDbException.BackendDbLockedException(backendError {})
-        }
+        emulatedOpenFailure?.triggerFailure()
         if (collection == null || collection!!.dbClosed) {
-            val path = collectionPathInValidFolder()
+            val collectionPath = collectionPathInValidFolder()
             collection =
-                collection(path, backend)
+                collection(
+                    collectionFiles = collectionPath,
+                    databaseBuilder = { backend -> createDatabaseUsingRustBackend(backend) },
+                    backend = backend,
+                )
         }
     }
 
@@ -253,14 +289,14 @@ object CollectionManager {
 
     fun getCollectionDirectory() =
         // Allow execution if AnkiDroidApp.instance is not initialized
-        File(CollectionHelper.getCurrentAnkiDroidDirectoryOptionalContext(AnkiDroidApp.sharedPrefs()) { AnkiDroidApp.instance })
+        CollectionHelper.getCurrentAnkiDroidDirectoryOptionalContext(AnkiDroidApp.sharedPrefs()) { AnkiDroidApp.instance }
 
-    /** Ensures the AnkiDroid directory is created, then returns the path to the collection file
-     * inside it. */
-    fun collectionPathInValidFolder(): String {
-        val dir = getCollectionDirectory().path
+    /** Ensures the AnkiDroid directory is created, then returns the path to the
+     * folder and the name of the collection file inside it. */
+    fun collectionPathInValidFolder(): CollectionFiles {
+        val dir = getCollectionDirectory()
         CollectionHelper.initializeAnkiDroidDirectory(dir)
-        return File(dir, "collection.anki2").absolutePath
+        return CollectionFiles.FolderBasedCollection(dir)
     }
 
     /**
@@ -269,8 +305,8 @@ object CollectionManager {
      * Note: [runBlocking] inside `RobolectricTest.runTest` will lead to deadlocks, so
      * under Robolectric, this uses a mutex
      */
-    private fun <T> blockForQueue(block: CollectionManager.() -> T): T {
-        return if (isRobolectric) {
+    private fun <T> blockForQueue(block: CollectionManager.() -> T): T =
+        if (isRobolectric) {
             testMutex.withLock {
                 block(this)
             }
@@ -279,7 +315,6 @@ object CollectionManager {
                 withQueue(block)
             }
         }
-    }
 
     fun closeCollectionBlocking() {
         runBlocking { ensureClosed() }
@@ -291,14 +326,13 @@ object CollectionManager {
      * the collection while the reference is held. [withCol]
      * is a better alternative.
      */
-    fun getColUnsafe(): Collection {
-        return logUIHangs {
+    fun getColUnsafe(): Collection =
+        logUIHangs {
             blockForQueue {
                 ensureOpenInner()
                 collection!!
             }
         }
-    }
 
     /**
      Execute [block]. If it takes more than 100ms of real time, Timber an error like:
@@ -315,22 +349,25 @@ object CollectionManager {
                 val stackTraceElements = Thread.currentThread().stackTrace
                 // locate the probable calling file/line in the stack trace, by filtering
                 // out our own code, and standard dalvik/java.lang stack frames
-                val caller = stackTraceElements.filter {
-                    val klass = it.className
-                    val toCheck = listOf(
-                        "CollectionManager",
-                        "dalvik",
-                        "java.lang",
-                        "CollectionHelper",
-                        "AnkiActivity"
-                    )
-                    for (text in toCheck) {
-                        if (text in klass) {
-                            return@filter false
-                        }
-                    }
-                    true
-                }.first()
+                val caller =
+                    stackTraceElements
+                        .filter {
+                            val klass = it.className
+                            val toCheck =
+                                listOf(
+                                    "CollectionManager",
+                                    "dalvik",
+                                    "java.lang",
+                                    "CollectionHelper",
+                                    "AnkiActivity",
+                                )
+                            for (text in toCheck) {
+                                if (text in klass) {
+                                    return@filter false
+                                }
+                            }
+                            true
+                        }.first()
                 Timber.w("blocked main thread for %dms:\n%s", elapsed, caller)
             }
         }
@@ -339,17 +376,16 @@ object CollectionManager {
     /**
      * True if the collection is open. Unsafe, as it has the potential to race.
      */
-    fun isOpenUnsafe(): Boolean {
-        return logUIHangs {
+    fun isOpenUnsafe(): Boolean =
+        logUIHangs {
             blockForQueue {
-                if (emulateOpenFailure) {
+                if (emulatedOpenFailure != null) {
                     false
                 } else {
-                    collection?.dbClosed == false
+                    collection?.dbClosed == false // non-failure mode.
                 }
             }
         }
-    }
 
     /**
      Use [col] as collection in tests.
@@ -375,29 +411,52 @@ object CollectionManager {
         }
     }
 
-    /** Migrate collection and media databases to scoped storage.
-     * * Closes the collection, and performs the work in our queue so no
-     * other code can open the collection while the operation runs. Reopens
-     * at the end, and rolls back the path change if reopening fails.
-     */
-    suspend fun migrateEssentialFiles(context: Context, folders: ValidatedMigrationSourceAndDestination) {
-        withQueue {
-            ensureClosedInner()
-            val migrator = MigrateEssentialFiles(context, folders)
-            migrator.migrateFiles()
-            migrator.updateCollectionPath()
-            try {
-                ensureOpenInner()
-            } catch (e: Exception) {
-                migrator.restoreOldCollectionPath()
-                throw e
-            }
-        }
-    }
-
     fun setTestDispatcher(dispatcher: CoroutineDispatcher) {
         // note: we avoid the call to .limitedParallelism() here,
         // as it does not seem to be compatible with the test scheduler
         queue = dispatcher
     }
+
+    /**
+     * Update the custom TLS certificate used in the backend for its requests to the sync server.
+     *
+     * If the cert parameter hasn't changed from the cached sync certificate, then just return true.
+     * Otherwise, set the custom certificate in the backend and get the success value.
+     *
+     * If cert was a valid certificate, then cache it in currentSyncCertificate and return true.
+     * Otherwise, return false to indicate that a custom sync certificate was not applied.
+     *
+     * Passing in an empty string unsets any custom sync certificate in the backend.
+     */
+    fun updateCustomCertificate(cert: String): Boolean {
+        if (cert == currentSyncCertificate) {
+            return true
+        }
+
+        return getBackend().setCustomCertificate(cert).apply {
+            if (this) {
+                currentSyncCertificate = cert
+            }
+        }
+    }
+
+    enum class CollectionOpenFailure {
+        /** Raises [BackendException.BackendDbException.BackendDbLockedException] */
+        LOCKED,
+
+        /** Raises [BackendException.BackendFatalError] */
+        FATAL_ERROR,
+
+        ;
+
+        fun triggerFailure() {
+            when (this) {
+                LOCKED -> throw BackendException.BackendDbException.BackendDbLockedException(backendError {})
+                FATAL_ERROR -> throw BackendException.BackendFatalError(backendError {})
+            }
+        }
+    }
 }
+
+fun Collection.reopen(afterFullSync: Boolean = false) =
+    this.reopen(afterFullSync = afterFullSync) { backend -> createDatabaseUsingRustBackend(backend) }

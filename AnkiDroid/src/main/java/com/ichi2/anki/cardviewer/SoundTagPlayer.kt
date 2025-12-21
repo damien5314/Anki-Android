@@ -21,28 +21,36 @@ import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
+import androidx.annotation.CheckResult
 import androidx.annotation.VisibleForTesting
+import androidx.core.net.toUri
 import androidx.media.AudioFocusRequestCompat
 import androidx.media.AudioManagerCompat
 import com.ichi2.anki.AnkiDroidApp
 import com.ichi2.anki.CollectionManager.withCol
+import com.ichi2.anki.common.annotations.NeedsTest
 import com.ichi2.anki.ensureActive
-import com.ichi2.annotations.NeedsTest
-import com.ichi2.libanki.SoundOrVideoTag
+import com.ichi2.anki.libanki.SoundOrVideoTag
+import com.ichi2.anki.multimedia.getTagType
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import timber.log.Timber
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/** Player for the sounds of [SoundOrVideoTag] */
+/** Player for (`[sound:...]`): [SoundOrVideoTag]  */
 @NeedsTest("CardSoundConfig.autoplay should mean that video also isn't played automatically")
-class SoundTagPlayer(private val soundUriBase: String, val videoPlayer: VideoPlayer) {
+class SoundTagPlayer(
+    private val soundUriBase: String,
+    val videoPlayer: VideoPlayer,
+) {
     private var mediaPlayer: MediaPlayer? = null
 
-    private val music = AudioAttributes.Builder()
-        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-        .build()
+    private val music =
+        AudioAttributes
+            .Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build()
 
     /**
      * AudioManager to request/release audio focus
@@ -52,24 +60,25 @@ class SoundTagPlayer(private val soundUriBase: String, val videoPlayer: VideoPla
 
     // the same instance of an AudioFocusRequestCompat must be used to cancel focus
     private val audioFocusRequest: AudioFocusRequestCompat by lazy {
-        AudioFocusRequestCompat.Builder(AudioManagerCompat.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+        AudioFocusRequestCompat
+            .Builder(AudioManagerCompat.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
             .setOnAudioFocusChangeListener { }
             .build()
     }
 
     /**
-     * @throws SoundException if the file does not exist, or if media playing fails
-     * @param soundErrorListener handles a sound error and returns how to continue playing sounds
+     * @throws MediaException if the file does not exist, or if media playing fails
+     * @param mediaErrorListener handles a sound error and returns how to continue playing sounds
      */
     suspend fun play(
         tag: SoundOrVideoTag,
-        soundErrorListener: SoundErrorListener?
+        mediaErrorListener: MediaErrorListener?,
     ) {
         val tagType = tag.getType()
-        return suspendCancellableCoroutine { continuation ->
+        suspendCancellableCoroutine { continuation ->
             Timber.d("Playing SoundOrVideoTag")
             when (tagType) {
-                SoundOrVideoTag.Type.AUDIO -> playSound(continuation, tag, soundErrorListener)
+                SoundOrVideoTag.Type.AUDIO -> playSound(continuation, tag, mediaErrorListener)
                 SoundOrVideoTag.Type.VIDEO -> playVideo(continuation, tag)
             }
         }
@@ -78,7 +87,7 @@ class SoundTagPlayer(private val soundUriBase: String, val videoPlayer: VideoPla
     @VisibleForTesting(otherwise = VisibleForTesting.NONE)
     fun playVideo(
         continuation: CancellableContinuation<Unit>,
-        tag: SoundOrVideoTag
+        tag: SoundOrVideoTag,
     ) {
         Timber.d("Playing video")
         videoPlayer.playVideo(continuation, tag)
@@ -87,12 +96,12 @@ class SoundTagPlayer(private val soundUriBase: String, val videoPlayer: VideoPla
     private fun playSound(
         continuation: CancellableContinuation<Unit>,
         tag: SoundOrVideoTag,
-        soundErrorListener: SoundErrorListener?
+        mediaErrorListener: MediaErrorListener?,
     ) {
         requireNewMediaPlayer().apply {
             continuation.invokeOnCancellation {
                 Timber.i("stopping MediaPlayer due to cancellation")
-                stopSounds()
+                this@SoundTagPlayer.stop()
             }
             setOnCompletionListener {
                 Timber.v("finished playing SoundOrVideoTag successfully")
@@ -102,21 +111,22 @@ class SoundTagPlayer(private val soundUriBase: String, val videoPlayer: VideoPla
                     continuation.resume(Unit)
                 }
             }
-            val tagUri = Uri.parse(tag.filename)
-            val soundUri = if (tagUri.scheme != null) {
-                tagUri
-            } else {
-                Uri.parse(soundUriBase + Uri.encode(tag.filename))
-            }
+            val tagUri = tag.filename.toUri()
+            val soundUri =
+                if (tagUri.scheme != null) {
+                    tagUri
+                } else {
+                    (soundUriBase + Uri.encode(tag.filename)).toUri()
+                }
             setAudioAttributes(music)
             setOnErrorListener { mp, what, extra ->
                 Timber.w("Media error %d", what)
                 abandonAudioFocus()
                 val continuationBehavior =
-                    soundErrorListener?.onMediaPlayerError(mp, what, extra, soundUri) ?: SoundErrorBehavior.CONTINUE_AUDIO
+                    mediaErrorListener?.onMediaPlayerError(mp, what, extra, soundUri) ?: MediaErrorBehavior.CONTINUE_MEDIA
                 // 15103: setOnErrorListener can be invoked after task cancellation
                 if (!continuation.isCompleted) {
-                    continuation.resumeWithException(SoundException(continuationBehavior))
+                    continuation.resumeWithException(MediaException(continuationBehavior))
                 }
                 true // do not call onCompletionListen
             }
@@ -125,22 +135,26 @@ class SoundTagPlayer(private val soundUriBase: String, val videoPlayer: VideoPla
                 awaitSetDataSource(soundUri.toString())
             } catch (e: Exception) {
                 continuation.ensureActive()
-                val continuationBehavior = soundErrorListener?.onError(soundUri) ?: SoundErrorBehavior.CONTINUE_AUDIO
-                val exception = SoundException(continuationBehavior, e)
+                val continuationBehavior = mediaErrorListener?.onError(soundUri) ?: MediaErrorBehavior.CONTINUE_MEDIA
+                val exception = MediaException(continuationBehavior, e)
                 return continuation.resumeWithException(exception)
             }
 
-            requestAudioFocus()
-            continuation.ensureActive()
-            Timber.d("starting sound tag")
-            start()
+            if (requestAudioFocus() == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                continuation.ensureActive()
+                Timber.d("starting sound tag")
+                start()
+            } else {
+                Timber.d("unable to get audio focus, cancelling work")
+                continuation.cancel()
+            }
         }
     }
 
     /**
-     * Releases the sound.
+     * Releases the media players.
      */
-    fun releaseSound() {
+    fun release() {
         Timber.d("Releasing sounds and abandoning audio focus")
         mediaPlayer?.let {
             // Required to remove warning: "mediaplayer went away with unhandled events"
@@ -152,7 +166,7 @@ class SoundTagPlayer(private val soundUriBase: String, val videoPlayer: VideoPla
         abandonAudioFocus()
     }
 
-    fun stopSounds() {
+    fun stop() {
         try {
             mediaPlayer?.stop()
         } catch (e: Exception) {
@@ -187,15 +201,16 @@ class SoundTagPlayer(private val soundUriBase: String, val videoPlayer: VideoPla
         prepare()
     }
 
-    private fun requestAudioFocus() {
+    @CheckResult
+    private fun requestAudioFocus(): Int {
         Timber.d("Requesting audio focus")
-        AudioManagerCompat.requestAudioFocus(audioManager, audioFocusRequest)
+        return AudioManagerCompat.requestAudioFocus(audioManager, audioFocusRequest)
     }
 
-    private fun abandonAudioFocus() {
+    private fun abandonAudioFocus(): Int {
         Timber.d("Abandoning audio focus")
-        AudioManagerCompat.abandonAudioFocusRequest(audioManager, audioFocusRequest)
+        return AudioManagerCompat.abandonAudioFocusRequest(audioManager, audioFocusRequest)
     }
 }
 
-suspend fun SoundOrVideoTag.getType(): SoundOrVideoTag.Type = getType(withCol { media.dir })
+suspend fun SoundOrVideoTag.getType(): SoundOrVideoTag.Type = getTagType(withCol { media.dir })

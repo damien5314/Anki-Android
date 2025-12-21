@@ -45,11 +45,13 @@
         app:layout_constraintTop_toBottomOf="@+id/date_range_label">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/date_range_start"
+            android:id="@+id/date_range_start_edit_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:inputType="number"
-            android:maxLength="5" />
+            android:maxLength="5"
+            android:imeOptions="actionNext"
+            android:nextFocusForward="@id/date_range_end_edit_text" />
     </com.google.android.material.textfield.TextInputLayout>
 
 
@@ -62,6 +64,7 @@
         app:layout_constraintEnd_toStartOf="@+id/date_range_end_layout"
         app:layout_constraintStart_toEndOf="@+id/date_range_start_layout"
         app:layout_constraintTop_toTopOf="@+id/date_range_start_layout"
+        android:focusable="false"
         />
 
     <com.google.android.material.textfield.TextInputLayout
@@ -76,11 +79,12 @@
         app:layout_constraintTop_toBottomOf="@+id/date_range_label">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/date_range_end"
+            android:id="@+id/date_range_end_edit_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:inputType="number"
-            android:maxLength="5" />
+            android:maxLength="5"
+            android:imeOptions="actionDone" />
     </com.google.android.material.textfield.TextInputLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

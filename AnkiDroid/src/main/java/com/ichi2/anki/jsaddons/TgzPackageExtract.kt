@@ -1,36 +1,35 @@
-/****************************************************************************************
- * Copyright (c) 2021 Mani <infinyte01@gmail.com>                                       *
- *                                                                                      *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- *                                                                                      *
- * This file incorporates work covered by the following copyright and permission        *
- * notice:                                                                              *
- *                                                                                      *
- *      Copyright (C) 2016 The Android Open Source Project                              *
- *      <p>                                                                             *
- *      Licensed under the Apache License, Version 2.0 (the "License");                 *
- *      you may not use this file except in compliance with the License.                *
- *      You may obtain a copy of the License at                                         *
- *      <p>                                                                             *
- *      http://www.apache.org/licenses/LICENSE-2.0                                      *
- *      <p>                                                                             *
- *      Unless required by applicable law or agreed to in writing, software             *
- *      distributed under the License is distributed on an "AS IS" BASIS,               *
- *      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.        *
- *      See the License for the specific language governing permissions and             *
- *      limitations under the License.                                                  *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2021 Mani <infinyte01@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * This file incorporates work covered by the following copyright and permission
+ * notice:
+ *
+ *      Copyright (C) 2016 The Android Open Source Project
+ *      <p>
+ *      Licensed under the Apache License, Version 2.0 (the "License");
+ *      you may not use this file except in compliance with the License.
+ *      You may obtain a copy of the License at
+ *      <p>
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *      <p>
+ *      Unless required by applicable law or agreed to in writing, software
+ *      distributed under the License is distributed on an "AS IS" BASIS,
+ *      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *      See the License for the specific language governing permissions and
+ *      limitations under the License.
+ */
 
 package com.ichi2.anki.jsaddons
 
@@ -45,10 +44,15 @@ import org.apache.commons.compress.archivers.ArchiveStreamFactory
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import timber.log.Timber
-import java.io.*
+import java.io.BufferedOutputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileNotFoundException
+import java.io.FileOutputStream
+import java.io.IOException
 import java.util.zip.GZIPInputStream
 
-/**
+/*
  * In JS Addons the addon packages are downloaded from npm registry, https://registry.npmjs.org
  * The file format of downloaded file is tgz, so this class used to extract tgz file to addon directory.
  * To extract the gzip file considering security the following checks are implemented
@@ -82,14 +86,12 @@ import java.util.zip.GZIPInputStream
  */
 typealias AddonsPackageDir = File
 
-class TgzPackageExtract(private val context: Context) {
-    private val GZIP_SIGNATURE = byteArrayOf(0x1f, 0x8b.toByte())
+class TgzPackageExtract(
+    private val context: Context,
+) {
+    private val gzipSignature = byteArrayOf(0x1f, 0x8b.toByte())
     private var requiredMinSpace: Long = 0
     private var availableSpace: Long = 0
-
-    private val BUFFER = 512
-    private val TOO_BIG_SIZE: Long = 0x6400000 // max size of unzipped data, 100MB
-    private val TOO_MANY_FILES = 1024 // max number of files
 
     private var count = 0
     private var total: Long = 0
@@ -104,13 +106,13 @@ class TgzPackageExtract(private val context: Context) {
      */
     @Throws(IOException::class)
     fun isGzip(file: File?): Boolean {
-        val signature = ByteArray(GZIP_SIGNATURE.size)
+        val signature = ByteArray(gzipSignature.size)
         FileInputStream(file).use { stream ->
             if (stream.read(signature) != signature.size) {
                 return false
             }
         }
-        return GZIP_SIGNATURE.contentEquals(signature)
+        return gzipSignature.contentEquals(signature)
     }
 
     /**
@@ -124,7 +126,10 @@ class TgzPackageExtract(private val context: Context) {
      * @throws IOException
      */
     @Throws(Exception::class)
-    fun extractTarGzipToAddonFolder(tarballFile: File, addonsPackageDir: AddonsPackageDir) {
+    fun extractTarGzipToAddonFolder(
+        tarballFile: File,
+        addonsPackageDir: AddonsPackageDir,
+    ) {
         require(isGzip(tarballFile)) { context.getString(R.string.not_valid_js_addon_package, tarballFile.absolutePath) }
 
         try {
@@ -169,7 +174,10 @@ class TgzPackageExtract(private val context: Context) {
      * @throws IOException
      */
     @Throws(FileNotFoundException::class, IOException::class)
-    fun unGzip(inputFile: File, outputDir: File): File {
+    fun unGzip(
+        inputFile: File,
+        outputDir: File,
+    ): File {
         Timber.i("Ungzipping %s to dir %s.", inputFile.absolutePath, outputDir.absolutePath)
 
         // remove the '.tgz' extension and add .tar extension
@@ -219,7 +227,10 @@ class TgzPackageExtract(private val context: Context) {
      * @throws IOException
      */
     @Throws(Exception::class)
-    fun unTar(inputFile: File, outputDir: File) {
+    fun unTar(
+        inputFile: File,
+        outputDir: File,
+    ) {
         Timber.i("Untaring %s to dir %s.", inputFile.absolutePath, outputDir.absolutePath)
 
         count = 0
@@ -229,10 +240,7 @@ class TgzPackageExtract(private val context: Context) {
         try {
             FileInputStream(inputFile).use { inputStream ->
                 ArchiveStreamFactory().createArchiveInputStream<TarArchiveInputStream>("tar", inputStream).use { tarInputStream ->
-
-                    var entry = tarInputStream.nextEntry
-
-                    while (entry != null) {
+                    tarInputStream.forEach { entry ->
                         val outputFile = File(outputDir, entry.name)
 
                         // Zip Slip Vulnerability https://snyk.io/research/zip-slip-vulnerability
@@ -242,14 +250,18 @@ class TgzPackageExtract(private val context: Context) {
                         } else {
                             unTarFile(tarInputStream, entry, outputDir, outputFile)
                         }
-
-                        entry = tarInputStream.nextEntry
                     }
                 }
             }
         } catch (e: IOException) {
             outputDir.deleteRecursively()
-            throw ArchiveException(context.getString(R.string.malicious_archive_exceeds_limit, Formatter.formatFileSize(context, TOO_BIG_SIZE), TOO_MANY_FILES))
+            throw ArchiveException(
+                context.getString(
+                    R.string.malicious_archive_exceeds_limit,
+                    Formatter.formatFileSize(context, TOO_BIG_SIZE),
+                    TOO_MANY_FILES,
+                ),
+            )
         }
     }
 
@@ -262,7 +274,12 @@ class TgzPackageExtract(private val context: Context) {
      * @throws IOException
      */
     @Throws(IOException::class)
-    private fun unTarFile(tarInputStream: TarArchiveInputStream, entry: TarArchiveEntry, outputDir: File, outputFile: File) {
+    private fun unTarFile(
+        tarInputStream: TarArchiveInputStream,
+        entry: TarArchiveEntry,
+        outputDir: File,
+        outputFile: File,
+    ) {
         Timber.i("Creating output file %s.", outputFile.absolutePath)
         val currentFile = File(outputDir, entry.name)
 
@@ -308,7 +325,11 @@ class TgzPackageExtract(private val context: Context) {
      * @throws IOException
      */
     @Throws(IOException::class)
-    private fun unTarDir(inputFile: File, outputDir: File, outputFile: File) {
+    private fun unTarDir(
+        inputFile: File,
+        outputDir: File,
+        outputFile: File,
+    ) {
         Timber.i("Untaring %s to dir %s.", inputFile.absolutePath, outputDir.absolutePath)
         try {
             Timber.i("Attempting to create output directory %s.", outputFile.absolutePath)
@@ -327,7 +348,10 @@ class TgzPackageExtract(private val context: Context) {
      * @param destDirectory destination directory
      */
     @Throws(ArchiveException::class, IOException::class)
-    private fun zipPathSafety(outputFile: File, destDirectory: File) {
+    private fun zipPathSafety(
+        outputFile: File,
+        destDirectory: File,
+    ) {
         val destDirCanonicalPath = destDirectory.canonicalPath
         val outputFileCanonicalPath = outputFile.canonicalPath
 
@@ -348,26 +372,20 @@ class TgzPackageExtract(private val context: Context) {
 
         FileInputStream(tarFile).use { inputStream ->
             ArchiveStreamFactory().createArchiveInputStream<TarArchiveInputStream>("tar", inputStream).use { tarInputStream ->
-
-                var entry = tarInputStream.nextEntry
                 var numOfEntries = 0
 
-                while (entry != null) {
+                tarInputStream.forEach { entry ->
                     numOfEntries++
+                    if (numOfEntries > TOO_MANY_FILES) {
+                        throw IllegalStateException("Too many files to untar")
+                    }
                     unTarSize += entry.size
-                    entry = tarInputStream.nextEntry
-                }
-
-                if (numOfEntries > TOO_MANY_FILES) {
-                    throw IllegalStateException("Too many files to untar")
                 }
             }
         }
-
         return unTarSize
     }
 
-    //
     /**
      * If space consumed is more than half of original availableSpace, delete file recursively and throw
      *
@@ -380,12 +398,23 @@ class TgzPackageExtract(private val context: Context) {
         }
     }
 
-    class InsufficientSpaceException(val required: Long, val available: Long, val context: Context) : IOException() {
-
+    class InsufficientSpaceException(
+        val required: Long,
+        val available: Long,
+        val context: Context,
+    ) : IOException() {
         companion object {
-            fun throwIfInsufficientSpace(context: Context, requiredMinSpace: Long, availableSpace: Long) {
+            fun throwIfInsufficientSpace(
+                context: Context,
+                requiredMinSpace: Long,
+                availableSpace: Long,
+            ) {
                 if (requiredMinSpace > availableSpace) {
-                    Timber.w("Not enough space, need %d, available %d", Formatter.formatFileSize(context, requiredMinSpace), Formatter.formatFileSize(context, availableSpace))
+                    Timber.w(
+                        "Not enough space, need %s, available %s",
+                        Formatter.formatFileSize(context, requiredMinSpace),
+                        Formatter.formatFileSize(context, availableSpace),
+                    )
                     throw InsufficientSpaceException(requiredMinSpace, availableSpace, context)
                 }
             }
@@ -397,5 +426,11 @@ class TgzPackageExtract(private val context: Context) {
             return
         }
         addonsPackageDir.deleteRecursively()
+    }
+
+    companion object {
+        private const val BUFFER = 512
+        private const val TOO_BIG_SIZE: Long = 0x6400000 // max size of unzipped data, 100MB
+        private const val TOO_MANY_FILES = 1024 // max number of files
     }
 }

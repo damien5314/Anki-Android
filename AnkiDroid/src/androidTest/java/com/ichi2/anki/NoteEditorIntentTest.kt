@@ -15,17 +15,18 @@
  */
 package com.ichi2.anki
 
-import android.content.ComponentName
 import android.content.Intent
+import androidx.core.os.bundleOf
 import androidx.lifecycle.Lifecycle
-import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.ichi2.anki.NoteEditor.Companion.intentLaunchedWithImage
+import com.ichi2.anki.NoteEditorFragment.Companion.intentLaunchedWithImage
+import com.ichi2.anki.noteeditor.NoteEditorLauncher
 import com.ichi2.anki.tests.InstrumentedTest
 import com.ichi2.anki.testutil.GrantStoragePermission
-import com.ichi2.testutils.Flaky
-import com.ichi2.testutils.OS
+import com.ichi2.anki.testutil.getNoteEditorFragment
+import com.ichi2.testutils.common.Flaky
+import com.ichi2.testutils.common.OS
 import com.ichi2.utils.AssetHelper.TEXT_PLAIN
 import junit.framework.TestCase.assertFalse
 import org.hamcrest.MatcherAssert
@@ -34,7 +35,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestRule
 import org.junit.runner.RunWith
-import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(AndroidJUnit4::class)
 class NoteEditorIntentTest : InstrumentedTest() {
@@ -42,9 +42,10 @@ class NoteEditorIntentTest : InstrumentedTest() {
     var runtimePermissionRule: TestRule? = GrantStoragePermission.instance
 
     @get:Rule
-    var activityRuleIntent: ActivityScenarioRule<NoteEditor>? = ActivityScenarioRule(
-        noteEditorTextIntent
-    )
+    var activityRuleIntent: ActivityScenarioRule<NoteEditorActivity>? =
+        ActivityScenarioRule(
+            noteEditorTextIntent,
+        )
 
     @Test
     @Flaky(OS.ALL, "Issue 15707 - java.lang.ArrayIndexOutOfBoundsException: length=0; index=0")
@@ -53,43 +54,27 @@ class NoteEditorIntentTest : InstrumentedTest() {
         val scenario = activityRuleIntent!!.scenario
         scenario.moveToState(Lifecycle.State.RESUMED)
 
-        onActivity(scenario) { editor ->
-            val currentFieldStrings = editor.currentFieldStrings
-            MatcherAssert.assertThat(currentFieldStrings[0], Matchers.equalTo("sample text"))
+        var currentFieldStrings: String? = null
+        scenario.onActivity { activity ->
+            val editor = activity.getNoteEditorFragment()
+            currentFieldStrings = editor.currentFieldStrings[0]
         }
+        MatcherAssert.assertThat(currentFieldStrings!!, Matchers.equalTo("sample text"))
     }
 
     @Test
     fun intentLaunchedWithNonImageIntent() {
-        val intent = Intent().apply {
-            action = Intent.ACTION_SEND
-            type = TEXT_PLAIN
-        }
+        val intent =
+            Intent().apply {
+                action = Intent.ACTION_SEND
+                type = TEXT_PLAIN
+            }
         assertFalse(intentLaunchedWithImage(intent))
     }
 
     private val noteEditorTextIntent: Intent
         get() {
-            return Intent(testContext, NoteEditor::class.java).apply {
-                component = ComponentName(testContext, NoteEditor::class.java)
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_TEXT, "sample text")
-            }
+            val bundle = bundleOf(Intent.EXTRA_TEXT to "sample text")
+            return NoteEditorLauncher.PassArguments(bundle).toIntent(testContext, Intent.ACTION_SEND)
         }
-
-    @Throws(Throwable::class)
-    private fun onActivity(
-        scenario: ActivityScenario<NoteEditor>,
-        noteEditorActivityAction: ActivityScenario.ActivityAction<NoteEditor>
-    ) {
-        val wrapped = AtomicReference<Throwable?>(null)
-        scenario.onActivity { a: NoteEditor ->
-            try {
-                noteEditorActivityAction.perform(a)
-            } catch (t: Throwable) {
-                wrapped.set(t)
-            }
-        }
-        wrapped.get()?.let { throw it }
-    }
 }

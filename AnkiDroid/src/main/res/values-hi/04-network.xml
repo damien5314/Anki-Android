@@ -46,7 +46,7 @@
 -->
 <resources>
     <string name="youre_offline">आप ऑफ़लाइन हैं</string>
-    <string name="sync_error">सिंक में दिकत </string>
+    <string name="sync_error">सिंक में दिकत</string>
     <string name="vague_error" comment="Network error dialog title">गलती</string>
     <string name="retry">पुनः प्रयास करें</string>
     <string name="menu_get_shared_decks">साझा किए गए डेक पाएँ</string>
@@ -70,12 +70,12 @@
     <string name="sync_title">समकालन</string>
     <string name="sync_log_uploading_message">स्थानीय से पूर्ण सिंक्रनाइज़ेशन</string>
     <string name="sync_database_acknowledge">संग्रह सिंक्रनाइज़</string>
-    <string name="col_synced_media_in_background">Collection synced. Media is being synced in the background.</string>
+    <string name="col_synced_media_in_background">संग्रह समन्वयित हुआ. मीडिया को पृष्ठभूमि में समन्वयित किया जा रहा है.</string>
     <string name="sync_corrupt_database">आपका डेटाबेस दूषित है । कृपया सिंक्रनाइज़ करने के लिए पुन: प्रयास करने से पहले इसे ठीक करें. \ n \ nSee %s आपके डेटाबेस को सुधारने के बारे में जानकारी के लिए ।</string>
     <!-- Please run ‘Check database’ before syncing -->
     <string name="sync_sanity_local">स्थानीय</string>
     <string name="sync_sanity_remote">दूरस्थ</string>
-    <string name="one_way_sync_title">एक तरफ़ा सिंक</string>
+    <string name="one_way_sync_title" maxLength="41">एक तरफ़ा सिंक</string>
     <string name="one_way_sync_confirmation">एकतरफ़ा सिंक का अनुरोध किया गया</string>
     <string name="full_sync_confirmation">जब आप अगले अपने संग्रह सिंक्रनाइज़ अनुरोध परिवर्तन डेटाबेस का एक पूर्ण अपलोड की आवश्यकता होगी । यदि आपके पास अभी तक सिंक्रनाइज़ नहीं किए गए किसी अन्य डिवाइस पर प्रतीक्षारत समीक्षाएँ या अन्य परिवर्तन हैं, तो वे खो जाएँगे. जारी?</string>
     <string name="full_sync_confirmation_upgrade">AnkiDroid के पहले से स्थापित संस्करण में एक बग के कारण, यह एक पूर्ण सिंक मजबूर करने के लिए सिफारिश की है.</string>

@@ -49,9 +49,11 @@
         <item name="actionModeBackground">@color/theme_dark_primary</item>
         <!-- Tab layout -->
         <item name="tabLayoutBackgroundColor">@color/theme_dark_primary</item>
+        <item name="tabActiveIconColor">@color/material_blue_500</item>
         <!-- Deck list colors and divider -->
         <item name="currentDeckBackground">@drawable/item_background_selected</item>
         <item name="currentDeckBackgroundColor">@color/theme_dark_row_current</item>
+        <item name="focusedRowBackgroundColor">@color/theme_dark_row_current</item>
         <item name="dynDeckColor">#6699d6</item>
         <item name="deckDivider">@drawable/divider_dark</item>
         <item name="expandRef">@drawable/ic_chevron_right_white</item>
@@ -60,8 +62,10 @@
         <item name="newCountColor">@color/material_indigo_200</item>
         <item name="learnCountColor">@color/material_red_200</item>
         <item name="reviewCountColor">@color/material_green_200</item>
+        <item name="buryCountColor">@color/disabled_gray_dark</item>
         <item name="zeroCountColor">#404040</item>
-        <!-- Reviewer colors -->
+        <!-- Study Screen colors -->
+        <item name="showAnswerButtonBackground">#22333f</item>
         <item name="againButtonBackground">@color/material_red_800</item>
         <item name="hardButtonBackground">@color/material_blue_grey_800</item>
         <item name="goodButtonBackground">@color/material_green_800</item>
@@ -73,8 +77,17 @@
         <item name="hardButtonTextColor">@color/white</item>
         <item name="goodButtonTextColor">@color/white</item>
         <item name="easyButtonTextColor">@color/white</item>
+
         <item name="alternativeBackgroundColor">#2a2a2a</item>
-        <!-- Reviewer button drawables -->
+        <item name="againTextColor">@color/material_red_200</item>
+        <item name="hardTextColor">@color/material_orange_200</item>
+        <item name="goodTextColor">@color/material_light_green_200</item>
+        <item name="easyTextColor">@color/material_light_blue_A100</item>
+        <item name="againBackgroundColor">#462828</item>
+        <item name="hardBackgroundColor">#4e3122</item>
+        <item name="goodBackgroundColor">#2c3b2c</item>
+        <item name="easyBackgroundColor">#223946</item>
+        <!-- Study Screen button drawables -->
         <item name="showAnswerColor">@color/material_blue_grey_800</item>
         <item name="againButtonRef">@drawable/footer_button_again_dark</item>
         <item name="hardButtonRef">@drawable/footer_button_hard_dark</item>
@@ -88,10 +101,12 @@
         <item name="cardBrowserDivider">@color/white</item>
         <!-- Browser colors -->
         <item name="suspendedColor">@color/material_grey_700</item>
+        <item name="buriedColor">#612B09</item>
         <item name="markedColor">@color/material_deep_purple_400</item>
         <!-- Note editor colors -->
         <item name="duplicateColor">#855</item>
         <item name="editTextBackgroundColor">#EE5C5C5C</item>
+        <item name="editTextHighlightColor">@color/material_light_blue_900</item>
         <item name="toolbarBackgroundColor">#616161</item>
         <item name="toolbarIconColor">@color/white</item>
         <item name="buttonShadowColor">#bdbdbd</item>
@@ -147,8 +162,10 @@
         <item name="checkMediaListForeground">@color/white</item>
 
         <!-- AlertDialogTheme-->
-        <item name="alertDialogTheme">@style/AlertDialogStyle</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.AnkiDroid.AlertDialog</item>
         <item name="tabStyle">@style/Widget.MaterialComponents.TabLayout</item>
+
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.App.BottomSheetDialog</item>
     </style>
 
     <style name="Theme_Dark" parent="Base.Theme.Dark"/>

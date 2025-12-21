@@ -1,6 +1,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:ankidroid="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
         android:id="@+id/action_add_note_from_card_browser"
@@ -11,7 +12,7 @@
     <item
         android:id="@+id/action_search"
         android:icon="@drawable/ic_search_white"
-        android:title="@string/deck_conf_cram_search"
+        android:title="@string/card_browser_cram_search"
         ankidroid:actionViewClass="com.ichi2.ui.CardBrowserSearchView"
         ankidroid:showAsAction="always|collapseActionView"/>
 
@@ -63,4 +64,14 @@
         android:title="@string/study_options"
         ankidroid:showAsAction="never"/>
 
+    <item
+        android:id="@+id/action_create_filtered_deck"
+        ankidroid:showAsAction="never"
+        tools:title="Create filtered deck..."
+        />
+
+    <item
+        android:id="@+id/action_find_replace"
+        android:visible="false"
+        app:showAsAction="never"/>
 </menu>

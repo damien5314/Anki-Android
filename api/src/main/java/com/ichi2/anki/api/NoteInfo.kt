@@ -1,24 +1,22 @@
-/***************************************************************************************
- *                                                                                      *
- * Copyright (c) 2016 Timothy Rae <perceptualchaos2@gmail.com>                          *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU Lesser General Public License as published by the Free Software *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU Lesser General Public License along with  *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2016 Timothy Rae <perceptualchaos2@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package com.ichi2.anki.api
 
 import android.database.Cursor
 import com.ichi2.anki.FlashCardsContract
-import java.util.*
 
 /**
  * Representation of the contents of a note in AnkiDroid.
@@ -36,8 +34,8 @@ public class NoteInfo {
          * @return a NoteInfo object or null if the cursor was not valid
          */
         @JvmStatic // API Project
-        internal fun buildFromCursor(cursor: Cursor): NoteInfo? {
-            return try {
+        internal fun buildFromCursor(cursor: Cursor): NoteInfo? =
+            try {
                 val idIndex = cursor.getColumnIndexOrThrow(FlashCardsContract.Note._ID)
                 val fldsIndex = cursor.getColumnIndexOrThrow(FlashCardsContract.Note.FLDS)
                 val tagsIndex = cursor.getColumnIndexOrThrow(FlashCardsContract.Note.TAGS)
@@ -48,7 +46,6 @@ public class NoteInfo {
             } catch (e: Exception) {
                 null
             }
-        }
     }
 
     private constructor(id: Long, fields: Array<String>, tags: Set<String>) {
@@ -68,22 +65,14 @@ public class NoteInfo {
     }
 
     /** Note ID  */
-    public fun getId(): Long {
-        return id
-    }
+    public fun getId(): Long = id
 
     /** The array of fields  */
-    public fun getFields(): Array<String> {
-        return fields
-    }
+    public fun getFields(): Array<String> = fields
 
     /** The set of tags  */
-    public fun getTags(): Set<String> {
-        return tags
-    }
+    public fun getTags(): Set<String> = tags
 
     /** The first field  */
-    public fun getKey(): String {
-        return getFields()[0]
-    }
+    public fun getKey(): String = getFields()[0]
 }

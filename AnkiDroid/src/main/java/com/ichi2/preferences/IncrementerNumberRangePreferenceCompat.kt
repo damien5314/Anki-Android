@@ -1,19 +1,19 @@
-/****************************************************************************************
- * Copyright (c) 2021 Tushar Bhatt <tbhatt312@gmail.com>                                *
- * Copyright (c) 2021 David Allison <davidallisongithub@gmail.com>                      *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2021 Tushar Bhatt <tbhatt312@gmail.com>
+ * Copyright (c) 2021 David Allison <davidallisongithub@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 package com.ichi2.preferences
 
@@ -26,11 +26,19 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import com.ichi2.anki.R
+import com.ichi2.utils.moveCursorToEnd
 
 /** Marker class to be used in preferences */
-class IncrementerNumberRangePreferenceCompat : NumberRangePreferenceCompat, DialogFragmentProvider {
+class IncrementerNumberRangePreferenceCompat :
+    NumberRangePreferenceCompat,
+    DialogFragmentProvider {
     @Suppress("unused")
-    constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int, defStyleRes: Int) : super(context, attrs, defStyleAttr, defStyleRes)
+    constructor(
+        context: Context,
+        attrs: AttributeSet?,
+        defStyleAttr: Int,
+        defStyleRes: Int,
+    ) : super(context, attrs, defStyleAttr, defStyleRes)
 
     @Suppress("unused")
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
@@ -51,18 +59,20 @@ class IncrementerNumberRangePreferenceCompat : NumberRangePreferenceCompat, Dial
             super.onBindDialogView(view)
 
             // Layout parameters for mEditText
-            val editTextParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                3.0f
-            )
+            val editTextParams =
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    3.0f,
+                )
 
-            lastValidEntry = try {
-                editText.text.toString().toInt()
-            } catch (nfe: NumberFormatException) {
-                // This should not be possible but just in case, recover with a valid minimum from superclass
-                numberRangePreference.min
-            }
+            lastValidEntry =
+                try {
+                    editText.text.toString().toInt()
+                } catch (nfe: NumberFormatException) {
+                    // This should not be possible but just in case, recover with a valid minimum from superclass
+                    numberRangePreference.min
+                }
             editText.layoutParams = editTextParams
             // Centre text inside mEditText
             editText.gravity = Gravity.CENTER_HORIZONTAL
@@ -83,11 +93,12 @@ class IncrementerNumberRangePreferenceCompat : NumberRangePreferenceCompat, Dial
             (editText.parent as ViewGroup).removeView(editText)
 
             // Layout parameters for incrementButton and decrementButton
-            val buttonParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1.0f
-            )
+            val buttonParams =
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1.0f,
+                )
 
             incrementButton.setText(R.string.plus_sign)
             decrementButton.setText(R.string.minus_sign)
@@ -109,18 +120,19 @@ class IncrementerNumberRangePreferenceCompat : NumberRangePreferenceCompat, Dial
          * @param isIncrement Indicator for whether to increase or decrease the value.
          */
         private fun updateEditText(isIncrement: Boolean) {
-            var value: Int = try {
-                editText.text.toString().toInt()
-            } catch (e: NumberFormatException) {
-                // If the user entered a non-number then incremented, restore to a good value
-                lastValidEntry
-            }
+            var value: Int =
+                try {
+                    editText.text.toString().toInt()
+                } catch (e: NumberFormatException) {
+                    // If the user entered a non-number then incremented, restore to a good value
+                    lastValidEntry
+                }
             value = if (isIncrement) value + 1 else value - 1
 
             // Make sure value is within range
             lastValidEntry = numberRangePreference.getValidatedRangeFromInt(value)
             editText.setText(lastValidEntry.toString())
-            editText.setSelection(editText.text.length)
+            editText.moveCursorToEnd()
         }
     }
 

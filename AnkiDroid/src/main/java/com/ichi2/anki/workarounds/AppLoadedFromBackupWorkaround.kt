@@ -20,7 +20,9 @@ import android.app.Activity
 import android.os.Bundle
 import android.os.Process
 import com.ichi2.anki.AnkiDroidApp
+import com.ichi2.anki.CrashReportService
 import com.ichi2.anki.R
+import com.ichi2.anki.exception.ManuallyReportedException
 import com.ichi2.anki.showThemedToast
 import com.ichi2.themes.Themes
 import timber.log.Timber
@@ -39,7 +41,10 @@ object AppLoadedFromBackupWorkaround {
      * @return true if [AnkiDroidApp] was not initialised properly, an 'activity failed' toast was
      * displayed and the app will be killed. `false` if the app started normally
      */
-    fun Activity.showedActivityFailedScreen(savedInstanceState: Bundle?, activitySuperOnCreate: (Bundle?) -> Unit): Boolean {
+    fun Activity.showedActivityFailedScreen(
+        savedInstanceState: Bundle?,
+        activitySuperOnCreate: (Bundle?) -> Unit,
+    ): Boolean {
         if (AnkiDroidApp.isInitialized) {
             return false
         }
@@ -53,7 +58,14 @@ object AppLoadedFromBackupWorkaround {
         showThemedToast(
             this,
             getString(R.string.ankidroid_cannot_open_after_backup_try_again),
-            false
+            false,
+        )
+        CrashReportService.sendExceptionReport(
+            ManuallyReportedException("19050: Activity started with no application instance"),
+            origin = "showedActivityFailedScreen",
+            additionalInfo = null,
+            onlyIfSilent = true,
+            context = this,
         )
 
         // fixes: java.lang.IllegalStateException: You need to use a Theme.AppCompat theme (or descendant) with this activity.
@@ -72,6 +84,7 @@ object AppLoadedFromBackupWorkaround {
             } catch (e: InterruptedException) {
                 Timber.w(e)
             }
+            Timber.e("killing process")
             Process.killProcess(Process.myPid())
         }.start()
         return true

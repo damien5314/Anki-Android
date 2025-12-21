@@ -15,42 +15,35 @@
  */
 package com.ichi2.anki.preferences
 
-import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.annotation.VisibleForTesting
 import androidx.annotation.XmlRes
 import androidx.core.os.bundleOf
 import androidx.preference.Preference
-import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import androidx.preference.PreferenceManager.OnPreferenceTreeClickListener
+import com.google.android.material.appbar.MaterialToolbar
+import com.ichi2.anki.R
 import com.ichi2.anki.analytics.UsageAnalytics
 import com.ichi2.preferences.DialogFragmentProvider
+import timber.log.Timber
 import java.lang.NumberFormatException
-import kotlin.reflect.KClass
-import kotlin.reflect.jvm.jvmName
 
 abstract class SettingsFragment :
     PreferenceFragmentCompat(),
     OnPreferenceTreeClickListener,
-    SharedPreferences.OnSharedPreferenceChangeListener {
+    SharedPreferences.OnSharedPreferenceChangeListener,
+    PreferenceXmlSource {
     /** @return The XML file which defines the preferences displayed by this PreferenceFragment
      */
     @get:XmlRes
-    abstract val preferenceResource: Int
-
-    /**
-     * Refreshes all values on the screen
-     * Call if a large number of values are changed from one preference.
-     */
-    protected fun refreshScreen() {
-        preferenceScreen.removeAll()
-        addPreferencesFromResource(preferenceResource)
-        initSubscreen()
-    }
+    abstract override val preferenceResource: Int
 
     abstract fun initSubscreen()
 
@@ -58,12 +51,15 @@ abstract class SettingsFragment :
         UsageAnalytics.sendAnalyticsEvent(
             category = UsageAnalytics.Category.SETTING,
             action = UsageAnalytics.Actions.TAPPED_SETTING,
-            label = preference.key
+            label = preference.key,
         )
         return super.onPreferenceTreeClick(preference)
     }
 
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
+    override fun onSharedPreferenceChanged(
+        sharedPreferences: SharedPreferences,
+        key: String?,
+    ) {
         if (key !in UsageAnalytics.preferencesWhoseChangesShouldBeReported) {
             return
         }
@@ -73,12 +69,39 @@ abstract class SettingsFragment :
                 category = UsageAnalytics.Category.SETTING,
                 action = UsageAnalytics.Actions.CHANGED_SETTING,
                 value = valueToReport,
-                label = key
+                label = key,
             )
         }
     }
 
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
+    ): View {
+        val view = inflater.inflate(R.layout.settings_fragment, container, false)
+        val preferenceView = super.onCreateView(inflater, container, savedInstanceState)
+        val listContainer = view.findViewById<FrameLayout>(android.R.id.list_container)
+        listContainer.addView(preferenceView)
+        return view
+    }
+
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
+        super.onViewCreated(view, savedInstanceState)
+        val title = preferenceManager?.preferenceScreen?.title ?: ""
+        view.findViewById<MaterialToolbar>(R.id.toolbar).apply {
+            setTitle(title)
+            setNavigationOnClickListener { requireActivity().onBackPressedDispatcher.onBackPressed() }
+        }
+    }
+
+    override fun onCreatePreferences(
+        savedInstanceState: Bundle?,
+        rootKey: String?,
+    ) {
         UsageAnalytics.sendAnalyticsScreenView(analyticsScreenNameConstant)
         addPreferencesFromResource(preferenceResource)
         initSubscreen()
@@ -91,50 +114,31 @@ abstract class SettingsFragment :
     // `getTargetFragment()`, which throws if `setTargetFragment()` isn't used before.
     // While this isn't fixed on upstream, suppress the deprecation warning
     override fun onDisplayPreferenceDialog(preference: Preference) {
-        if (preference is DialogFragmentProvider) {
-            val dialogFragment = preference.makeDialogFragment()
-            dialogFragment.arguments = bundleOf("key" to preference.key)
-            dialogFragment.setTargetFragment(this, 0)
-            dialogFragment.show(parentFragmentManager, "androidx.preference.PreferenceFragment.DIALOG")
-        } else {
-            super.onDisplayPreferenceDialog(preference)
-        }
+        val dialogFragment =
+            (preference as? DialogFragmentProvider)?.makeDialogFragment()
+                ?: return super.onDisplayPreferenceDialog(preference)
+        Timber.d("displaying custom preference: ${dialogFragment::class.simpleName}")
+        dialogFragment.arguments = bundleOf(PREF_DIALOG_KEY to preference.key)
+        dialogFragment.setTargetFragment(this, 0)
+        dialogFragment.show(parentFragmentManager, "androidx.preference.PreferenceFragment.DIALOG")
     }
 
     override fun onStart() {
         super.onStart()
-        requireActivity().title = preferenceScreen.title
-        PreferenceManager.getDefaultSharedPreferences(requireContext())
+        PreferenceManager
+            .getDefaultSharedPreferences(requireContext())
             .registerOnSharedPreferenceChangeListener(this)
     }
 
     override fun onStop() {
         super.onStop()
-        PreferenceManager.getDefaultSharedPreferences(requireContext())
+        PreferenceManager
+            .getDefaultSharedPreferences(requireContext())
             .unregisterOnSharedPreferenceChangeListener(this)
     }
 
-    protected fun allPreferences(): List<Preference> {
-        val allPreferences = mutableListOf<Preference>()
-        for (i in 0 until preferenceScreen.preferenceCount) {
-            val pref = preferenceScreen.getPreference(i)
-            if (pref is PreferenceCategory) {
-                for (j in 0 until pref.preferenceCount) {
-                    allPreferences.add(pref.getPreference(j))
-                }
-            } else {
-                allPreferences.add(pref)
-            }
-        }
-        return allPreferences
-    }
-
     companion object {
-        @JvmStatic // Using protected members which are not @JvmStatic in the superclass companion is unsupported yet
-        protected fun getSubscreenIntent(context: Context, fragmentClass: KClass<out SettingsFragment>): Intent {
-            return Intent(context, Preferences::class.java)
-                .putExtra(Preferences.INITIAL_FRAGMENT_EXTRA, fragmentClass.jvmName)
-        }
+        const val PREF_DIALOG_KEY = "key"
 
         /**
          * Converts a preference value to a numeric number that
@@ -149,15 +153,24 @@ abstract class SettingsFragment :
          * can have their values reported as well.
          * */
         @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-        fun getPreferenceReportableValue(value: Any?): Int? {
-            return when (value) {
+        fun getPreferenceReportableValue(value: Any?): Int? =
+            when (value) {
                 is Int -> value
-                is String -> try { value.toInt() } catch (e: NumberFormatException) { null }
+                is String ->
+                    try {
+                        value.toInt()
+                    } catch (e: NumberFormatException) {
+                        null
+                    }
                 is Boolean -> if (value) 1 else 0
                 is Float -> value.toInt()
                 is Long -> value.toInt()
                 else -> null
             }
-        }
     }
+}
+
+interface PreferenceXmlSource {
+    @get:XmlRes
+    val preferenceResource: Int
 }

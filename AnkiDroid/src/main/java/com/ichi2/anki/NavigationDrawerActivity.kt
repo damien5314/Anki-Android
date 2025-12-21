@@ -1,18 +1,18 @@
-/****************************************************************************************
- * Copyright (c) 2014 Timothy Rae <perceptualchaos2@gmail.com>                          *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2014 Timothy Rae <perceptualchaos2@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package com.ichi2.anki
 
 import android.content.Context
@@ -24,46 +24,53 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.CallSuper
 import androidx.annotation.LayoutRes
 import androidx.annotation.VisibleForTesting
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.widget.Toolbar
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.app.ActivityCompat
-import androidx.core.app.TaskStackBuilder
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import androidx.core.view.GravityCompat
+import androidx.core.view.get
+import androidx.core.view.size
 import androidx.drawerlayout.widget.ClosableDrawerLayout
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.fragment.app.Fragment
+import androidx.viewbinding.ViewBinding
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.navigation.NavigationView
+import com.ichi2.anki.IntentHandler.Companion.grantedStoragePermissions
+import com.ichi2.anki.NoteEditorFragment.Companion.NoteEditorCaller
 import com.ichi2.anki.dialogs.help.HelpDialog
-import com.ichi2.anki.preferences.Preferences
+import com.ichi2.anki.libanki.CardId
+import com.ichi2.anki.pages.StatisticsDestination
+import com.ichi2.anki.preferences.PreferencesActivity
 import com.ichi2.anki.preferences.sharedPrefs
+import com.ichi2.anki.utils.ext.showDialogFragment
 import com.ichi2.anki.workarounds.FullDraggableContainerFix
-import com.ichi2.compat.CompatHelper
-import com.ichi2.libanki.CardId
 import com.ichi2.utils.HandlerUtils
 import com.ichi2.utils.IntentUtil
-import com.ichi2.utils.KotlinCleanup
 import timber.log.Timber
 
-@KotlinCleanup("IDE-lint")
-abstract class NavigationDrawerActivity :
-    AnkiActivity(),
+abstract class NavigationDrawerActivity(
+    @LayoutRes contentLayoutId: Int? = null,
+) : AnkiActivity(contentLayoutId),
     NavigationView.OnNavigationItemSelectedListener {
     /**
      * Navigation Drawer
      */
-    var fragmented = false
+    open var fragmented = false
         protected set
     private var navButtonGoesBack = false
 
     // Navigation drawer list item entries
-    private lateinit var drawerLayout: DrawerLayout
+    lateinit var drawerLayout: DrawerLayout
     private var navigationView: NavigationView? = null
     lateinit var drawerToggle: ActionBarDrawerToggle
         private set
@@ -73,18 +80,56 @@ abstract class NavigationDrawerActivity :
      */
     private var pendingRunnable: Runnable? = null
 
-    override fun setContentView(@LayoutRes layoutResID: Int) {
+    private val drawerBackCallback =
+        object : OnBackPressedCallback(enabled = false) {
+            override fun handleOnBackPressed() {
+                Timber.d("drawerBackCallback")
+                closeDrawer()
+            }
+        }
+
+    override fun setViewBinding(binding: ViewBinding) {
         val preferences = baseContext.sharedPrefs()
 
         // Using ClosableDrawerLayout as a parent view.
-        val closableDrawerLayout = LayoutInflater.from(this).inflate(
-            navigationDrawerLayout,
-            null,
-            false
-        ) as ClosableDrawerLayout
+        val closableDrawerLayout =
+            LayoutInflater.from(this).inflate(
+                navigationDrawerLayout,
+                null,
+                false,
+            ) as ClosableDrawerLayout
+
+        val coordinatorLayout = binding.root
+        if (preferences.getBoolean(FULL_SCREEN_NAVIGATION_DRAWER, false)) {
+            // If full screen navigation drawer is needed, then add FullDraggableContainer as a child view of closableDrawerLayout.
+            // Then add coordinatorLayout as a child view of fullDraggableContainer.
+            val fullDraggableContainer = FullDraggableContainerFix(this)
+            fullDraggableContainer.addView(coordinatorLayout)
+            closableDrawerLayout.addView(fullDraggableContainer, 0)
+        } else {
+            // If full screen navigation drawer is not needed, then directly add coordinatorLayout as the child view.
+            closableDrawerLayout.addView(coordinatorLayout, 0)
+        }
+        setContentView(closableDrawerLayout)
+    }
+
+    override fun setContentView(
+        @LayoutRes layoutResID: Int,
+    ) {
+        val preferences = baseContext.sharedPrefs()
+
+        // Using ClosableDrawerLayout as a parent view.
+        val closableDrawerLayout =
+            LayoutInflater.from(this).inflate(
+                navigationDrawerLayout,
+                null,
+                false,
+            ) as ClosableDrawerLayout
         // Get CoordinatorLayout using resource ID
-        val coordinatorLayout = LayoutInflater.from(this)
-            .inflate(layoutResID, closableDrawerLayout, false) as CoordinatorLayout
+        val coordinatorLayout =
+            LayoutInflater
+                .from(this)
+                .inflate(layoutResID, closableDrawerLayout, false) as CoordinatorLayout
         if (preferences.getBoolean(FULL_SCREEN_NAVIGATION_DRAWER, false)) {
             // If full screen navigation drawer is needed, then add FullDraggableContainer as a child view of closableDrawerLayout.
             // Then add coordinatorLayout as a child view of fullDraggableContainer.
@@ -103,16 +148,13 @@ abstract class NavigationDrawerActivity :
         get() = if (fitsSystemWindows()) R.layout.navigation_drawer_layout else R.layout.navigation_drawer_layout_fullscreen
 
     /** Whether android:fitsSystemWindows="true" should be applied to the navigation drawer  */
-    protected open fun fitsSystemWindows(): Boolean {
-        return true
-    }
+    protected open fun fitsSystemWindows(): Boolean = true
 
-    fun navDrawerIsReady(): Boolean {
-        return navigationView != null
-    }
+    fun navDrawerIsReady(): Boolean = navigationView != null
 
     // Navigation drawer initialisation
-    protected fun initNavigationDrawer(mainView: View) {
+    @Suppress("deprecation", "API35 properly handle edge-to-edge")
+    protected fun initNavigationDrawer(mainView: View = findViewById(android.R.id.content)) {
         // Create inherited navigation drawer layout here so that it can be used by parent class
         drawerLayout = mainView.findViewById(R.id.drawer_layout)
         // set a custom shadow that overlays the main content when the drawer opens
@@ -123,8 +165,8 @@ abstract class NavigationDrawerActivity :
             MaterialColors.getColor(
                 this,
                 R.attr.appBarColor,
-                0
-            )
+                0,
+            ),
         )
         // Setup toolbar and hamburger
         navigationView = drawerLayout.findViewById(R.id.navdrawer_items_container)
@@ -139,34 +181,36 @@ abstract class NavigationDrawerActivity :
             // Decide which action to take when the navigation button is tapped.
             toolbar.setNavigationOnClickListener { onNavigationPressed() }
         }
+        setupBackPressedCallbacks()
         // ActionBarDrawerToggle ties together the the proper interactions
         // between the sliding drawer and the action bar app icon
-        drawerToggle = object : ActionBarDrawerToggle(
-            this,
-            drawerLayout,
-            R.string.drawer_open,
-            R.string.drawer_close
-        ) {
+        drawerToggle =
+            object : ActionBarDrawerToggle(
+                this,
+                drawerLayout,
+                R.string.drawer_open,
+                R.string.drawer_close,
+            ) {
+                override fun onDrawerClosed(drawerView: View) {
+                    super.onDrawerClosed(drawerView)
+                    invalidateOptionsMenu()
+                    drawerBackCallback.isEnabled = false
+                    // If animations are disabled, this is executed before onNavigationItemSelected is called
+                    // PERF: May be able to reduce this delay
+                    HandlerUtils.postDelayedOnNewHandler({
+                        if (pendingRunnable != null) {
+                            HandlerUtils.postOnNewHandler(pendingRunnable!!) // TODO: See if we can use the same handler here
+                            pendingRunnable = null
+                        }
+                    }, 100)
+                }
 
-            override fun onDrawerClosed(drawerView: View) {
-                super.onDrawerClosed(drawerView)
-                invalidateOptionsMenu()
-
-                // If animations are disabled, this is executed before onNavigationItemSelected is called
-                // PERF: May be able to reduce this delay
-                HandlerUtils.postDelayedOnNewHandler({
-                    if (pendingRunnable != null) {
-                        HandlerUtils.postOnNewHandler(pendingRunnable!!) // TODO: See if we can use the same handler here
-                        pendingRunnable = null
-                    }
-                }, 100)
+                override fun onDrawerOpened(drawerView: View) {
+                    super.onDrawerOpened(drawerView)
+                    invalidateOptionsMenu()
+                    drawerBackCallback.isEnabled = true
+                }
             }
-
-            override fun onDrawerOpened(drawerView: View) {
-                super.onDrawerOpened(drawerView)
-                invalidateOptionsMenu()
-            }
-        }
         if (drawerLayout is ClosableDrawerLayout) {
             (drawerLayout as ClosableDrawerLayout).setAnimationEnabled(animationEnabled())
         } else {
@@ -176,8 +220,19 @@ abstract class NavigationDrawerActivity :
         drawerLayout.addDrawerListener(drawerToggle)
 
         enablePostShortcut(this)
-        val intent = Intent("com.ichi2.widget.UPDATE_WIDGET")
+        val intent = Intent("com.ichi2.widget.UPDATE_WIDGET").setClassName("com.ichi2.widget", "WidgetPermissionReceiver")
         this.sendBroadcast(intent)
+    }
+
+    /**
+     * A method which allows control of the ordering of adding the [OnBackPressedCallback]
+     * for the drawer.
+     *
+     * Typically, call super after initialization code, so the drawer takes priority
+     */
+    @CallSuper
+    protected open fun setupBackPressedCallbacks() {
+        onBackPressedDispatcher.addCallback(this, drawerBackCallback)
     }
 
     /**
@@ -186,8 +241,8 @@ abstract class NavigationDrawerActivity :
     protected fun selectNavigationItem(itemId: Int) {
         val menu = navigationView!!.menu
         if (itemId == -1) {
-            for (i in 0 until menu.size()) {
-                menu.getItem(i).isChecked = false
+            for (i in 0 until menu.size) {
+                menu[i].isChecked = false
             }
         } else {
             val item = menu.findItem(itemId)
@@ -248,9 +303,13 @@ abstract class NavigationDrawerActivity :
             Timber.i(
                 "Handling Activity Result: %d. Result: %d",
                 REQUEST_PREFERENCES_UPDATE,
-                result.resultCode
+                result.resultCode,
             )
-            CompatHelper.compat.setupNotificationChannel(applicationContext)
+
+            // We trigger a notifications channel set-up since the user may have changed the locale set
+            // from within the app, which should cause the notification channel names to be reloaded to
+            // match the new locale
+            setupNotificationChannels(applicationContext)
             // Restart the activity on preference change
             // collection path hasn't been changed so just restart the current activity
             if (this is Reviewer && preferences.getBoolean("tts", false)) {
@@ -261,17 +320,6 @@ abstract class NavigationDrawerActivity :
                 ActivityCompat.recreate(this)
             }
         }
-
-    @Suppress("deprecation") // onBackPressed
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (isDrawerOpen) {
-            Timber.i("Back key pressed")
-            closeDrawer()
-        } else {
-            super.onBackPressed()
-        }
-    }
 
     /**
      * Called, when navigation button of the action bar is pressed.
@@ -296,46 +344,45 @@ abstract class NavigationDrawerActivity :
          * This runnable will be executed in onDrawerClosed(...)
          * to make the animation more fluid on older devices.
          */
-        pendingRunnable = Runnable {
-            // Take action if a different item selected
-            when (item.itemId) {
-                R.id.nav_decks -> {
-                    Timber.i("Navigating to decks")
-                    val deckPicker = Intent(this@NavigationDrawerActivity, DeckPicker::class.java)
-                    // opening DeckPicker should use the instance on the back stack & clear back history
-                    deckPicker.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                    startActivity(deckPicker)
-                }
+        pendingRunnable =
+            Runnable {
+                // Take action if a different item selected
+                when (item.itemId) {
+                    R.id.nav_decks -> {
+                        Timber.i("Navigating to decks")
+                        val deckPicker = Intent(this@NavigationDrawerActivity, DeckPicker::class.java)
+                        // opening DeckPicker should use the instance on the back stack & clear back history
+                        deckPicker.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        startActivity(deckPicker)
+                    }
 
-                R.id.nav_browser -> {
-                    Timber.i("Navigating to card browser")
-                    openCardBrowser()
-                }
+                    R.id.nav_browser -> {
+                        Timber.i("Navigating to card browser")
+                        openCardBrowser()
+                    }
 
-                R.id.nav_stats -> {
-                    Timber.i("Navigating to stats")
-                    val intent = com.ichi2.anki.pages.Statistics.getIntent(this)
-                    startActivity(intent)
-                }
+                    R.id.nav_stats -> {
+                        Timber.i("Navigating to stats")
+                        openStatistics()
+                    }
 
-                R.id.nav_settings -> {
-                    Timber.i("Navigating to settings")
-                    val intent = Intent(this, Preferences::class.java)
-                    preferencesLauncher.launch(intent)
-                }
+                    R.id.nav_settings -> {
+                        Timber.i("Navigating to settings")
+                        openSettings()
+                    }
 
-                R.id.nav_help -> {
-                    Timber.i("Navigating to help")
-                    showDialogFragment(HelpDialog.newHelpInstance())
-                }
+                    R.id.nav_help -> {
+                        Timber.i("Navigating to help")
+                        showDialogFragment(HelpDialog.newHelpInstance())
+                    }
 
-                R.id.support_ankidroid -> {
-                    Timber.i("Navigating to support AnkiDroid")
-                    val canRateApp = IntentUtil.canOpenIntent(this, AnkiDroidApp.getMarketIntent(this))
-                    showDialogFragment(HelpDialog.newSupportInstance(canRateApp))
+                    R.id.support_ankidroid -> {
+                        Timber.i("Navigating to support AnkiDroid")
+                        val canRateApp = IntentUtil.canOpenIntent(this, AnkiDroidApp.getMarketIntent(this))
+                        showDialogFragment(HelpDialog.newSupportInstance(canRateApp))
+                    }
                 }
             }
-        }
         closeDrawer()
         return true
     }
@@ -346,6 +393,24 @@ abstract class NavigationDrawerActivity :
             intent.putExtra("currentCard", currentCardId)
         }
         startActivity(intent)
+    }
+
+    /**
+     * Opens the Statistics Screen.
+     */
+    protected fun openStatistics() {
+        Timber.i("launching statistics")
+        val intent =
+            StatisticsDestination().toIntent(this)
+        startActivity(intent)
+    }
+
+    /**
+     * Opens AnkiDroid's Settings Screen.
+     */
+    protected fun openSettings() {
+        val intent = PreferencesActivity.getIntent(this)
+        preferencesLauncher.launch(intent)
     }
 
     // Override this to specify a specific card id
@@ -369,19 +434,8 @@ abstract class NavigationDrawerActivity :
     open val isDrawerOpen: Boolean
         get() = drawerLayout.isDrawerOpen(GravityCompat.START)
 
-    /**
-     * Restart the activity and discard old backstack, creating it new from the hierarchy in the manifest
-     */
-    protected fun restartActivityInvalidateBackstack(activity: AnkiActivity) {
-        Timber.i("AnkiActivity -- restartActivityInvalidateBackstack()")
-        val intent = Intent()
-        intent.setClass(activity, activity.javaClass)
-        val stackBuilder = TaskStackBuilder.create(activity)
-        stackBuilder.addNextIntentWithParentStack(intent)
-        stackBuilder.startActivities(Bundle())
-        activity.finish()
-    }
-
+    /** Opens the drawer if closed, closes it if open */
+    @Suppress("unused")
     fun toggleDrawer() {
         if (!isDrawerOpen) {
             openDrawer()
@@ -398,13 +452,10 @@ abstract class NavigationDrawerActivity :
         drawerLayout.closeDrawer(GravityCompat.START, animationEnabled())
     }
 
-    fun focusNavigation() {
-        // mNavigationView.getMenu().getItem(0).setChecked(true);
-        selectNavigationItem(R.id.nav_decks)
-        navigationView!!.requestFocus()
-    }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+    override fun onKeyDown(
+        keyCode: Int,
+        event: KeyEvent,
+    ): Boolean {
         if (!isDrawerOpen) {
             return super.onKeyDown(keyCode, event)
         }
@@ -422,53 +473,74 @@ abstract class NavigationDrawerActivity :
 
         const val EXTRA_STARTED_WITH_SHORTCUT = "com.ichi2.anki.StartedWithShortcut"
 
+        // The main reason to use dynamic shortcut is that it ensures that they are only available when permission is granted to access the collection.
+        // Even if we were going to ensure that all shortcut can deal nicely with missing permission, we probably would still need to use dynamic shortcuts because:
+        // * this ensure we don't offer shortcut until we have permission to access the collection
+        // * to use static shortcut, the package name must be given in res/shortcuts.xml. See https://developer.android.com/develop/ui/views/launch/shortcuts/creating-shortcuts#static
+        // * AnkiDroid package name is not constant. For example in debug variant, it is com.ichi2.anki.debug
+        // * having variables in shortcuts used to be doable with https://plugins.gradle.org/plugin/de.timfreiheit.resourceplaceholders, however
+        // * after manually testing it, and looking at open issue https://github.com/timfreiheit/ResourcePlaceholdersPlugin/issues/13 , it seems this was broken with recent version of gradle
         fun enablePostShortcut(context: Context) {
-            if (!IntentHandler.grantedStoragePermissions(context, showToast = false)) {
+            if (runCatching { grantedStoragePermissions(context, showToast = false) }.getOrNull() != true) {
                 Timber.w("No storage access, not enabling shortcuts")
                 return
             }
             // Review Cards Shortcut
-            val intentReviewCards = Intent(context, Reviewer::class.java)
-            intentReviewCards.action = Intent.ACTION_VIEW
-            intentReviewCards.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK
-            intentReviewCards.putExtra(EXTRA_STARTED_WITH_SHORTCUT, true)
-            val reviewCardsShortcut = ShortcutInfoCompat.Builder(context, "reviewCardsShortcutId")
-                .setShortLabel(context.getString(R.string.studyoptions_start))
-                .setLongLabel(context.getString(R.string.studyoptions_start))
-                .setIcon(IconCompat.createWithResource(context, R.drawable.review_shortcut))
-                .setIntent(intentReviewCards)
-                .build()
+            val intentReviewCards =
+                Reviewer.getIntent(context).apply {
+                    action = Intent.ACTION_VIEW
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    putExtra(EXTRA_STARTED_WITH_SHORTCUT, true)
+                }
+            val deckPickerIntent =
+                Intent(context, IntentHandler::class.java).apply {
+                    action = Intent.ACTION_VIEW
+                }
+            val reviewCardsShortcut =
+                ShortcutInfoCompat
+                    .Builder(context, "reviewCardsShortcutId")
+                    .setShortLabel(context.getString(R.string.studyoptions_start))
+                    .setLongLabel(context.getString(R.string.studyoptions_start))
+                    .setIcon(IconCompat.createWithResource(context, R.drawable.review_shortcut))
+                    .setIntents(arrayOf(deckPickerIntent, intentReviewCards))
+                    .build()
 
             // Add Shortcut
-            val intentAddNote = Intent(context, NoteEditor::class.java)
+            val intentAddNote = Intent(context, IntentHandler2::class.java)
             intentAddNote.action = Intent.ACTION_VIEW
             intentAddNote.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK
-            intentAddNote.putExtra(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_DECKPICKER)
-            val noteEditorShortcut = ShortcutInfoCompat.Builder(context, "noteEditorShortcutId")
-                .setShortLabel(context.getString(R.string.menu_add))
-                .setLongLabel(context.getString(R.string.menu_add))
-                .setIcon(IconCompat.createWithResource(context, R.drawable.add_shortcut))
-                .setIntent(intentAddNote)
-                .build()
+            intentAddNote.putExtra(NoteEditorFragment.EXTRA_CALLER, NoteEditorCaller.DECKPICKER.value)
+            val noteEditorShortcut =
+                ShortcutInfoCompat
+                    .Builder(context, "noteEditorShortcutId")
+                    .setShortLabel(context.getString(R.string.menu_add))
+                    .setLongLabel(context.getString(R.string.menu_add))
+                    .setIcon(IconCompat.createWithResource(context, R.drawable.add_shortcut))
+                    .setIntent(intentAddNote)
+                    .build()
 
             // CardBrowser Shortcut
             val intentCardBrowser = Intent(context, CardBrowser::class.java)
             intentCardBrowser.action = Intent.ACTION_VIEW
             intentCardBrowser.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK
-            val cardBrowserShortcut = ShortcutInfoCompat.Builder(context, "cardBrowserShortcutId")
-                .setShortLabel(context.getString(R.string.card_browser))
-                .setLongLabel(context.getString(R.string.card_browser))
-                .setIcon(IconCompat.createWithResource(context, R.drawable.browse_shortcut))
-                .setIntent(intentCardBrowser)
-                .build()
+            val cardBrowserShortcut =
+                ShortcutInfoCompat
+                    .Builder(context, "cardBrowserShortcutId")
+                    .setShortLabel(context.getString(R.string.card_browser))
+                    .setLongLabel(context.getString(R.string.card_browser))
+                    .setIcon(IconCompat.createWithResource(context, R.drawable.browse_shortcut))
+                    .setIntent(intentCardBrowser)
+                    .build()
             ShortcutManagerCompat.addDynamicShortcuts(
                 context,
                 listOf(
                     reviewCardsShortcut,
                     noteEditorShortcut,
-                    cardBrowserShortcut
-                )
+                    cardBrowserShortcut,
+                ),
             )
         }
     }
 }
+
+fun Fragment.requireNavigationDrawerActivity() = (requireActivity() as NavigationDrawerActivity)

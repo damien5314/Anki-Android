@@ -26,7 +26,7 @@ import org.junit.runner.RunWith
 class AsyncDialogFragmentsTest {
     @Test
     fun `SyncErrorDialog does not require context`() {
-        for (dialogType in SyncErrorDialog.dialogTypes) {
+        for (dialogType in SyncErrorDialog.Type.entries) {
             val instance = SyncErrorDialog.newInstance(dialogType, dialogMessage = null)
 
             assertDoesNotThrow("$dialogType message required a context") { instance.notificationMessage }
@@ -45,36 +45,17 @@ class AsyncDialogFragmentsTest {
 
     @Test
     fun `ExportReadyDialog does not require context`() {
-        val instance = ExportReadyDialog(emptyExportListener())
+        val instance = ExportReadyDialog()
         assertDoesNotThrow("message required a context") { instance.notificationMessage }
         assertDoesNotThrow("title required a context") { instance.notificationTitle }
     }
 
     @Test
-    fun `MediaCheckDialog does not require context`() {
-        for (dialogType in MediaCheckDialog.dialogTypes) {
-            val instance = MediaCheckDialog.newInstance(dialogType)
-            assertDoesNotThrow("$dialogType message required a context") { instance.notificationMessage }
-            assertDoesNotThrow("$dialogType title required a context") { instance.notificationTitle }
-        }
-    }
-
-    @Test
     fun `ImportDialog does not require context`() {
-        for (dialogType in ImportDialog.dialogTypes) {
+        for (dialogType in ImportDialog.Type.entries) {
             val instance = ImportDialog.newInstance(dialogType, "path")
             assertDoesNotThrow("$dialogType message required a context") { instance.notificationMessage }
             assertDoesNotThrow("$dialogType title required a context") { instance.notificationTitle }
-        }
-    }
-
-    private fun emptyExportListener(): ExportReadyDialog.ExportReadyDialogListener {
-        return object : ExportReadyDialog.ExportReadyDialogListener {
-            override fun dismissAllDialogFragments() { }
-
-            override fun shareFile(path: String) { }
-
-            override fun saveExportFile(exportPath: String) { }
         }
     }
 }

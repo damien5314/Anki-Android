@@ -1,4 +1,4 @@
-name: Conflict Scan
+name: 🛠️ Conflict Scan
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Check for conflicts and label conflict
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             async function getPullRequestList() {
@@ -25,6 +25,7 @@ jobs:
                     repo: context.repo.repo,
                     state: 'open',
                     sort: 'created',
+                    per_page: 100,
                 });
             }
 
@@ -86,8 +87,13 @@ jobs:
                             if (pullRequestData.data.labels.find(label => label.name === 'Has Conflicts')) {
                                 console.log(`'Has Conflicts' label already exists on PR #${prNumber}`);
                             } else {
-                                console.log(`Adding 'Has Conflicts' label to PR #${prNumber}`);
-                                await addLabel(['Has Conflicts'], prNumber);
+                                // Only add label if PR is not already stale to prevent resetting stale timer
+                                if (!pullRequestData.data.labels.find(label => label.name === 'Stale')) {
+                                    console.log(`Adding 'Has Conflicts' label to PR #${prNumber} (not stale)`);
+                                    await addLabel(['Has Conflicts'], prNumber);
+                                } else {
+                                    console.warn(`PR #${prNumber} is stale, skipping label addition to prevent timer reset`);
+                                }
                             }
                         } else if (pullRequestData.data.mergeable_state === 'clean') {
                             // if PR has no conflicts, remove the label
@@ -103,7 +109,16 @@ jobs:
                                 // if PR has no conflicts, remove the label
                                 if (pullRequestData.data.labels.find(label => label.name === 'Has Conflicts')) {
                                     console.log(`Removing 'Has Conflicts' label from PR #${prNumber}`);
-                                    await removeLabel(['Has Conflicts'], prNumber);
+                                    try {
+                                        await removeLabel(['Has Conflicts'], prNumber);
+                                    } catch(err) {
+                                        if (err.status === 404) {
+                                            console.warn("(Has Conflicts) label no longer found when trying to remove it");
+                                        } else {
+                                            console.log("Unexpected error while removing (Has Conflicts) label: " + err);
+                                            throw err;
+                                        }
+                                    }
                                 }
                             }
                         }

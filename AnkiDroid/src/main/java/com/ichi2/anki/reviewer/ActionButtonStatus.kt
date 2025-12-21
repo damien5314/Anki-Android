@@ -41,6 +41,7 @@ class ActionButtonStatus {
         setupButton(preferences, R.id.action_add_note_reviewer, "customButtonAddCard", MENU_DISABLED)
         setupButton(preferences, R.id.action_replay, "customButtonReplay", SHOW_AS_ACTION_IF_ROOM)
         setupButton(preferences, R.id.action_card_info, "customButtonCardInfo", MENU_DISABLED)
+        setupButton(preferences, R.id.action_previous_card_info, "customButtonPreviousCardInfo", MENU_DISABLED)
         setupButton(preferences, R.id.action_clear_whiteboard, "customButtonClearWhiteboard", SHOW_AS_ACTION_IF_ROOM)
         setupButton(preferences, R.id.action_hide_whiteboard, "customButtonShowHideWhiteboard", SHOW_AS_ACTION_ALWAYS)
         setupButton(preferences, R.id.action_select_tts, "customButtonSelectTts", SHOW_AS_ACTION_NEVER)
@@ -53,9 +54,11 @@ class ActionButtonStatus {
         setupButton(preferences, R.id.action_delete, "customButtonDelete", SHOW_AS_ACTION_NEVER)
         setupButton(preferences, R.id.action_toggle_mic_tool_bar, "customButtonToggleMicToolBar", SHOW_AS_ACTION_NEVER)
         setupButton(preferences, R.id.action_toggle_whiteboard, "customButtonEnableWhiteboard", SHOW_AS_ACTION_NEVER)
+        setupButton(preferences, R.id.action_toggle_eraser, "customButtonToggleEraser", SHOW_AS_ACTION_ALWAYS)
         setupButton(preferences, R.id.action_toggle_stylus, "customButtonToggleStylus", SHOW_AS_ACTION_IF_ROOM)
         setupButton(preferences, R.id.action_save_whiteboard, "customButtonSaveWhiteboard", SHOW_AS_ACTION_NEVER)
         setupButton(preferences, R.id.action_change_whiteboard_pen_color, "customButtonWhiteboardPenColor", SHOW_AS_ACTION_IF_ROOM)
+        setupButton(preferences, R.id.action_toggle_auto_advance, "customButtonToggleAutoAdvance", SHOW_AS_ACTION_NEVER)
         setupButton(preferences, R.id.user_action_1, "customButtonUserAction1", MENU_DISABLED)
         setupButton(preferences, R.id.user_action_2, "customButtonUserAction2", MENU_DISABLED)
         setupButton(preferences, R.id.user_action_3, "customButtonUserAction3", MENU_DISABLED)
@@ -67,11 +70,19 @@ class ActionButtonStatus {
         setupButton(preferences, R.id.user_action_9, "customButtonUserAction9", MENU_DISABLED)
     }
 
-    private fun setupButton(preferences: SharedPreferences, @IdRes resourceId: Int, preferenceName: String, showAsActionType: Int) {
-        customButtons[resourceId] = preferences.getString(
-            preferenceName,
-            showAsActionType.toString()
-        )!!.toInt()
+    private fun setupButton(
+        preferences: SharedPreferences,
+        @IdRes resourceId: Int,
+        preferenceName: String,
+        showAsActionType: Int,
+    ) {
+        customButtons[resourceId] =
+            preferences
+                .getString(
+                    preferenceName,
+                    showAsActionType.toString(),
+                )!!
+                .toInt()
     }
 
     fun setCustomButtons(menu: Menu) {
@@ -85,33 +96,27 @@ class ActionButtonStatus {
         }
     }
 
-    fun hideWhiteboardIsDisabled(): Boolean {
-        return customButtons[R.id.action_hide_whiteboard] == MENU_DISABLED
-    }
+    fun hideWhiteboardIsDisabled(): Boolean = customButtons[R.id.action_hide_whiteboard] == MENU_DISABLED
 
-    fun toggleStylusIsDisabled(): Boolean {
-        return customButtons[R.id.action_toggle_stylus] == MENU_DISABLED
-    }
+    fun toggleEraserIsDisabled(): Boolean = customButtons[R.id.action_toggle_eraser] == MENU_DISABLED
 
-    fun clearWhiteboardIsDisabled(): Boolean {
-        return customButtons[R.id.action_clear_whiteboard] == MENU_DISABLED
-    }
+    fun toggleStylusIsDisabled(): Boolean = customButtons[R.id.action_toggle_stylus] == MENU_DISABLED
 
-    fun selectTtsIsDisabled(): Boolean {
-        return customButtons[R.id.action_select_tts] == MENU_DISABLED
-    }
+    fun clearWhiteboardIsDisabled(): Boolean = customButtons[R.id.action_clear_whiteboard] == MENU_DISABLED
 
-    fun saveWhiteboardIsDisabled(): Boolean {
-        return customButtons[R.id.action_save_whiteboard] == MENU_DISABLED
-    }
+    fun selectTtsIsDisabled(): Boolean = customButtons[R.id.action_select_tts] == MENU_DISABLED
 
-    fun whiteboardPenColorIsDisabled(): Boolean {
-        return customButtons[R.id.action_change_whiteboard_pen_color] == MENU_DISABLED
-    }
+    fun saveWhiteboardIsDisabled(): Boolean = customButtons[R.id.action_save_whiteboard] == MENU_DISABLED
+
+    fun whiteboardPenColorIsDisabled(): Boolean = customButtons[R.id.action_change_whiteboard_pen_color] == MENU_DISABLED
 
     fun suspendIsDisabled(): Boolean = customButtons[R.id.action_suspend] == MENU_DISABLED
 
     fun buryIsDisabled(): Boolean = customButtons[R.id.action_bury] == MENU_DISABLED
+
+    fun flagsIsOverflown(): Boolean = customButtons[R.id.action_flag] == SHOW_AS_ACTION_NEVER
+
+    fun autoAdvanceMenuIsNeverShown(): Boolean = customButtons[R.id.action_toggle_auto_advance] == MENU_DISABLED
 
     companion object {
         const val SHOW_AS_ACTION_NEVER = MenuItem.SHOW_AS_ACTION_NEVER

@@ -9,7 +9,7 @@
 
 
 # Basic expectations
-# - tools needed: sed, gawk, github-release, git
+# - tools needed: sed, gawk, gh, git
 # - authority needed: ability to commit/tag/push directly to main branch in AnkiDroid, ability to create releases
 # - ankidroiddocs checked out in a sibling directory (that is, '../ankidroiddocs' should exist with 'upstream' remote set correctly)
 
@@ -18,11 +18,11 @@ SUFFIX=""
 PUBLIC=$1
 
 # Make sure we can find our binaries
-export PATH="~/bin:$PATH"
+export PATH="$HOME/bin:$PATH"
 
 # Check basic expectations
 echo "Checking basic utility installation status..."
-for UTILITY in sed gawk github-release asciidoctor; do
+for UTILITY in sed gawk gh asciidoctor; do
   if ! command -v "$UTILITY" >/dev/null 2>&1; then echo "$UTILITY" missing; exit 1; fi
 done
 if [ "$PUBLIC" = "public" ] && ! [ -f ../ankidroiddocs/changelog.asc ]; then
@@ -50,7 +50,7 @@ if [ "$PUBLIC" = "public" ]; then
 
   # Render the new changelog
   echo "Rendering changelog..."
-  if ! asciidoctor ../ankidroiddocs/changelog.asc -o "$CHANGELOG"
+  if ! asciidoctor -a webfonts! ../ankidroiddocs/changelog.asc -o "$CHANGELOG"
   then
     echo "Failed to render changelog?"
     exit 1
@@ -87,7 +87,7 @@ if [ "$PUBLIC" != "public" ]; then
 
   # Edit AndroidManifest.xml to bump version string
   echo "Bumping version from $PREVIOUS_VERSION$SUFFIX to $VERSION (and code from $PREVIOUS_CODE to $GUESSED_CODE)"
-  sed -i -e s/"$PREVIOUS_VERSION"$SUFFIX/"$VERSION"/g $GRADLEFILE
+  sed -i -e s/"$PREVIOUS_VERSION""$SUFFIX"/"$VERSION"/g $GRADLEFILE
   sed -i -e s/versionCode="$PREVIOUS_CODE"/versionCode="$GUESSED_CODE"/g $GRADLEFILE
 fi
 
@@ -100,13 +100,7 @@ git add $GRADLEFILE $CHANGELOG
 git commit -m "Bumped version to $VERSION"
 git tag v"$VERSION"
 
-# Read the key passwords if needed
-if [ "$KSTOREPWD" == "" ]; then
-  read -rsp "Enter keystore password: " KSTOREPWD; echo
-  read -rsp "Enter key password: " KEYPWD; echo
-  export KSTOREPWD
-  export KEYPWD
-fi
+. tools/check-keystore.sh
 
 # Build signed APK using Gradle and publish to Play.
 # Do this before building universal of the play flavor so the universal is not uploaded to Play Store
@@ -135,17 +129,46 @@ for UCFLAVOR in $UCFLAVORS; do
   fi
 done
 
+# PREFIX is used to order the apks in the file list. Most users will use `arm64-v8a`.
+# variant ABIs are a source of error and confusion, so should be lower in the list
+PREFIX=""
 # Copy full ABI APKs to cwd
 ABIS='arm64-v8a x86 x86_64 armeabi-v7a'
 for ABI in $ABIS; do
-  cp AnkiDroid/build/outputs/apk/full/release/AnkiDroid-full-"$ABI"-release.apk AnkiDroid-"$VERSION"-"$ABI".apk
+  if [ "$ABI" = "arm64-v8a" ]; then
+    PREFIX=""
+  else
+    PREFIX="variant-abi-"
+  fi
+  cp AnkiDroid/build/outputs/apk/full/release/AnkiDroid-full-"$ABI"-release.apk "$PREFIX"AnkiDroid-"$VERSION"-"$ABI".apk
 done
 
 # Copy universal APKs for all flavors to cwd
 FLAVORS='full amazon play'
 for FLAVOR in $FLAVORS; do
-  cp AnkiDroid/build/outputs/apk/"$FLAVOR"/release/AnkiDroid-"$FLAVOR"-universal-release.apk AnkiDroid-"$VERSION"-"$FLAVOR"-universal.apk
+  if [ "$FLAVOR" = "full" ]; then
+    PREFIX=""
+  else
+    PREFIX="dev-"
+  fi
+  cp AnkiDroid/build/outputs/apk/"$FLAVOR"/release/AnkiDroid-"$FLAVOR"-universal-release.apk "$PREFIX"AnkiDroid-"$VERSION"-"$FLAVOR"-universal.apk
 done
+
+# Pack up our proguard mapping file for debugging in case needed
+PREFIX="z-"
+tar -zcf proguard-mappings.tar.gz AnkiDroid/build/outputs/mapping
+cp proguard-mappings.tar.gz "$PREFIX"proguard-mappings.tar.gz
+
+# Create a full universal build that disables minify, to help diagnose proguard issues
+./gradlew --stop
+echo Running assembleFullRelease target with universal APK flag and MINIFY_ENABLED=false
+if ! MINIFY_ENABLED=false ./gradlew assembleFullRelease -Duniversal-apk=true
+then
+  echo "unable to build full unminified APKs"
+  exit 1
+fi
+# Copy our unminified full universal release out
+cp AnkiDroid/build/outputs/apk/full/release/AnkiDroid-full-universal-release.apk "$PREFIX"AnkiDroid-"$VERSION"-full-universal-nominify.apk
 
 # Push to Github Releases.
 GITHUB_TOKEN=$(cat ~/src/my-github-personal-access-token)
@@ -154,37 +177,49 @@ export GITHUB_USER="ankidroid"
 export GITHUB_REPO="Anki-Android"
 
 if [ "$PUBLIC" = "public" ]; then
-  PRE_RELEASE=""
+  RELEASE_TYPE="--latest"
 else
-  PRE_RELEASE="--pre-release"
+  RELEASE_TYPE="--prerelease"
 fi
 
+# Get the directory of the current script
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+# Read the content of the markdown file using the absolute path
+RELEASE_NOTES="$SCRIPT_DIR/release-description.md"
 echo "Creating new Github release"
-github-release release --tag v"$VERSION" --name "AnkiDroid $VERSION" --description "**For regular users:**<br/>\
-<br/>\
-Install the main APK below, trying the 'full-universal' build first for new installs. If it refuses to install and run correctly or you have previously installed from the Play Store, you must pick the APK that matches CPU instruction set for your device.<br/>\
-<br/>\
-This will be arm64-v8a for most phones from the last few years but [here is a guide to help you choose](https://www.howtogeek.com/339665/how-to-find-your-android-devices-info-for-correct-apk-downloads/)<br/>\
-<br/>\
-<br/>\
-**For testers and multiple profiles users:**<br/>\
-<br/>\
-The builds with 'full', 'play' or 'amazon' are useful for testing our builds for different app stores.<br/>\
-<br/>\
-The builds with letter codes below (A, B, etc) are universal parallel builds. They will install side-by-side with the main APK for testing, or to connect to a different AnkiWeb account in combination with changing the storage directory in preferences" $PRE_RELEASE
+gh release create v"$VERSION" --title "AnkiDroid $VERSION" -F "$RELEASE_NOTES" $RELEASE_TYPE
 
 echo "Sleeping 30s to make sure the release exists, see issue 11746"
 sleep 30
 
+# Upload full ABI APKs to GitHub release
 for ABI in $ABIS; do
-  echo "Adding full APK for $ABI to Github release"
-  github-release upload --tag v"$VERSION" --name AnkiDroid-"$VERSION"-"$ABI".apk --file AnkiDroid-"$VERSION"-"$ABI".apk
+  if [ "$ABI" = "arm64-v8a" ]; then
+    PREFIX=""
+  else
+    PREFIX="variant-abi-"
+  fi
+  echo "Adding full APK for $ABI to GitHub release"
+  gh release upload v"$VERSION" "$PREFIX"AnkiDroid-"$VERSION"-"$ABI".apk
 done
-# Copy flavor universal APKs to cwd
+
+# Upload universal APKs for all flavors to GitHub release
 for FLAVOR in $FLAVORS; do
-  echo "Adding universal APK for $FLAVOR to Github release"
-  github-release upload --tag v"$VERSION" --name AnkiDroid-"$VERSION"-"$FLAVOR"-universal.apk --file AnkiDroid-"$VERSION"-"$FLAVOR"-universal.apk
+  if [ "$FLAVOR" = "full" ]; then
+    PREFIX=""
+  else
+    PREFIX="dev-"
+  fi
+  echo "Adding full APK for $FLAVOR to GitHub release"
+  gh release upload v"$VERSION" "$PREFIX"AnkiDroid-"$VERSION"-"$FLAVOR"-universal.apk
 done
+
+# Set to z- for un-minified full universal APK and proguard to ensure it is at the end of the list
+PREFIX="z-"
+echo "Adding un-minified full universal APK to GitHub release"
+gh release upload v"$VERSION" "$PREFIX"AnkiDroid-"$VERSION"-full-universal-nominify.apk
+echo "Adding proguard mappings file to Github release"
+gh release upload v"$VERSION" "$PREFIX"proguard-mappings.tar.gz
 
 # Not publishing to amazon pending: https://github.com/ankidroid/Anki-Android/issues/14161
 #if [ "$PUBLIC" = "public" ]; then
@@ -208,6 +243,8 @@ else
   BUILDNAMES='A B' # For alpha releases just post a couple parallel builds
 fi
 for BUILD in $BUILDNAMES; do
+  PREFIX=""
   echo "Adding parallel build $BUILD to Github release"
-  github-release upload --tag v"$VERSION" --name AnkiDroid-"$VERSION".parallel."$BUILD".apk --file AnkiDroid-"$VERSION".parallel."$BUILD".apk
+  cp AnkiDroid-"$VERSION".parallel."$BUILD".apk "$PREFIX"AnkiDroid-"$VERSION".parallel."$BUILD".apk
+  gh release upload v"$VERSION" "$PREFIX"AnkiDroid-"$VERSION".parallel."$BUILD".apk
 done

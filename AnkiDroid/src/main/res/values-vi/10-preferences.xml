@@ -67,6 +67,7 @@
     <string name="pref_cat_advanced" maxLength="41">Tuỳ chọn nâng cao</string>
     <string name="pref_cat_workarounds" maxLength="41">Nền tảng công việc xung quanh</string>
     <string name="pref_cat_plugins" maxLength="41">Các bổ sung plugins</string>
+    <string name="pref_cat_editing" maxLength="41">Editing</string>
     <!-- preferences.xml entries-->
     <string name="whiteboard_stroke_width" maxLength="41">Chiều rộng không cố định</string>
     <string name="use_input_tag" maxLength="41">Nhập câu trả lời vào thẻ</string>
@@ -77,10 +78,10 @@
     <string name="reset_confirmation">Thiết lập lại tất cả các trạng thái</string>
     <string name="card_zoom" maxLength="41">Thu phóng thẻ</string>
     <string name="image_zoom" maxLength="41">Thu phóng hình ảnh</string>
-    <string name="button_size" maxLength="41">Kích thước nút trả lời </string>
+    <string name="button_size" maxLength="41">Kích thước nút trả lời</string>
     <string name="card_browser_font_size" maxLength="41">Thẻ trình duyệt font rộng</string>
     <string name="card_browser_hide_media" maxLength="41">Hiển thị tên tệp trong trình duyệt thẻ</string>
-    <string name="card_browser_hide_media_summary">Hiển thị tên tệp phương tiện trong các trường câu hỏi / câu trả lời của trình duyệt thẻ</string>
+    <string name="card_browser_hide_media_summary">Display audio filenames in the card browser question/answer fields</string>
     <string name="col_path" maxLength="41">Thư mục AnkiDroid</string>
     <string name="fullscreen_review" maxLength="41">Chế độ toàn màn hình</string>
     <string name="full_screen_off">Tắt</string>
@@ -96,15 +97,15 @@
     <string name="gestures_summ">Chỉ định các cử chỉ để hành động như trả lời và chỉnh sửa thẻ.</string>
     <string name="gestures_corner_touch" maxLength="41">Chạm 9 điểm</string>
     <string name="gestures_corner_touch_summary">Cho phép cử chỉ chạm ở các góc màn hình</string>
+    <string name="show_keyboard_shortcuts" maxLength="41">Hiển thị phím tắt</string>
     <string name="gestures_full_screen_nav_drawer" maxLength="41">Full screen navigation drawer</string>
     <string name="gestures_fullscreen_nav_drawer_summary">Open navigation drawer when swiped right from anywhere on the screen</string>
-    <string name="gestures_none" maxLength="41">Không</string>
+    <string name="gestures_none" maxLength="41" comment="No gestures">Không</string>
     <string name="gestures_swipe_up" maxLength="41">Vuốt lên</string>
     <string name="gestures_swipe_down" maxLength="41">Vuốt xuống</string>
     <string name="gestures_swipe_left" maxLength="41">Vuốt sang trái</string>
     <string name="gestures_swipe_right" maxLength="41">Vuốt sang phải</string>
     <string name="gestures_double_tap" maxLength="41">Chạm hai lần</string>
-    <string name="gestures_long_tap" maxLength="41">Chạm lâu</string>
     <string name="gestures_tap_top" maxLength="41">Chạm vào phần đầu</string>
     <string name="gestures_tap_left" maxLength="41">Chạm bên trái</string>
     <string name="gestures_tap_right" maxLength="41">Chạm bên phải</string>
@@ -114,17 +115,20 @@
     <string name="gestures_corner_tap_middle_center" maxLength="41">Chạm vào chính giữa</string>
     <string name="gestures_corner_tap_bottom_left" maxLength="41">Chạm vào dưới cùng bên trái</string>
     <string name="gestures_corner_tap_bottom_right" maxLength="41">Chạm vào dưới cùng bên phải</string>
+    <string name="gestures_two_finger_tap" maxLength="41">Chạm bằng hai ngón tay</string>
+    <string name="gestures_three_finger_tap" maxLength="41">Chạm bằng ba ngón tay</string>
+    <string name="gestures_four_finger_tap" maxLength="41">Chạm bằng bốn ngón tay</string>
     <string name="gestures_shake" maxLength="41">Lắc thiết bị</string>
-    <string name="card_browser_enable_external_context_menu">Menu ‘%s’</string>
+    <string name="card_browser_enable_external_context_menu" maxLength="41">Menu ‘%s’</string>
     <string name="card_browser_enable_external_context_menu_summary">Bật menu ngữ cảnh ‘%s’ trên toàn cầu</string>
     <string name="double_scrolling_gap" maxLength="41">Bấm phím scrolling (chuột giữa) hai lần</string>
-    <string name="double_scrolling_gap_summ">bấm hai lần chuột giữa với eReader </string>
+    <string name="double_scrolling_gap_summ">bấm hai lần chuột giữa với eReader</string>
     <string name="swipe_sensitivity" maxLength="41">Độ nhạy của chạm vuốt</string>
     <string name="tts" maxLength="41">Văn bản sang tiếng nói</string>
     <string name="tts_summ">Đọc ra câu hỏi và câu trả lời nếu không có tập tin âm thanh nào được kèm theo</string>
     <!-- Sync -->
     <string name="sync_fetch_missing_media" maxLength="41">Tìm nạp phương tiện truyền thông trên đồng bộ</string>
-    <string name="sync_account" maxLength="41">tài khoản AnkiWeb </string>
+    <string name="sync_account" maxLength="41">tài khoản AnkiWeb</string>
     <string name="sync_account_summ_logged_out">Chưa đăng nhập</string>
     <string name="automatic_sync_choice" maxLength="41">Đồng bộ hóa tự động</string>
     <string name="automatic_sync_choice_summ">Đồng bộ hóa tự động khi khởi động / thoát ứng dụng nếu lần đồng bộ hóa cuối cùng nhiều hơn 10         phút trước.</string>
@@ -146,11 +150,9 @@
     <string name="notification_pref_title" maxLength="41">Thông báo khi</string>
     <string name="never_notify">Không bao giờ thông báo</string>
     <string name="notify_when_pending">Đang chờ xử lý tin nhắn có sẵn</string>
-    <string name="notification_minimum_cards_due">Nhiều hơn %d thẻ cho phép</string>
+    <string name="notification_minimum_cards_due" comment="Consider keeping the unbreakable space after the digit">Hơn %d thẻ đến hạn ôn tập</string>
     <string name="notification_minimum_cards_due_vibrate" maxLength="41">Báo rung</string>
     <string name="notification_minimum_cards_due_blink" maxLength="41">Nhấp nháy ánh sáng</string>
-    <string name="timeout_answer_text" maxLength="41">Tự động hiển thị trả lời</string>
-    <string name="timeout_answer_summ2">Show answer automatically without user input. Configure from deck options.</string>
     <string name="select_locale_title">Chọn ngôn ngữ</string>
     <string name="software_render" maxLength="41">Tắt kết xuất phần cứng thẻ</string>
     <string name="software_render_summ">Kết xuất phần cứng nhanh hơn nhưng có thể gặp sự cố, cụ thể là trên Android 8 / 8.1. Nếu bạn không thể thấy các phần của giao diện người dùng xem xét thẻ, hãy thử cài đặt này.</string>
@@ -161,16 +163,16 @@
     <string name="disable_extended_text_ui_summ">Cho phép menu ngữ cảnh \'Đánh dấu Cloze\' khi ở chế độ ngang.</string>
     <string name="vertical_centering" maxLength="41">Chọn Center align</string>
     <string name="vertical_centering_summ">Thiết lập nội dung chính của thẻ theo chiều dọc</string>
-    <string name="pref_double_tap_time_interval" maxLength="41">Double tap time interval (milliseconds)</string>
+    <string name="pref_double_tap_time_interval" maxLength="41">Double tap time interval</string>
     <string name="pref_double_tap_time_interval_summary">A second tap of the answer buttons will be ignored if this time has not elapsed. This prevents accidental double taps</string>
-    <string name="pref_show_answer_long_press_time" maxLength="41">Show answer long-press time</string>
+    <string name="pref_show_answer_long_press_time" maxLength="41">Hiển thị thời gian nhấn và giữ câu trả lời</string>
     <string name="pref_show_answer_long_press_time_summary">Thời gian nhấn tối thiểu trước khi nút hiển thị câu trả lời đăng ký một thao tác chạm.</string>
     <string name="show_estimates" maxLength="41">Hiển thị nút thời gian</string>
     <string name="show_estimates_summ">Hiển thị thời gian đánh giá tiếp theo trên các nút trả lời</string>
     <string name="show_large_answer_buttons" maxLength="41">Show large answer buttons</string>
-    <string name="show_large_answer_buttons_summ">Show answer button in 2 rows</string>
+    <string name="show_large_answer_buttons_summ">Hiển thị nút trả lời thành 2 hàng</string>
     <string name="show_top_bar" maxLength="41">Hiển thị thanh trên cùng</string>
-    <string name="show_top_bar_summ">Hiển thị số lượng thẻ, gắn cờ và đánh dấu trên thanh trên cùng</string>
+    <string name="show_top_bar_summary">Hiển thị số lượng thẻ, đồng hồ đếm thời gian trả lời, cờ đánh dấu và dấu ở thanh trên cùng</string>
     <string name="show_progress" maxLength="41">Hiển thị còn lại</string>
     <string name="show_progress_summ">Hiển thị số thẻ còn lại</string>
     <string name="show_eta" maxLength="41">Hiển thị ETA</string>
@@ -180,7 +182,7 @@
     <string name="time_limit" maxLength="41">Giới hạn thời gian của hộp thời gian</string>
     <string name="day_offset_with_description" maxLength="41">Bắt đầu ngày hôm sau (0 là nửa đêm, 23 là 11 giờ tối)</string>
     <plurals name="day_offset_summ" comment="%d is going to be replaced with the number of hours past midnight. It can be replaced if something else suits better the translation">
-        <item quantity="other">%d giờ đã qua nửa đêm</item>
+        <item quantity="other" comment="Consider keeping the unbreakable space after the digit">%d giờ sau nửa đêm</item>
     </plurals>
     <string name="pref_keep_screen_on" maxLength="41">Luôn bật màn hình</string>
     <string name="pref_keep_screen_on_summ">Tắt thời gian chờ của màn hình</string>
@@ -196,15 +198,17 @@
     <string name="reset">Thiết lập lại</string>
     <string name="thirdparty_apps_title" maxLength="41">Ứng dụng API của bên thứ ba</string>
     <string name="thirdparty_apps_summary">Xem danh sách các ứng dụng sử dụng AnkiDroid API như từ điển, tiện ích.</string>
+    <string name="pref_controls_reviews_tab" maxLength="41" comment="Name of the tab to configure controls for the reviews screen">Reviews</string>
+    <string name="pref_controls_previews_tab" maxLength="41" comment="Name of the tab to configure controls for the previews screen">Xem trước</string>
+    <string name="toggle_backside_only" maxLength="41" comment="Control setting that toggles \'Backside only\' in the previews screen">Toggle backside only</string>
     <!-- Appearance settings -->
-    <string name="pref_cat_reviewer" maxLength="41">Người xem xét</string>
+    <string name="pref_cat_reviewer" maxLength="41">Màn hình học tập</string>
     <string name="show_deck_title" maxLength="41">Hiển thị tiêu đề bộ thẻ</string>
     <string name="accessibility" maxLength="41">Trợ năng</string>
     <!-- Paste clipboard image as png option -->
     <string name="paste_as_png" maxLength="41">Paste clipboard images as PNG</string>
-    <string name="paste_as_png_summary">By default Anki pastes images on the clipboard as JPG files to save disk space. You can use this option to paste as PNG images instead.</string>
     <string name="exit_via_double_tap_back" maxLength="41">Press back twice to go back/exit</string>
-    <string name="exit_via_double_tap_back_summ">To avoid accidentally leaving the reviewer or the app</string>
+    <string name="exit_via_double_tap_back_summ">Để tránh thoát khỏi màn hình học hoặc ứng dụng một cách vô tình</string>
     <!-- Allow all files in media imports -->
     <string name="media_import_allow_all_files" maxLength="41">Allow all files in media imports</string>
     <string name="media_import_allow_all_files_summ">If Android doesn’t recognize a media file</string>
@@ -216,29 +220,34 @@
          Nếu không được thiết lập, máy chủ AnkiWeb mặc định sẽ được sử dụng thay thế.
          <a href="%s">Tìm hiểu thêm</a>]]></string>
     <string name="custom_sync_server_base_url_title" maxLength="41">Đồng bộ hóa url</string>
+    <string name="custom_sync_certificate_title" maxLength="41">Chứng chỉ gốc tùy chỉnh (PEM)</string>
     <!-- Key Bindings -->
     <string name="keyboard">Bàn phím</string>
     <string name="bluetooth">Bluetooth</string>
     <string name="answer_buttons" maxLength="41">Phím trả lời</string>
-    <string name="card" maxLength="41">Thẻ</string>
+    <string name="card" maxLength="41" comment="Generic term to refer to a card">Thẻ</string>
     <string name="note" maxLength="41">ghi chú</string>
     <string name="navigation" maxLength="41">Điều hướng</string>
     <string name="media" maxLength="41">Đa phương tiện</string>
     <string name="misc" maxLength="41">Hỗn hợp</string>
+    <!-- Review reminders -->
+    <string name="add_reminder" comment="Label for the add reminder button in the screen for adding and editing review reminders">Thêm lời nhắc</string>
+    <string name="add_review_reminder" comment="Title of the screen for creating a new review reminder">Add review reminder</string>
+    <string name="edit_review_reminder" comment="Title of the screen for editing an existing review reminder">Edit review reminder</string>
+    <string name="you_have_no_review_reminders" comment="Text that appears in the review reminder editing screen when there are no reminders set">You have no review reminders</string>
     <!-- studyoptions -->
     <string name="studyoptions_limit_select_tags">Chọn thẻ</string>
     <!-- Deck configurations -->
     <string name="deck_conf_general" maxLength="41" comment="Label of the submenu for the general options of new deck">Chung</string>
-    <string name="deck_conf_reminders" maxLength="41">Nhắc nhở</string>
     <string name="deck_conf_cram_filter" maxLength="41">Bộ lọc</string>
-    <string name="deck_conf_cram_search" maxLength="41">Tìm</string>
+    <string name="deck_conf_cram_search" maxLength="41" comment="Label of a text field that contains a search query.">Tìm</string>
     <string name="deck_conf_cram_limit" maxLength="41">Giới hạn</string>
-    <string name="deck_conf_cram_order" maxLength="41">thẻ được lựa chọn bởi</string>
+    <string name="deck_conf_cram_order" maxLength="41">Thẻ được lựa chọn bởi</string>
     <string name="deck_conf_cram_reschedule" maxLength="41" comment="Title of the box labelled by deck_conf_cram_reschedule_summ">Lên lịch lại</string>
     <string name="deck_conf_cram_reschedule_summ">Lên lịch lại thẻ dựa trên câu trả lời của tôi trong chủ đề này</string>
     <string name="deck_conf_cram_filter_2_check">Enable second filter</string>
     <string name="deck_conf_cram_steps_summ" maxLength="41">Xác định các bước tùy chỉnh</string>
-    <string name="deck_conf_cram_preview_delays" maxLength="41">Preview delays</string>
+    <string name="deck_conf_cram_preview_delays" maxLength="41">Trì hoãn xem trước</string>
     <string name="deck_conf_cram_preview_delays_summ">Delays are in seconds. 0 returns card to original deck.</string>
     <!-- analytics options -->
     <string name="analytics_dialog_title">Giúp cải thiện AnkiDroid!</string>
@@ -247,42 +256,41 @@
     <string name="note_editor_replace_newlines" maxLength="41">Thay thế dòng mới bằng HTML</string>
     <string name="note_editor_replace_newlines_summ">Trong Trình chỉnh sửa ghi chú, chuyển đổi thẻ &lt;br&gt; thành dòng mới khi chỉnh sửa thẻ.</string>
     <string name="type_in_answer_focus" maxLength="41">Tập trung \'Nhập câu trả lời\'</string>
-    <string name="type_in_answer_focus_summ">Tự động tập trung vào trường \"nhập câu trả lời\" trong trình đánh giá</string>
+    <string name="type_in_answer_focus_summ">Tự động đặt con trỏ vào trường ‘nhập câu trả lời’ trong màn hình học tập</string>
     <!-- About -->
-    <string name="open_changelog">Mở Changelog</string>
+    <string name="open_changelog">Mở nhật ký thay đổi</string>
     <string name="pref_cat_about_title" maxLength="41">Giới thiệu</string>
     <string name="contributors_title">Những người đóng góp</string>
     <string name="about_contributors_description"><![CDATA[Đây là <a href=\"%1$s\">cộng tác viên tuyệt vời của chúng tôi</a>. Bạn có thể hỗ trợ AnkiDroid bằng cách lập trình, dịch thuật, quyên góp và <a href=\"%2$s\">hơn thế nữa</a>!]]></string>
     <string name="license">Giấy phép</string>
     <string name="license_description"><![CDATA[AnkiDroid được phát hành theo giấy phép <a href=\"%1$s\">GPL-3.0</a> và <a href=\"%2$s\">AGPL-3.0</a>, với mã nguồn có sẵn <a href=\"%3$s\">trên GitHub</a>]]></string>
+    <string name="other_licenses"><![CDATA[AnkiDroid cũng sử dụng các thư viện và biểu tượng từ bên thứ ba, được cấp phép theo nhiều <a href=\"%1$s\">giấy phép mã nguồn mở</a> khác nhau.]]></string>
     <string name="donate_description"><![CDATA[Bạn có thể hỗ trợ sự phát triển của AnkiDroid bằng cách <a href=\"%1$s\">quyên góp</a>. Bất kỳ số tiền nào cũng được đánh giá cao.]]></string>
     <!-- Controls -->
     <string name="binding_add_gesture">Add gesture</string>
-    <string name="binding_replace_gesture">Thay thế cử chỉ</string>
     <string name="binding_add_key">Add key</string>
-    <string name="binding_replace_key">Thay thế khoá</string>
     <string name="key_picker_default_press_key">Press a key</string>
-    <string name="binding_add_axis">Add joystick/motion controller</string>
+    <string name="binding_add_axis">Thêm cần điều khiển/bộ điều khiển chuyển động</string>
     <string name="axis_picker_move_joystick">Move a joystick/motion controller</string>
     <string name="user_actions" maxLength="41">Thao tác người dùng</string>
-    <string name="user_actions_summary" maxLength="41">Kích hoạt JavaScript từ màn hình đánh giá</string>
-    <string name="user_action_1" maxLength="41">Hành động người dùng 1</string>
-    <string name="user_action_2" maxLength="41">Thao tác người dùng 2</string>
-    <string name="user_action_3" maxLength="41">Thao tác người dùng 3</string>
-    <string name="user_action_4" maxLength="41">Thao tác người dùng 4</string>
-    <string name="user_action_5" maxLength="41">Thao tác người dùng 5</string>
-    <string name="user_action_6" maxLength="41">Thao tác người dùng 6</string>
-    <string name="user_action_7" maxLength="41">Thao tác người dùng 7</string>
-    <string name="user_action_8" maxLength="41">Thao tác người dùng 8</string>
-    <string name="user_action_9" maxLength="41">Thao tác người dùng 9</string>
+    <string name="user_actions_summary" maxLength="41">Trigger JavaScript from the study screen</string>
+    <string name="user_action_1" maxLength="28">Hành động người dùng 1</string>
+    <string name="user_action_2" maxLength="28">Thao tác người dùng 2</string>
+    <string name="user_action_3" maxLength="28">Thao tác người dùng 3</string>
+    <string name="user_action_4" maxLength="28">Thao tác người dùng 4</string>
+    <string name="user_action_5" maxLength="28">Thao tác người dùng 5</string>
+    <string name="user_action_6" maxLength="28">Thao tác người dùng 6</string>
+    <string name="user_action_7" maxLength="28">Thao tác người dùng 7</string>
+    <string name="user_action_8" maxLength="28">Thao tác người dùng 8</string>
+    <string name="user_action_9" maxLength="28">Thao tác người dùng 9</string>
+    <string name="toggle_auto_advance" maxLength="28">Chuyển đổi chuyển tiếp tự động</string>
     <!-- Select card side -->
     <string name="card_side_selection_title">Select card side</string>
     <string name="card_side_question">Question</string>
     <string name="card_side_answer">Answer</string>
-    <string name="card_side_both">Question &amp; Answer</string>
+    <string name="card_side_both" maxLength="28">Question &amp; Answer</string>
     <string name="display_binding_card_side_question" comment="When displaying a key bind on a preference this formatter is used if the bind only applies to the question">Q: %s</string>
     <string name="display_binding_card_side_answer" comment="When displaying a key bind on a preference this formatter is used if the bind only applies to the answer">A: %s</string>
-    <string name="display_binding_card_side_both" comment="When displaying a key bind on a preference this formatter is used if the bind only applies to both the question and the answer">%s</string>
     <!-- Binding Preference -->
     <string name="binding_remove_binding" comment="The parameter is the name of the key/gesture.     Keys cannot be translated yet.">Remove ‘%s’</string>
     <string name="bindings_already_bound">Already bound to %s</string>
@@ -290,12 +298,13 @@
     <string name="pref_cat_experimental" maxLength="41" tools:ignore="UnusedResources">Tính năng thử nghiệm</string>
     <string name="readtext_deprecation_warn">AnkiDroid đã giới thiệu cơ chế TTS tốt hơn, tương thích với các ứng dụng khách Anki khác và bao gồm nhiều giọng nói hơn cũng như cải tiến về phát lại ngôn ngữ!\n\nVui lòng nâng cấp càng sớm càng tốt vì cài đặt này sẽ sớm bị xóa</string>
     <string name="readtext_reviewer_warn" tools:ignore="UnusedResources">Vui lòng nâng cấp lên định dạng văn bản thành giọng nói mới</string>
+    <string name="pref_fixed_port_title" maxLength="41">localStorage in Study Screen</string>
+    <string name="pref_fixed_port_summary">Enables JavaScript localStorage by using a fixed server port in the Study Screen</string>
     <!-- Developer options -->
     <string name="pref_cat_dev_options" maxLength="41">Tùy chọn nhà phát triển</string>
     <string name="dev_options_enabled_pref" maxLength="41">Bật tùy chọn nhà phát triển</string>
     <string name="disable_dev_options">Tắt tùy chọn nhà phát triển</string>
-    <string name="dev_options_warning">        Hãy chắc chắn trước khi bật tùy chọn nhà phát triển. Các tùy chọn này rất nguy hiểm và có thể làm hỏng ứng dụng hoặc làm hỏng bộ sưu tập của bạn.\n\nXin lưu ý rằng các tùy chọn này không phù hợp với hầu hết người dùng và do đó không được dịch, vì vậy chúng bằng tiếng Anh.
-    </string>
+    <string name="dev_options_warning">Vui lòng chắc chắn trước khi bật các tùy chọn dành cho nhà phát triển. Những tùy chọn này có thể nguy hiểm, làm hỏng ứng dụng hoặc làm hỏng bộ sưu tập của bạn.\n\nLưu ý rằng các tùy chọn này không phù hợp với hầu hết người dùng, vì vậy chúng không được dịch và sẽ hiển thị bằng tiếng Anh.</string>
     <!-- #######################################################################################
          #################################### Backup options ###################################
          ####################################################################################### -->
@@ -355,4 +364,27 @@
     <string name="pref__etc__snackbar__fetching" comment="Generic snackbar message to be shown when user taps on a preference,         the value of which is being fetched">Đang tìm nạp&#8230;</string>
     <string name="pref__etc__snackbar__calculating" comment="Generic snackbar message to be shown when user taps on a preference,         the value of which, such as folder size on disk, is being calculated">Đang tính toán&#8230;</string>
     <string name="pref__etc__snackbar__no_collection" comment="Generic snackbar message to be shown when user taps on a preference         that is not usable because the collection does not exist">Bộ sưu tập không tồn tại</string>
+    <string name="hide_system_bars" maxLength="41" comment="Title of a setting that allows to hide the system bars">Ẩn thanh hệ thống</string>
+    <string name="hide_system_bars_none" comment="Setting option to not hide any of the system bars">Không</string>
+    <string name="hide_system_bars_status_bar" comment="Setting option to hide the system status bar (the top one with clock, battery status, etc)">Thanh trạng thái</string>
+    <string name="hide_system_bars_navigation_bar" comment="Setting option to hide the system navigation bar (the bottom one that can go back, to home, etc)">Thanh điều hướng</string>
+    <string name="hide_system_bars_all_bars" comment="Setting option to hide all the system bars">Tất cả</string>
+    <string name="ignore_display_cutout" maxLength="41">Ignore display cutout</string>
+    <string name="show_answer_buttons" maxLength="41">Show answer buttons</string>
+    <string name="hide_hard_and_easy" maxLength="41">Ẩn các nút \"Khó\' và \'Dễ\'</string>
+    <string name="reviewer_frame_style" maxLength="41">Frame style</string>
+    <string name="reviewer_frame_style_card" maxLength="41" comment="Style name of the \'Card\' card frame of the Study Screen">Card</string>
+    <string name="reviewer_frame_style_box" maxLength="41" comment="Style name of the \'Box\' card frame of the Study Screen">Box</string>
+    <string name="reviewer_toolbar_top" maxLength="41" comment="Setting to put the toolbar on the top of the study screen">Trên cùng</string>
+    <string name="reviewer_toolbar_bottom" maxLength="41" comment="Setting to put the toolbar on the bottom of the study screen">Dưới cùng</string>
+    <string name="reviewer_toolbar_none" maxLength="41" comment="Setting to remove the toolbar from the study screen">None</string>
+    <string name="toolbar" maxLength="41">Thanh công cụ</string>
+    <string name="toolbar_actions" maxLength="41">Các hành động trên thanh công cụ</string>
+    <string name="toolbar_position" maxLength="28">Vị trí thanh công cụ</string>
+    <string name="new_study_screen" maxLength="41">Màn hình học tập mới</string>
+    <string name="new_study_screen_summ"><![CDATA[Màn hình học tập đã được cải tiến sẽ thay thế màn hình hiện tại. Một số tính năng của màn hình cũ đã được thay đổi hoặc loại bỏ. Vui lòng gửi <a href="%1$s">phản hồi</a> hoặc <a href="%2$s">báo lỗi</a> nếu có.]]></string>
+    <string name="show_answer_feedback" maxLength="41">Show answer feedback</string>
+    <string name="screen" maxLength="41">Screen</string>
+    <!--Keyboard shortcuts dialog-->
+    <string name="open_settings" comment="Description of the shortcut that opens the app settings">Mở cài đặt</string>
 </resources>

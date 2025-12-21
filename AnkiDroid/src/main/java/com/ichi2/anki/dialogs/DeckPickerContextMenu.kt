@@ -1,18 +1,18 @@
-/****************************************************************************************
- * Copyright (c) 2015 Timothy Rae <perceptualchaos2@gmail.com>                          *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2015 Timothy Rae <perceptualchaos2@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package com.ichi2.anki.dialogs
 
 import android.app.Dialog
@@ -23,63 +23,43 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.os.bundleOf
 import com.ichi2.anki.R
 import com.ichi2.anki.analytics.AnalyticsDialogFragment
-import com.ichi2.libanki.DeckId
+import com.ichi2.anki.contextmenu.DeckPickerMenuContentProvider
+import com.ichi2.anki.libanki.DeckId
 import com.ichi2.utils.title
 
 class DeckPickerContextMenu : AnalyticsDialogFragment() {
-
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         super.onCreate(savedInstanceState)
-        assert(requireArguments().containsKey(ARG_DECK_ID))
-        assert(requireArguments().containsKey(ARG_DECK_NAME))
-        assert(requireArguments().containsKey(ARG_DECK_IS_DYN))
-        assert(requireArguments().containsKey(ARG_DECK_HAS_BURIED_IN_DECK))
+        require(requireArguments().containsKey(ARG_DECK_ID)) { "Missing argument deck id" }
+        require(requireArguments().containsKey(ARG_DECK_NAME)) { "Missing argument deck name" }
+        require(requireArguments().containsKey(ARG_DECK_IS_DYN)) { "Missing argument deck is dynamic" }
+        require(requireArguments().containsKey(ARG_DECK_HAS_BURIED_IN_DECK)) { "Missing argument deck has buried" }
         val options = createOptionsList()
-        return AlertDialog.Builder(requireActivity())
+        return AlertDialog
+            .Builder(requireActivity())
             .title(text = requireArguments().getString(ARG_DECK_NAME))
             .setItems(
-                options.map { resources.getString(it.optionName) }.toTypedArray()
+                options.map { resources.getString(it.optionName) }.toTypedArray(),
             ) { _, index: Int ->
                 parentFragmentManager.setFragmentResult(
                     REQUEST_KEY_CONTEXT_MENU,
                     bundleOf(
                         CONTEXT_MENU_DECK_ID to requireArguments().getLong(ARG_DECK_ID),
-                        CONTEXT_MENU_DECK_OPTION to options[index]
-                    )
+                        CONTEXT_MENU_DECK_OPTION to options[index],
+                    ),
                 )
-            }
-            .create()
+            }.create()
     }
 
     private fun createOptionsList(): List<DeckPickerContextMenuOption> =
-        mutableListOf<DeckPickerContextMenuOption>().apply {
-            val dyn = requireArguments().getBoolean(ARG_DECK_IS_DYN)
-            add(DeckPickerContextMenuOption.ADD_CARD)
-            add(DeckPickerContextMenuOption.BROWSE_CARDS)
-            if (dyn) {
-                add(DeckPickerContextMenuOption.CUSTOM_STUDY_REBUILD)
-                add(DeckPickerContextMenuOption.CUSTOM_STUDY_EMPTY)
-            }
-            add(DeckPickerContextMenuOption.RENAME_DECK)
-            if (!dyn) {
-                add(DeckPickerContextMenuOption.CREATE_SUBDECK)
-            }
-            add(DeckPickerContextMenuOption.DECK_OPTIONS)
-            if (!dyn) {
-                add(DeckPickerContextMenuOption.CUSTOM_STUDY)
-            }
-            add(DeckPickerContextMenuOption.EXPORT_DECK)
-            if (requireArguments().getBoolean(ARG_DECK_HAS_BURIED_IN_DECK)) {
-                add(DeckPickerContextMenuOption.UNBURY)
-            }
-            add(DeckPickerContextMenuOption.CREATE_SHORTCUT)
-            if (!dyn) {
-                add(DeckPickerContextMenuOption.EDIT_DESCRIPTION)
-            }
-            add(DeckPickerContextMenuOption.DELETE_DECK)
-        }
+        DeckPickerMenuContentProvider.createOptionsList(
+            requireArguments().getBoolean(ARG_DECK_IS_DYN),
+            requireArguments().getBoolean(ARG_DECK_HAS_BURIED_IN_DECK),
+        )
 
-    enum class DeckPickerContextMenuOption(@StringRes val optionName: Int) {
+    enum class DeckPickerContextMenuOption(
+        @StringRes val optionName: Int,
+    ) {
         RENAME_DECK(R.string.rename_deck),
         DECK_OPTIONS(R.string.menu__deck_options),
         CUSTOM_STUDY(R.string.custom_study),
@@ -92,7 +72,8 @@ class DeckPickerContextMenu : AnalyticsDialogFragment() {
         CREATE_SHORTCUT(R.string.create_shortcut),
         BROWSE_CARDS(R.string.browse_cards),
         EDIT_DESCRIPTION(R.string.edit_deck_description),
-        ADD_CARD(R.string.menu_add);
+        ADD_CARD(R.string.menu_add),
+        SCHEDULE_REMINDERS(R.string.schedule_reminders_do_not_translate),
     }
 
     companion object {
@@ -116,14 +97,16 @@ class DeckPickerContextMenu : AnalyticsDialogFragment() {
             id: DeckId,
             name: String,
             isDynamic: Boolean,
-            hasBuriedInDeck: Boolean
-        ): DeckPickerContextMenu = DeckPickerContextMenu().apply {
-            arguments = bundleOf(
-                ARG_DECK_ID to id,
-                ARG_DECK_NAME to name,
-                ARG_DECK_IS_DYN to isDynamic,
-                ARG_DECK_HAS_BURIED_IN_DECK to hasBuriedInDeck
-            )
-        }
+            hasBuriedInDeck: Boolean,
+        ): DeckPickerContextMenu =
+            DeckPickerContextMenu().apply {
+                arguments =
+                    bundleOf(
+                        ARG_DECK_ID to id,
+                        ARG_DECK_NAME to name,
+                        ARG_DECK_IS_DYN to isDynamic,
+                        ARG_DECK_HAS_BURIED_IN_DECK to hasBuriedInDeck,
+                    )
+            }
     }
 }

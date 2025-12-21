@@ -1,6 +1,6 @@
-Memorize anything with AnkiDroid!
+𐍈𐌰𐍂𐌾𐌰𐌼𐌼𐌴𐌷 𐌼𐌹𐌸 𐌰𐌽𐌺𐌴𐌹𐌳𐍂𐌰𐌿𐌳 𐌲𐌰𐌼𐌿𐌽𐌽𐍉𐌽!
 
-AnkiDroid lets you learn flashcards very efficiently by showing them just before you will forget. It is fully compatible with the spaced repetition software Anki (including synchronization), which is available for Windows, Linux and MacOS.
+AnkiDroid lets you learn flashcards very efficiently by showing them just before you will forget. It is fully compatible with the spaced repetition software Anki (including synchronization), which is available for Windows, Linux and macOS.
 
 Study all sorts of things wherever and whenever you want. Make good use of idle times on bus trips, in supermarket queues or any other waiting situation!
 
@@ -10,27 +10,27 @@ Add material through the desktop application Anki or directly through AnkiDroid.
 
 ★ Key features:
 • supported flashcard contents: text, images, sounds, LaTeX
-• spaced repetition (supermemo 2 algorithm)
-• text-to-speech integration
-• more than 6000 premade decks
-• progress widget
+• spaced repetition (AI-optimized FSRS algorithm)
+• 𐌱𐍉𐌺𐍉-𐌳𐌿-𐍃𐍄𐌹𐌱𐌽𐌰𐌹 𐌹𐌽𐍄𐌰𐌹𐌲𐍂𐌰𐍄𐍃𐌾𐍉
+• 𐌼𐌰𐌹𐍃 𐌸𐌰𐌿 10,000 𐍆𐌰𐌿𐍂𐌰𐌲𐌰𐍄𐌰𐍅𐌹𐌳𐌰 𐌺𐌰𐍂𐍄𐌰𐌷𐌿𐌶𐌳𐌰
+• 𐍅𐌹𐌳𐌾𐌰𐌹𐍄 𐍆𐍂𐌰𐌼𐌲𐌰𐌷𐍄𐌰𐌹𐍃
 • detailed statistics
-• syncing with AnkiWeb
-• open source
+• 𐌲𐌰𐌲𐌰𐌻𐌴𐌹𐌺𐍉𐌽 𐌼𐌹𐌸 𐌰𐌽𐌺𐌹𐍅𐌰𐌱𐌾𐌰
+• 𐌿𐍃𐌻𐌿𐌺𐌰𐌽𐍃 𐌱𐍂𐌿𐌽𐌽𐌰
 
 ★ Additional features:
-• write answers (optional)
-• whiteboard
+• 𐌰𐌽𐌳𐌰𐌷𐌰𐍆𐍄𐌹𐌽𐍃 𐌼𐌴𐌻𐌾𐌰𐌽 (𐌼𐌰𐌷𐍄𐌴𐌹𐌲)
+• 𐍈𐌴𐌹𐍄𐌰𐌱𐌰𐌿𐍂𐌳
 • card editor/adder
 • card browser
 • tablet layout
-• import existing collection files (via Anki Desktop)
-• add cards by intent from other applications like dictionaries
+• 𐍅𐌹𐍃𐌰𐌽𐌳𐍉𐌽𐌰 𐍆𐌰𐌾𐌻𐌰 𐌷𐌿𐌶𐌳𐌹𐍃 𐌹𐌽𐌽𐌰𐍄𐌱𐌰𐌹𐍂𐌰𐌽 (𐌸𐌰𐌹𐍂𐌷 𐌰𐌽𐌺𐌹 𐌳𐌰𐌹𐍃𐌺𐍄𐌰𐌿𐍀)
+• 𐌺𐌰𐍂𐍄𐍉𐍃 𐍆𐍂𐌰𐌼 𐌰𐍀𐍀𐌻𐌹𐌺𐌰𐍄𐍃𐌾𐍉𐌽𐌰𐌼 𐌰𐌽𐌸𐌰𐍂𐌰𐌹𐌼 𐌱𐌹𐌰𐌿𐌺𐌰𐌽 𐌱𐌹 𐍅𐌹𐌻𐌾𐌹𐌽 𐍃𐍅𐌴 𐍅𐌰𐌿𐍂𐌳𐌰𐌱𐍉𐌺𐍉𐍃
 • custom font support
 • full backup system
 • navigation by swipe, tap
 • customisable
 • dynamic deck handling
-• night mode
+• 𐌽𐌰𐌷𐍄𐌰𐌼𐍉𐌳𐌿𐍃
 • 27 localisations
 • All previous AnkiDroid versions can be downloaded from the website

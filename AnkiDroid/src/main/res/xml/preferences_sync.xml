@@ -25,10 +25,6 @@
         android:key="@string/sync_account_key"
         android:summary="@string/sync_account_summ_logged_out"
         android:title="@string/sync_account" >
-        <!--suppress AndroidDomInspection: @string/applicationId works -->
-        <intent
-            android:targetClass="com.ichi2.anki.MyAccount"
-            android:targetPackage="@string/applicationId" />
     </Preference>
     <ListPreference
         android:defaultValue="@string/sync_media_always_value"
@@ -53,10 +49,15 @@
         android:title="@string/metered_sync_title"
         android:summary="@string/metered_sync_summary" />
     <PreferenceCategory android:title="@string/pref_cat_advanced">
+        <!-- `search:ignore` is set so that we can add this preference manually in the search index.
+        We want to add it manually because we provide the summary at run time instead of build time, because it comes from the backend.
+        If we didn't ignore it, searching for the title would return this preference twice.-->
         <Preference
+            search:ignore="true"
             android:key="@string/one_way_sync_key"
             android:title="@string/one_way_sync_title"
             tools:summary="On next sync, force changes in one direction" />
+        <!-- This is ignored in the search as it opens a submenu. The submenu content is what should actually appear in search result. -->
         <Preference
             android:key="@string/custom_sync_server_key"
             android:title="@string/custom_sync_server_title"

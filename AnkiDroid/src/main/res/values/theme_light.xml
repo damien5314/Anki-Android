@@ -41,9 +41,11 @@
         <item name="actionModeBackground">?attr/colorPrimary</item>
         <!-- Tab layout -->
         <item name="tabLayoutBackgroundColor">?attr/colorPrimary</item>
+        <item name="tabActiveIconColor">@color/white</item>
         <!-- Deck list colors and divider -->
         <item name="currentDeckBackground">@drawable/item_background_selected</item>
         <item name="currentDeckBackgroundColor">#ececec</item>
+        <item name="focusedRowBackgroundColor">#ececec</item>
         <item name="dynDeckColor">#2222bb</item>
         <item name="deckDivider">@drawable/divider</item>
         <item name="expandRef">@drawable/ic_chevron_right_black</item>
@@ -51,9 +53,10 @@
         <!-- Count colors -->
         <item name="newCountColor">@color/material_indigo_700</item>
         <item name="learnCountColor">@color/material_red_700</item>
-        <item name="reviewCountColor">@color/material_green_700</item>
+        <item name="reviewCountColor">@color/material_green_800</item>
+        <item name="buryCountColor">@color/disabled_gray_light</item>
         <item name="zeroCountColor">#1f000000</item>
-        <!-- Reviewer colors -->
+        <!-- Study Screen colors -->
         <item name="againButtonBackground">@color/material_red_700</item>
         <item name="hardButtonBackground">@color/material_blue_grey_700</item>
         <item name="goodButtonBackground">@color/material_green_500</item>
@@ -65,8 +68,18 @@
         <item name="hardButtonTextColor">@color/white</item>
         <item name="goodButtonTextColor">@color/white</item>
         <item name="easyButtonTextColor">@color/white</item>
+
         <item name="alternativeBackgroundColor">#f4f5f9</item>
-        <!-- Reviewer button drawables -->
+        <item name="againTextColor">@color/material_red_900</item>
+        <item name="hardTextColor">#B33800</item>
+        <item name="goodTextColor">@color/material_green_900</item>
+        <item name="easyTextColor">@color/material_light_blue_900</item>
+        <item name="againBackgroundColor">#ffFFCDD2</item>
+        <item name="hardBackgroundColor">#FFE0B2</item>
+        <item name="goodBackgroundColor">#C8E6C9</item>
+        <item name="easyBackgroundColor">@color/material_light_blue_100</item>
+        <!-- Study Screen button drawables -->
+        <item name="showAnswerButtonBackground">@color/material_blue_700</item>
         <item name="showAnswerColor">@color/material_blue_grey_700</item>
         <item name="againButtonRef">@drawable/footer_button_again</item>
         <item name="hardButtonRef">@drawable/footer_button_hard</item>
@@ -77,14 +90,17 @@
         <item name="goodButtonRippleRef">@drawable/footer_button_ripple</item>
         <item name="easyButtonRippleRef">@drawable/footer_button_ripple</item>
         <!-- Card Browser Colors -->
-        <item name="cardBrowserDivider">?attr/dividerHorizontal</item>
+        <item name="cardBrowserDivider">#CCCCCC</item>
         <!-- Browser colors -->
         <item name="suspendedColor">#FFFFB2</item>
+        <item name="buriedColor">#FFCE7C</item>
         <item name="selectedColor">#FFFFBB99</item>
         <item name="markedColor">#D9B2E9</item>
         <!-- Note editor colors -->
         <item name="duplicateColor">#fcc</item>
         <item name="editTextBackgroundColor">#EBCCCCCC</item>
+        <item name="editTextHighlightColor">@color/material_light_blue_200</item>
+        <item name="textInputOutlinedStyle">@style/TextInputSelectionColorFixStyle</item>
         <item name="toolbarBackgroundColor">#D6D7D7</item>
         <item name="toolbarIconColor">@color/black</item>
         <item name="buttonShadowColor">#FFAAAAAA</item>
@@ -129,6 +145,7 @@
         <item name="switchPreferenceCompatStyle">@style/Preference.SwitchPreferenceCompat.Material3</item>
         <item name="sliderStyle">@style/SliderStyle</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlay.AnkiDroid</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.AnkiDroid.AlertDialog</item>
 
         <!-- ProgressDialog-->
         <item name="dialogBackground">@color/white</item>
@@ -137,6 +154,8 @@
         <item name="checkMediaListForeground">@color/material_grey_700</item>
         <item name="progressDialogButtonTextColor">@color/material_light_blue_500</item>
         <item name="tabStyle">@style/Widget.MaterialComponents.TabLayout</item>
+
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.App.BottomSheetDialog</item>
     </style>
 
     <style name="Theme_Light" parent="Base.Theme.Light"/>

@@ -15,37 +15,57 @@
  */
 package com.ichi2.anki.pages
 
-import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.print.PrintAttributes
 import android.print.PrintManager
 import android.view.View
 import androidx.core.content.ContextCompat.getSystemService
-import com.google.android.material.appbar.AppBarLayout
-import com.google.android.material.appbar.MaterialToolbar
 import com.ichi2.anki.CollectionManager
+import com.ichi2.anki.CollectionManager.withCol
 import com.ichi2.anki.R
-import com.ichi2.anki.utils.getTimestamp
-import com.ichi2.libanki.utils.TimeManager
+import com.ichi2.anki.common.time.TimeManager
+import com.ichi2.anki.common.time.getTimestamp
+import com.ichi2.anki.databinding.StatisticsBinding
+import com.ichi2.anki.dialogs.DeckSelectionDialog
+import com.ichi2.anki.launchCatchingTask
+import com.ichi2.anki.model.SelectableDeck
+import com.ichi2.anki.startDeckSelection
+import com.ichi2.anki.withProgress
+import dev.androidbroadcast.vbpd.viewBinding
 
-class Statistics : PageFragment(R.layout.statistics) {
+class Statistics :
+    PageFragment(R.layout.statistics),
+    DeckSelectionDialog.DeckSelectionListener {
+    override val pagePath: String = "graphs"
+    private val binding by viewBinding(StatisticsBinding::bind)
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    @Suppress("deprecation", "API35 properly handle edge-to-edge")
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
 
-        view.findViewById<AppBarLayout>(R.id.app_bar)
+        binding.deckName.setOnClickListener { startDeckSelection(all = false, filtered = false) }
+        binding.appBar
             .addLiftOnScrollListener { _, backgroundColor ->
                 activity?.window?.statusBarColor = backgroundColor
             }
 
-        view.findViewById<MaterialToolbar>(R.id.toolbar).apply {
+        binding.toolbar.apply {
             menu.findItem(R.id.action_export_stats).title = CollectionManager.TR.statisticsSavePdf()
             setOnMenuItemClickListener { item ->
                 if (item.itemId == R.id.action_export_stats) {
                     exportWebViewContentAsPDF()
                 }
                 true
+            }
+        }
+        requireActivity().launchCatchingTask {
+            withProgress {
+                val deckName =
+                    savedInstanceState?.getString(KEY_DECK_NAME, null) ?: withCol { decks.current().name }
+                changeDeck(deckName)
             }
         }
     }
@@ -57,17 +77,45 @@ class Statistics : PageFragment(R.layout.statistics) {
         val printManager = getSystemService(requireContext(), PrintManager::class.java)
         val currentDateTime = getTimestamp(TimeManager.time)
         val jobName = "${getString(R.string.app_name)}-stats-$currentDateTime"
-        val printAdapter = webView.createPrintDocumentAdapter(jobName)
+        val printAdapter = webViewLayout.createPrintDocumentAdapter(jobName)
         printManager?.print(
             jobName,
             printAdapter,
-            PrintAttributes.Builder().build()
+            PrintAttributes.Builder().build(),
         )
     }
 
+    override fun onDeckSelected(deck: SelectableDeck?) {
+        if (deck == null) return
+        require(deck is SelectableDeck.Deck)
+        changeDeck(deck.name)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_DECK_NAME, binding.deckName.text.toString())
+    }
+
+    /**
+     * Updates the ui with the new selected deck. Doesn't change the backend.
+     *
+     * This method includes a workaround to change the deck in the webview by finding the text box
+     * and replacing the deck name with the selected deck name from the dialog and updating the
+     * stats. See issue #3394 in Anki repository.
+     **/
+    private fun changeDeck(selectedDeckName: String) {
+        binding.deckName.text = selectedDeckName
+        val javascriptCode =
+            """
+            var textBox = document.getElementById("statisticsSearchText");
+            textBox.value = "deck:\"$selectedDeckName\"";
+            textBox.dispatchEvent(new Event("input", { bubbles: true }));
+            textBox.dispatchEvent(new Event("change"));
+            """.trimIndent()
+        webViewLayout.evaluateJavascript(javascriptCode, null)
+    }
+
     companion object {
-        fun getIntent(context: Context): Intent {
-            return getIntent(context, "graphs", context.getString(R.string.statistics), Statistics::class)
-        }
+        private const val KEY_DECK_NAME = "key_deck_name"
     }
 }

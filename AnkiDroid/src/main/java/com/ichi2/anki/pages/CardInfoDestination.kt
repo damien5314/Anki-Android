@@ -17,12 +17,33 @@ package com.ichi2.anki.pages
 
 import android.content.Context
 import android.content.Intent
+import androidx.core.os.bundleOf
 import com.ichi2.anki.R
-import com.ichi2.libanki.CardId
+import com.ichi2.anki.SingleFragmentActivity
+import com.ichi2.anki.libanki.CardId
+import com.ichi2.anki.libanki.withoutUnicodeIsolation
+import com.ichi2.anki.ui.internationalization.toSentenceCase
+import com.ichi2.anki.utils.Destination
 
-data class CardInfoDestination(val cardId: CardId) {
-    fun toIntent(context: Context): Intent {
-        val title = context.getString(R.string.card_info_title)
-        return PageFragment.getIntent(context, "card-info/$cardId", title)
+data class CardInfoDestination(
+    val cardId: CardId,
+    val title: String,
+) : Destination {
+    override fun toIntent(context: Context): Intent {
+        // title contains FSI and PDI character types
+        val simplifiedTitle = withoutUnicodeIsolation(title)
+        val sentenceStrings =
+            listOf(
+                simplifiedTitle.toSentenceCase(context, R.string.sentence_card_stats_current_card_study),
+                simplifiedTitle.toSentenceCase(context, R.string.sentence_card_stats_current_card_browse),
+                simplifiedTitle.toSentenceCase(context, R.string.sentence_card_stats_previous_card_study),
+            )
+        val cardInfoTitle = sentenceStrings.firstOrNull { it != simplifiedTitle } ?: title
+        val arguments = bundleOf(CardInfoFragment.KEY_TITLE to cardInfoTitle, CardInfoFragment.KEY_CARD_ID to cardId)
+        return SingleFragmentActivity.getIntent(
+            context,
+            fragmentClass = CardInfoFragment::class,
+            arguments = arguments,
+        )
     }
 }

@@ -41,6 +41,7 @@ import com.ichi2.anki.R
 import com.ichi2.anki.cancelMediaSync
 import com.ichi2.anki.notifications.NotificationId
 import com.ichi2.anki.utils.ext.trySetForeground
+import com.ichi2.utils.Permissions
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import net.ankiweb.rsdroid.Backend
@@ -48,25 +49,32 @@ import timber.log.Timber
 
 class SyncMediaWorker(
     context: Context,
-    parameters: WorkerParameters
+    parameters: WorkerParameters,
 ) : CoroutineWorker(context, parameters) {
-
-    private val notificationManager = NotificationManagerCompat.from(context)
     private val cancelIntent = WorkManager.getInstance(context).createCancelPendingIntent(id)
+    private val notificationManager: NotificationManagerCompat? =
+        if (Permissions.canPostNotifications(context)) {
+            NotificationManagerCompat.from(context)
+        } else {
+            null
+        }
 
     override suspend fun doWork(): Result {
         Timber.v("SyncMediaWorker::doWork")
 
         try {
-            val auth = syncAuth {
-                hkey = inputData.getString(HKEY_KEY)!!
-                inputData.getString(ENDPOINT_KEY)?.let {
-                    endpoint = it
+            val auth =
+                syncAuth {
+                    hkey = inputData.getString(HKEY_KEY)!!
+                    inputData.getString(ENDPOINT_KEY)?.let {
+                        endpoint = it
+                    }
                 }
-            }
 
-            val backend = CollectionManager.getBackend()
-            backend.syncMedia(auth)
+            // The collection must be open, but we should not block collection operations while
+            // `syncMedia` is executing, the app should be usable during a background media sync
+            val backend = CollectionManager.getColUnsafe().backend
+            backend.syncMedia(input = auth)
 
             delay(1000) // avoid notifications if sync occurs too quickly
             if (backend.mediaSyncStatus().active) {
@@ -82,9 +90,14 @@ class SyncMediaWorker(
             Timber.w(throwable)
             notify {
                 setContentTitle(CollectionManager.TR.syncMediaFailed())
+                throwable.localizedMessage?.let { message ->
+                    setContentText(message)
+                }
             }
             return Result.failure()
         }
+        Timber.d("SyncMediaWorker: cancelling notification")
+        notificationManager?.cancel(NotificationId.SYNC_MEDIA)
 
         Timber.d("SyncMediaWorker: success")
         return Result.success()
@@ -107,20 +120,21 @@ class SyncMediaWorker(
                 val notificationText = syncProgress.run { "$added $removed $checked" }
                 notify(getProgressNotification(notificationText))
             }
-            delay(100)
+            delay(NOTIFICATION_UPDATE_RATE_MS)
         }
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
         val title = applicationContext.getString(R.string.syncing_media)
-        val cancelTitle = applicationContext.getString(R.string.dialog_cancel)
-        val notification = buildNotification {
-            setContentTitle(title)
-            setOngoing(true)
-            setProgress(0, 0, true)
-            addAction(R.drawable.close_icon, cancelTitle, cancelIntent)
-            foregroundServiceBehavior = NotificationCompat.FOREGROUND_SERVICE_DEFERRED
-        }
+        val cancelTitle = CollectionManager.TR.syncAbortButton()
+        val notification =
+            buildNotification {
+                setContentTitle(title)
+                setOngoing(true)
+                setProgress(0, 0, true)
+                addAction(R.drawable.close_icon, cancelTitle, cancelIntent)
+                foregroundServiceBehavior = NotificationCompat.FOREGROUND_SERVICE_DEFERRED
+            }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ForegroundInfo(NotificationId.SYNC_MEDIA, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
@@ -128,27 +142,26 @@ class SyncMediaWorker(
         }
     }
 
-    private fun notify(notification: Notification) =
-        notificationManager.notify(NotificationId.SYNC_MEDIA, notification)
+    private fun notify(notification: Notification) = notificationManager?.notify(NotificationId.SYNC_MEDIA, notification)
 
     private fun notify(builder: NotificationCompat.Builder.() -> Unit) {
         notify(buildNotification(builder))
     }
 
-    private fun buildNotification(block: NotificationCompat.Builder.() -> Unit): Notification {
-        return NotificationCompat.Builder(applicationContext, Channel.SYNC.id).apply {
-            priority = NotificationCompat.PRIORITY_LOW
-            setSmallIcon(R.drawable.ic_star_notify)
-            setCategory(NotificationCompat.CATEGORY_PROGRESS)
-            setSilent(true)
-            contentView
-            block()
-        }.build()
-    }
+    private fun buildNotification(block: NotificationCompat.Builder.() -> Unit): Notification =
+        NotificationCompat
+            .Builder(applicationContext, Channel.SYNC.id)
+            .apply {
+                priority = NotificationCompat.PRIORITY_LOW
+                setSmallIcon(R.drawable.ic_star_notify)
+                setCategory(NotificationCompat.CATEGORY_PROGRESS)
+                setSilent(true)
+                block()
+            }.build()
 
     private fun getProgressNotification(progress: CharSequence): Notification {
         val title = applicationContext.getString(R.string.syncing_media)
-        val cancelTitle = applicationContext.getString(R.string.dialog_cancel)
+        val cancelTitle = CollectionManager.TR.syncAbortButton()
 
         return buildNotification {
             setContentTitle(title)
@@ -161,16 +174,21 @@ class SyncMediaWorker(
     companion object {
         private const val HKEY_KEY = "hkey"
         private const val ENDPOINT_KEY = "endpoint"
+        const val NOTIFICATION_UPDATE_RATE_MS = 500L
 
         fun getWorkRequest(auth: SyncAuth): OneTimeWorkRequest {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
+            val constraints =
+                Constraints
+                    .Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
 
-            val data = Data.Builder()
-                .putString(HKEY_KEY, auth.hkey)
-                .putString(ENDPOINT_KEY, auth.endpoint)
-                .build()
+            val data =
+                Data
+                    .Builder()
+                    .putString(HKEY_KEY, auth.hkey)
+                    .putString(ENDPOINT_KEY, auth.endpoint)
+                    .build()
 
             return OneTimeWorkRequestBuilder<SyncMediaWorker>()
                 .setInputData(data)
@@ -179,10 +197,15 @@ class SyncMediaWorker(
                 .build()
         }
 
-        fun start(context: Context, auth: SyncAuth) {
+        fun start(
+            context: Context,
+            auth: SyncAuth,
+        ) {
+            Timber.i("Launching background media sync")
             val request = getWorkRequest(auth)
 
-            WorkManager.getInstance(context)
+            WorkManager
+                .getInstance(context)
                 .enqueueUniqueWork(UniqueWorkNames.SYNC_MEDIA, ExistingWorkPolicy.KEEP, request)
         }
     }

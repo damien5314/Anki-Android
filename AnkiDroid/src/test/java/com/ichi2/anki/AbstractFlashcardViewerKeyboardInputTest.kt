@@ -17,11 +17,10 @@ package com.ichi2.anki
 
 import android.view.KeyEvent
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.hamcrest.MatcherAssert.*
+import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
 import timber.log.Timber
-import java.lang.Exception
 
 @RunWith(AndroidJUnit4::class)
 class AbstractFlashcardViewerKeyboardInputTest : RobolectricTest() {
@@ -35,7 +34,6 @@ class AbstractFlashcardViewerKeyboardInputTest : RobolectricTest() {
     }
 
     @Test
-    @RunInBackground
     fun enterShowsAnswer() {
         val underTest = KeyboardInputTestCardViewer.create()
 
@@ -62,16 +60,15 @@ class AbstractFlashcardViewerKeyboardInputTest : RobolectricTest() {
 
         assertThat(
             "When text field is focused, space should not display answer",
-            !underTest.didDisplayAnswer()
+            !underTest.didDisplayAnswer(),
         )
     }
 
     private class KeyboardInputTestCardViewer : AbstractFlashcardViewer() {
         private var displayAnswer = false
         private var focusTextField = false
-        override fun answerFieldIsFocused(): Boolean {
-            return focusTextField
-        }
+
+        override fun answerFieldIsFocused(): Boolean = focusTextField
 
         override fun performReload() {
             // intentionally blank
@@ -81,9 +78,7 @@ class AbstractFlashcardViewerKeyboardInputTest : RobolectricTest() {
             displayAnswer = true
         }
 
-        fun didDisplayAnswer(): Boolean {
-            return displayAnswer
-        }
+        fun didDisplayAnswer(): Boolean = displayAnswer
 
         fun handleKeyPress(keycode: Int) {
             // COULD_BE_BETTER: Saves 20 seconds on tests to remove AndroidJUnit4,

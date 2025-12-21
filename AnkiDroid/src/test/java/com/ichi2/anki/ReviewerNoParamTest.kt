@@ -20,27 +20,30 @@ import android.graphics.Color
 import androidx.annotation.CheckResult
 import androidx.core.content.edit
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import anki.scheduler.CardAnswer.Rating
 import com.ichi2.anki.cardviewer.Gesture
 import com.ichi2.anki.cardviewer.Gesture.SWIPE_DOWN
 import com.ichi2.anki.cardviewer.Gesture.SWIPE_RIGHT
 import com.ichi2.anki.cardviewer.Gesture.SWIPE_UP
 import com.ichi2.anki.cardviewer.GestureProcessor
 import com.ichi2.anki.cardviewer.ViewerCommand
+import com.ichi2.anki.libanki.Consts
+import com.ichi2.anki.libanki.DeckId
 import com.ichi2.anki.model.WhiteboardPenColor
 import com.ichi2.anki.preferences.sharedPrefs
 import com.ichi2.anki.reviewer.Binding
 import com.ichi2.anki.reviewer.FullScreenMode
 import com.ichi2.anki.reviewer.FullScreenMode.Companion.setPreference
-import com.ichi2.anki.reviewer.MappableBinding
-import com.ichi2.anki.reviewer.MappableBinding.Screen
-import com.ichi2.libanki.Consts
-import com.ichi2.libanki.DeckId
-import com.ichi2.testutils.Flaky
-import com.ichi2.testutils.OS
+import com.ichi2.anki.reviewer.MappableBinding.Companion.toPreferenceString
+import com.ichi2.anki.reviewer.ReviewerBinding
+import com.ichi2.anki.utils.ext.addBinding
+import com.ichi2.testutils.common.Flaky
+import com.ichi2.testutils.common.OS
 import com.ichi2.themes.Theme
 import com.ichi2.themes.Themes.currentTheme
 import org.hamcrest.MatcherAssert.assertThat
-import org.hamcrest.Matchers.*
+import org.hamcrest.Matchers.equalTo
+import org.hamcrest.Matchers.greaterThan
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -49,6 +52,8 @@ import org.robolectric.Robolectric
 /** A non-parameterized ReviewerTest - we should probably rename ReviewerTest in future  */
 @RunWith(AndroidJUnit4::class)
 class ReviewerNoParamTest : RobolectricTest() {
+    override fun getCollectionStorageMode() = CollectionStorageMode.IN_MEMORY_WITH_MEDIA
+
     @Before
     override fun setUp() {
         super.setUp()
@@ -122,7 +127,7 @@ class ReviewerNoParamTest : RobolectricTest() {
 
     @Test
     fun flippingCardHidesFullscreen() {
-        addNoteUsingBasicModel("Hello", "World")
+        addBasicNote("Hello", "World")
         val reviewer = startReviewerFullScreen()
 
         val hideCount = reviewer.delayedHideCount
@@ -137,46 +142,46 @@ class ReviewerNoParamTest : RobolectricTest() {
         OS.ALL,
         "Hide should be called after answering a card" +
             "    Expected: a value greater than <2>" +
-            "         but: <2> was equal to <2>"
+            "         but: <2> was equal to <2>",
     )
     fun showingCardHidesFullScreen() {
-        addNoteUsingBasicModel("Hello", "World")
+        addBasicNote("Hello", "World")
         val reviewer = startReviewerFullScreen()
 
         reviewer.displayCardAnswer()
-        advanceRobolectricLooperWithSleep()
+        advanceRobolectricLooper()
 
         val hideCount = reviewer.delayedHideCount
 
-        reviewer.answerCard(Consts.BUTTON_ONE)
-        advanceRobolectricLooperWithSleep()
+        reviewer.answerCard(Rating.AGAIN)
+        advanceRobolectricLooper()
 
         assertThat("Hide should be called after answering a card", reviewer.delayedHideCount, greaterThan(hideCount))
     }
 
     @Test
     @Flaky(OS.ALL, "Expected: a value greater than <2> but: <2> was equal to <2>")
-    fun undoingCardHidesFullScreen() = runTest {
-        addNoteUsingBasicModel("Hello", "World")
-        val reviewer = startReviewerFullScreen()
+    fun undoingCardHidesFullScreen() =
+        runTest {
+            addBasicNote("Hello", "World")
+            val reviewer = startReviewerFullScreen()
 
-        reviewer.displayCardAnswer()
-        advanceRobolectricLooperWithSleep()
-        reviewer.answerCard(Consts.BUTTON_ONE)
-        advanceRobolectricLooperWithSleep()
+            reviewer.displayCardAnswer()
+            advanceRobolectricLooper()
+            reviewer.answerCard(Rating.AGAIN)
+            advanceRobolectricLooper()
 
-        val hideCount = reviewer.delayedHideCount
+            val hideCount = reviewer.delayedHideCount
 
-        reviewer.undo()
+            reviewer.undo()
 
-        advanceRobolectricLooperWithSleep()
+            advanceRobolectricLooper()
 
-        assertThat("Hide should be called after answering a card", reviewer.delayedHideCount, greaterThan(hideCount))
-    }
+            assertThat("Hide should be called after answering a card", reviewer.delayedHideCount, greaterThan(hideCount))
+        }
 
     @Test
     @Flaky(OS.ALL, "hasDrawerSwipeConflicts was false")
-    @RunInBackground
     fun defaultDrawerConflictIsTrueIfGesturesEnabled() {
         enableGestureSetting()
         enableGesture(SWIPE_RIGHT)
@@ -219,7 +224,6 @@ class ReviewerNoParamTest : RobolectricTest() {
     }
 
     @Test
-    @RunInBackground
     @Flaky(os = OS.ALL, "final assertion is false")
     fun drawerConflictsIfUp() {
         enableGestureSetting()
@@ -231,7 +235,6 @@ class ReviewerNoParamTest : RobolectricTest() {
     }
 
     @Test
-    @RunInBackground
     @Flaky(os = OS.ALL, "final assertion is false")
     fun drawerConflictsIfDown() {
         enableGestureSetting()
@@ -243,7 +246,6 @@ class ReviewerNoParamTest : RobolectricTest() {
     }
 
     @Test
-    @RunInBackground
     @Flaky(os = OS.ALL, "final assertion is false")
     fun drawerConflictsIfRight() {
         enableGestureSetting()
@@ -294,10 +296,14 @@ class ReviewerNoParamTest : RobolectricTest() {
     private fun disableGestures(vararg gestures: Gesture) {
         val prefs = targetContext.sharedPrefs()
         for (command in ViewerCommand.entries) {
-            for (mappableBinding in MappableBinding.fromPreference(prefs, command)) {
+            for (mappableBinding in ReviewerBinding.fromPreference(prefs, command)) {
                 val gestureBinding = mappableBinding.binding as? Binding.GestureInput? ?: continue
                 if (gestureBinding.gesture in gestures) {
-                    command.removeBinding(prefs, mappableBinding)
+                    val bindings = ReviewerBinding.fromPreferenceString(command.preferenceKey).toMutableList()
+                    bindings.remove(mappableBinding)
+                    prefs.edit {
+                        putString(command.preferenceKey, bindings.toPreferenceString())
+                    }
                 }
             }
         }
@@ -308,9 +314,7 @@ class ReviewerNoParamTest : RobolectricTest() {
         val prefs = targetContext.sharedPrefs()
         ViewerCommand.FLIP_OR_ANSWER_EASE1.addBinding(
             prefs,
-            MappableBinding.fromGesture(gesture) {
-                Screen.Reviewer(it)
-            }
+            ReviewerBinding.fromGesture(gesture),
         )
     }
 
@@ -326,7 +330,10 @@ class ReviewerNoParamTest : RobolectricTest() {
     }
 
     @Suppress("SameParameterValue")
-    private fun storeLightModeColor(value: Int, did: DeckId?) {
+    private fun storeLightModeColor(
+        value: Int,
+        did: DeckId?,
+    ) {
         MetaDB.storeWhiteboardPenColor(targetContext, did!!, false, value)
     }
 
@@ -341,7 +348,7 @@ class ReviewerNoParamTest : RobolectricTest() {
     @CheckResult
     private fun startReviewerForWhiteboard(): Whiteboard {
         // we need a card for the reviewer to start
-        addNoteUsingBasicModel("Hello", "World")
+        addBasicNote("Hello", "World")
 
         val reviewer = startReviewer()
 
@@ -353,7 +360,7 @@ class ReviewerNoParamTest : RobolectricTest() {
 
     @CheckResult
     private fun startReviewerForWhiteboardInDarkMode(): Whiteboard {
-        addNoteUsingBasicModel("Hello", "World")
+        addBasicNote("Hello", "World")
 
         val reviewer = startReviewer()
         currentTheme = Theme.DARK
@@ -363,12 +370,11 @@ class ReviewerNoParamTest : RobolectricTest() {
             ?: throw IllegalStateException("Could not get whiteboard")
     }
 
-    private fun startReviewer(): Reviewer {
-        return ReviewerTest.startReviewer(this)
-    }
+    private fun startReviewer(): Reviewer = ReviewerTest.startReviewer(this)
 
     private class ReviewerExt : Reviewer() {
         var delayedHideCount = 0
+
         override fun delayedHide(delayMillis: Int) {
             delayedHideCount++
             super.delayedHide(delayMillis)

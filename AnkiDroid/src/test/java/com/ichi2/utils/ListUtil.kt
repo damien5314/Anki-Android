@@ -1,18 +1,18 @@
-/****************************************************************************************
- * Copyright (c) 2021 Arthur Milchior <arthur@milchior.fr>                              *
- *                                                                                      *
- * This program is free software; you can redistribute it and/or modify it under        *
- * the terms of the GNU General Public License as published by the Free Software        *
- * Foundation; either version 3 of the License, or (at your option) any later           *
- * version.                                                                             *
- *                                                                                      *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
- * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
- *                                                                                      *
- * You should have received a copy of the GNU General Public License along with         *
- * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
- ****************************************************************************************/
+/*
+ * Copyright (c) 2021 Arthur Milchior <arthur@milchior.fr>
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package com.ichi2.utils
 
 import org.junit.Assert
@@ -53,7 +53,7 @@ class ListUtil {
         fun assertListEquals(
             message: String?,
             expected: List<Any?>?,
-            actuals: List<Any?>?
+            actuals: List<Any?>?,
         ) {
             val expectedArray: Array<Any?>? = expected?.toTypedArray()
             val actualArray: Array<Any?>? = actuals?.toTypedArray()
@@ -71,7 +71,10 @@ class ListUtil {
          * @param actuals Object list or list of arrays (multi-dimensional array) with
          * actual values
          */
-        fun assertListEquals(expected: List<Any?>?, actuals: List<Any?>?) {
+        fun assertListEquals(
+            expected: List<Any?>?,
+            actuals: List<Any?>?,
+        ) {
             assertListEquals(null, expected, actuals)
         }
     }

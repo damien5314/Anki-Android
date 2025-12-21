@@ -43,63 +43,49 @@
     <!-- 11-arrays.xml used to contain arrays. This caused problems when changing the ordering.
     Now arrays are defined in constants.xml, and the strings are here -->
     <!-- error_reporting_choice_labels -->
-    <string name="error_reporting_choice_always_report">Always report</string>
-    <string name="error_reporting_choice_never_report">Never report</string>
-    <string name="error_reporting_choice_ask_user">Ask me</string>
-    <!-- leech_action_labels -->
-    <!-- 01-core:menu_suspend_card -->
-    <!-- new_order_labels -->
-    <!-- cram_deck_conf_order_labels -->
-    <string name="cram_deck_conf_order_oldest_seen_first">Oldest seen first</string>
-    <string name="cram_deck_conf_order_random">Random</string>
-    <string name="cram_deck_conf_order_increasing_intervals">Increasing intervals</string>
-    <string name="cram_deck_conf_order_decreasing_intervals">Decreasing intervals</string>
-    <string name="cram_deck_conf_order_most_lapsed">Most lapsed</string>
-    <string name="cram_deck_conf_order_order_added">Order added</string>
-    <string name="cram_deck_conf_order_order_due">Order due</string>
-    <string name="cram_deck_conf_order_latest_added_first">Latest added first</string>
-    <string name="cram_deck_conf_order_relative_overdueness">Relative overdueness</string>
+    <string name="error_reporting_choice_always_report">𐍃𐌹𐌽𐍄𐌴𐌹𐌽𐍉 𐌼𐌴𐍂𐌾𐌰𐌽</string>
+    <string name="error_reporting_choice_never_report">𐌽𐌹 𐌰𐌹𐍅 𐌼𐌴𐍂𐌾𐌰𐌽</string>
+    <string name="error_reporting_choice_ask_user">𐌼𐌴𐌹𐌽𐌰 𐌱𐌹𐌳𐌾𐌰𐌽</string>
     <!-- add_to_cur_labels -->
-    <string name="add_to_deck_use_current_deck">Use current deck</string>
+    <string name="add_to_deck_use_current_deck">𐌰𐌽𐌳𐍅𐌰𐌹𐍂𐌸𐌹𐍃 𐌷𐌰𐍂𐍄𐌰𐌷𐌿𐌶𐌳𐌹𐍃 𐌱𐍂𐌿𐌺𐌾𐌰𐌽</string>
     <string name="add_to_deck_decide_by_note_type">Decide by note type</string>
     <!-- theme labels -->
-    <string name="theme_follow_system">Follow system</string>
+    <string name="theme_follow_system">𐍃𐍅𐍃𐍄𐌴𐌼𐌰𐌹 𐌻𐌰𐌹𐍃𐍄𐌾𐌰𐌽</string>
     <!-- day_theme_labels -->
-    <string name="day_theme_light">Light</string>
-    <string name="day_theme_plain">Plain</string>
+    <string name="day_theme_light">𐌻𐌹𐌿𐌷𐍄</string>
+    <string name="day_theme_plain">𐌰𐍆𐌰𐍂 𐌱𐌹𐌿𐌷𐍄𐌾𐌰</string>
     <!-- night_theme_labels -->
-    <string name="night_theme_black">Black</string>
-    <string name="night_theme_dark">Dark</string>
+    <string name="night_theme_black">𐍃𐍅𐌰𐍂𐍄</string>
+    <string name="night_theme_dark">𐍂𐌹𐌵𐌹𐌶𐌴𐌹𐌽</string>
     <!-- html_size_code_labels -->
-    <string name="html_size_code_xx_small">xx-small</string>
-    <string name="html_size_code_x_small">x-small</string>
-    <string name="html_size_code_small">small</string>
-    <string name="html_size_code_medium">medium</string>
-    <string name="html_size_code_large">large</string>
-    <string name="html_size_code_x_large">x-large</string>
-    <string name="html_size_code_xx_large">xx-large</string>
+    <string name="html_size_code_xx_small">𐍇𐍇-𐌻𐌴𐌹𐍄𐌹𐌻</string>
+    <string name="html_size_code_x_small">𐍇-𐌻𐌴𐌹𐍄𐌹𐌻</string>
+    <string name="html_size_code_small">𐌻𐌴𐌹𐍄𐌹𐌻</string>
+    <string name="html_size_code_medium">𐌼𐌹𐌳𐌾𐌹𐍃</string>
+    <string name="html_size_code_large">𐌼𐌹𐌺𐌹𐌻</string>
+    <string name="html_size_code_x_large">𐍇-𐌼𐌹𐌺𐌹𐌻</string>
+    <string name="html_size_code_xx_large">𐍇𐍇-𐌼𐌹𐌺𐌹𐌻</string>
     <!-- gestures_labels -->
-    <string name="answer_again">Answer again</string>
-    <string name="answer_hard">Answer hard</string>
-    <string name="answer_good">Answer good</string>
-    <string name="answer_easy">Answer easy</string>
-    <string name="gesture_play">Play media</string>
-    <string name="gesture_abort_learning">Abort learning</string>
-    <string name="gesture_flag_red">Toggle Red Flag</string>
-    <string name="gesture_flag_orange">Toggle Orange Flag</string>
-    <string name="gesture_flag_green">Toggle Green Flag</string>
-    <string name="gesture_flag_blue">Toggle Blue Flag</string>
-    <string name="gesture_flag_pink">Toggle Pink Flag</string>
-    <string name="gesture_flag_turquoise">Toggle Turquoise Flag</string>
-    <string name="gesture_flag_purple">Toggle Purple Flag</string>
-    <string name="gesture_flag_remove">Remove Flag</string>
-    <string name="gesture_page_up">Page Up</string>
-    <string name="gesture_page_down">Page Down</string>
-    <string name="gesture_abort_sync">Abort Learning and Sync</string>
-    <string name="gesture_toggle_whiteboard">Toggle Whiteboard</string>
-    <string name="gesture_show_hint">Show Hint</string>
-    <string name="gesture_show_all_hints">Show All Hints</string>
-    <string name="record_voice">Record Voice</string>
-    <string name="replay_voice">Replay Voice</string>
-    <string name="save_voice">Save Recording</string>
+    <string name="answer_again" maxLength="41">𐌰𐌽𐌳𐌷𐌰𐍆𐌾𐌰𐌽 𐌰𐍆𐍄𐍂𐌰</string>
+    <string name="answer_hard" maxLength="41">𐌿𐌽𐌰𐌶𐌴𐍄𐌰𐌱𐌰 𐌰𐌽𐌳𐌷𐌰𐍆𐌾𐌰𐌽</string>
+    <string name="answer_good" maxLength="41">𐍅𐌰𐌹𐌻𐌰 𐌰𐌽𐌳𐌷𐌰𐍆𐌾𐌰𐌽</string>
+    <string name="answer_easy" maxLength="41">𐌰𐌶𐌴𐍄𐌰𐌱𐌰 𐌰𐌽𐌳𐌷𐌰𐍆𐌾𐌰𐌽</string>
+    <string name="gesture_abort_learning" maxLength="41">𐍃𐌺𐌰𐌹𐍂𐌼 𐌻𐌰𐌹𐍃𐌴𐌹𐌽𐌰𐌹𐍃 𐌻𐌿𐌺𐌰𐌽</string>
+    <string name="gesture_flag_red" maxLength="41">𐍂𐌰𐌿𐌳𐌰𐌽𐌰 𐍆𐌰𐌽𐌰𐌽 𐌹𐌽𐌼𐌰𐌹𐌳𐌾𐌰𐌽</string>
+    <string name="gesture_flag_orange" maxLength="41">𐌲𐌹𐌻𐍅𐌰𐍂𐌰𐌿𐌳𐌰𐌽𐌰 𐍆𐌰𐌽𐌰𐌽 𐌹𐌽𐌼𐌰𐌹𐌳𐌾𐌰𐌽</string>
+    <string name="gesture_flag_green" maxLength="41">𐌲𐍂𐍉𐌽𐌾𐌰𐌽𐌰 𐍆𐌰𐌽𐌰𐌽 𐌹𐌽𐌼𐌰𐌹𐌳𐌾𐌰𐌽</string>
+    <string name="gesture_flag_blue" maxLength="41">𐌱𐌻𐌴𐍅𐌰𐌽𐌰 𐍆𐌰𐌽𐌰𐌽 𐌹𐌽𐌼𐌰𐌹𐌳𐌾𐌰𐌽</string>
+    <string name="gesture_flag_pink" maxLength="41">𐌱𐌻𐌰𐌹𐌺𐌰𐍂𐌰𐌿𐌳𐌰𐌽𐌰 𐍆𐌰𐌽𐌰𐌽 𐌹𐌽𐌼𐌰𐌹𐌳𐌾𐌰𐌽</string>
+    <string name="gesture_flag_turquoise" maxLength="41">𐌱𐌻𐌴𐍅𐌰𐌲𐍂𐍉𐌽𐌾𐌰𐌽𐌰 𐍆𐌰𐌽𐌰𐌽 𐌹𐌽𐌼𐌰𐌹𐌳𐌾𐌰𐌽</string>
+    <string name="gesture_flag_purple" maxLength="41">𐍀𐌰𐌿𐍂𐍀𐌿𐍂𐍉𐌳𐌹𐍃 𐍆𐌰𐌽𐌰𐌽 𐌹𐌽𐌼𐌰𐌹𐌳𐌾𐌰𐌽</string>
+    <string name="gesture_flag_remove" maxLength="41">𐍆𐌰𐌽𐌰𐌽 𐌿𐍃𐌽𐌹𐌼𐌰𐌽</string>
+    <string name="gesture_page_up" maxLength="41">𐌻𐌰𐌿𐍆𐍃 𐌹𐌿𐍀</string>
+    <string name="gesture_page_down" maxLength="41">𐌻𐌰𐌿𐍆𐍃 𐌳𐌰𐌻𐌰𐌸</string>
+    <string name="gesture_toggle_whiteboard" maxLength="41">𐍈𐌴𐌹𐍄𐌰𐌱𐌰𐌿𐍂𐌳 𐌹𐌽𐌼𐌰𐌹𐌳𐌾𐌰𐌽</string>
+    <string name="gesture_toggle_eraser" maxLength="41">𐌹𐌽𐌼𐌰𐌹𐌳𐌴𐌹𐌽 𐌰𐍆𐌷𐍂𐌰𐌹𐌽𐌾𐌰𐌽</string>
+    <string name="gesture_show_hint" maxLength="41">𐌷𐌹𐌻𐍀𐌰𐍅𐌰𐌿𐍂𐌳 𐌱𐌰𐌽𐌳𐍅𐌾𐌰𐌽</string>
+    <string name="gesture_show_all_hints" maxLength="41">𐌰𐌻𐌻𐌰 𐌷𐌹𐌻𐍀𐌰𐍅𐌰𐌿𐍂𐌳𐌰 𐌱𐌰𐌽𐌳𐍅𐌾𐌰𐌽</string>
+    <string name="record_voice" maxLength="41">𐍃𐍄𐌹𐌱𐌽𐌰 𐌲𐌰𐌼𐌰𐌿𐌳𐌾𐌰𐌽</string>
+    <string name="replay_voice" maxLength="41">𐍃𐍄𐌹𐌱𐌽𐌰 𐌰𐍆𐍄𐍂𐌰𐍃𐍀𐌹𐌻𐍉𐌽</string>
+    <string name="save_voice" maxLength="41">𐌲𐌰𐌼𐌰𐌿𐌳𐌴𐌹𐌽 𐌲𐌰𐍆𐌰𐍃𐍄𐌰𐌽</string>
 </resources>

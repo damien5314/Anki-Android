@@ -20,12 +20,12 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ichi2.anki.RobolectricTest
+import com.ichi2.anki.libanki.Consts
 import com.ichi2.anki.noteeditor.CustomToolbarButton
 import com.ichi2.anki.preferences.sharedPrefs
 import com.ichi2.anki.servicelayer.PreferenceUpgradeService
 import com.ichi2.anki.servicelayer.PreferenceUpgradeService.PreferenceUpgrade
 import com.ichi2.anki.servicelayer.RemovedPreferences
-import com.ichi2.libanki.Consts
 import com.ichi2.utils.HashUtil
 import com.ichi2.utils.LanguageUtil
 import org.hamcrest.CoreMatchers.equalTo
@@ -35,12 +35,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.*
+import java.util.Locale
 import kotlin.test.assertNotNull
 
 @RunWith(AndroidJUnit4::class)
 class PreferenceUpgradeServiceTest : RobolectricTest() {
-
     private lateinit var prefs: SharedPreferences
 
     @Before
@@ -89,7 +88,7 @@ class PreferenceUpgradeServiceTest : RobolectricTest() {
             assertThat(
                 "versions should be increasing, but found (${it.first}) before (${it.second})",
                 it.first,
-                lessThan(it.second)
+                lessThan(it.second),
             )
         }
     }
@@ -102,9 +101,9 @@ class PreferenceUpgradeServiceTest : RobolectricTest() {
 
         assertThat(
             "Different count of nested classes ($nestedClassCount) and upgrades ($upgradeCount). \n" +
-                "nested classes:\n ${nestedClasses.map { it.simpleName }.joinToString("\n")}",
+                "nested classes:\n ${nestedClasses.joinToString("\n") { it.simpleName.toString() }}",
             nestedClassCount,
-            equalTo(upgradeCount)
+            equalTo(upgradeCount),
         )
     }
 
@@ -113,10 +112,10 @@ class PreferenceUpgradeServiceTest : RobolectricTest() {
         // add two example toolbar buttons
         val buttons = HashUtil.hashSetInit<String>(2)
 
-        var values = arrayOf(0, "<h1>", "</h1>")
+        var values = arrayOf("0", "<h1>", "</h1>")
         buttons.add(values.joinToString(Consts.FIELD_SEPARATOR))
 
-        values = arrayOf(1, "<p>", "</p>")
+        values = arrayOf("1", "<p>", "</p>")
         buttons.add(values.joinToString(Consts.FIELD_SEPARATOR))
 
         prefs.edit {
@@ -173,6 +172,23 @@ class PreferenceUpgradeServiceTest : RobolectricTest() {
         prefs.edit { putBoolean(RemovedPreferences.SYNC_FETCHES_MEDIA, false) }
         PreferenceUpgrade.UpgradeFetchMedia().performUpgrade(prefs)
         assertThat(prefs.getString("syncFetchMedia", null), equalTo("never"))
+    }
+
+    @Test
+    fun `Double tap timeout is converted correctly`() {
+        fun testValue(
+            oldValue: Int,
+            expectedValue: Int,
+        ) {
+            prefs.edit { putInt("doubleTapTimeInterval", oldValue) }
+            PreferenceUpgrade.UpgradeDoubleTapTimeout().performUpgrade(prefs)
+            assertThat(prefs.getInt("doubleTapTimeout", -1), equalTo(expectedValue))
+        }
+        testValue(oldValue = 395, expectedValue = 400)
+        testValue(oldValue = 25, expectedValue = 20)
+        testValue(oldValue = 200, expectedValue = 200)
+        testValue(oldValue = 0, expectedValue = 0)
+        testValue(oldValue = 1350, expectedValue = 1000)
     }
 
     // ############################

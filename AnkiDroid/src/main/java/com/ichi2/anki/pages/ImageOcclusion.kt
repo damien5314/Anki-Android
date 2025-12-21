@@ -17,23 +17,77 @@ package com.ichi2.anki.pages
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.webkit.WebView
+import android.widget.TextView
 import androidx.activity.addCallback
+import androidx.core.os.BundleCompat
 import androidx.core.os.bundleOf
+import androidx.core.view.isVisible
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.appbar.MaterialToolbar
 import com.ichi2.anki.R
 import com.ichi2.anki.SingleFragmentActivity
+import com.ichi2.anki.common.annotations.NeedsTest
+import com.ichi2.anki.common.utils.android.isRobolectric
+import com.ichi2.anki.dialogs.DeckSelectionDialog
 import com.ichi2.anki.dialogs.DiscardChangesDialog
-import org.json.JSONObject
+import com.ichi2.anki.model.SelectableDeck
+import com.ichi2.anki.pages.viewmodel.ImageOcclusionArgs
+import com.ichi2.anki.pages.viewmodel.ImageOcclusionViewModel
+import com.ichi2.anki.pages.viewmodel.ImageOcclusionViewModel.Companion.IO_ARGS_KEY
+import com.ichi2.anki.startDeckSelection
+import com.ichi2.utils.HandlerUtils
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
+import java.lang.IllegalArgumentException
 
-class ImageOcclusion : PageFragment(R.layout.image_occlusion) {
+/**
+ * Page provided by the backend, for a user to add or edit an image occlusion (IO) note
+ *
+ * IO: Like an image-based cloze: hide parts of an image, revealed on the back
+ * ([docs](https://docs.ankiweb.net/editing.html#image-occlusion) and
+ * [source](https://github.com/ankitects/anki/blob/main/proto/anki/image_occlusion.proto)).
+ *
+ * When adding, a user may select the deck of the note
+ *
+ * **Paths**
+ * `/image-occlusion/$PATH`
+ * `/image-occlusion/$NOTE_ID`
+ *
+ * @see ImageOcclusionViewModel
+ * @see ImageOcclusion.getIntent
+ */
+class ImageOcclusion :
+    PageFragment(R.layout.image_occlusion),
+    DeckSelectionDialog.DeckSelectionListener {
+    private val viewModel: ImageOcclusionViewModel by viewModels()
+    private lateinit var deckNameView: TextView
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override val pagePath: String by lazy {
+        val args =
+            BundleCompat.getParcelable(requireArguments(), IO_ARGS_KEY, ImageOcclusionArgs::class.java)
+                ?: throw IllegalArgumentException("IO args were not setup correctly")
+        val suffix =
+            when (args) {
+                is ImageOcclusionArgs.Add -> Uri.encode(args.imagePath)
+                is ImageOcclusionArgs.Edit -> args.noteId
+            }
+        "image-occlusion/$suffix"
+    }
+
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
-
         with(requireActivity()) {
             onBackPressedDispatcher.addCallback(this) {
                 DiscardChangesDialog.showDialog(this@with) {
@@ -42,57 +96,88 @@ class ImageOcclusion : PageFragment(R.layout.image_occlusion) {
             }
         }
 
+        deckNameView = view.findViewById(R.id.deck_name)
+        deckNameView.setOnClickListener { startDeckSelection(all = false, filtered = false, skipEmptyDefault = false) }
+
+        @NeedsTest("#17393 verify that the added image occlusion cards are put in the correct deck")
         view.findViewById<MaterialToolbar>(R.id.toolbar).setOnMenuItemClickListener {
             if (it.itemId == R.id.action_save) {
                 Timber.i("save item selected")
-                webView.evaluateJavascript("anki.imageOcclusion.save()", null)
+                webViewLayout.evaluateJavascript("anki.imageOcclusion.save()")
             }
             return@setOnMenuItemClickListener true
         }
+
+        setupFlows()
     }
 
-    override fun onCreateWebViewClient(savedInstanceState: Bundle?): PageWebViewClient {
-        return object : PageWebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
+    override fun onCreateWebViewClient(savedInstanceState: Bundle?): PageWebViewClient =
+        object : PageWebViewClient() {
+            override fun onPageFinished(
+                view: WebView?,
+                url: String?,
+            ) {
                 super.onPageFinished(view, url)
-
-                val kind = requireArguments().getString(ARG_KEY_KIND)
-                val noteOrNotetypeId = requireArguments().getLong(ARG_KEY_ID)
-                val imagePath = requireArguments().getString(ARG_KEY_PATH)
-
-                val options = JSONObject()
-                options.put("kind", kind)
-                if (kind == "add") {
-                    options.put("imagePath", imagePath)
-                    options.put("notetypeId", noteOrNotetypeId)
-                } else {
-                    options.put("noteId", noteOrNotetypeId)
+                viewModel.args.toImageOcclusionMode().let { options ->
+                    view?.evaluateJavascript("globalThis.anki.imageOcclusion.mode = $options") {
+                        super.onPageFinished(view, url)
+                    }
                 }
+            }
+        }
 
-                view?.evaluateJavascript("globalThis.anki.imageOcclusion.mode = $options") {
-                    super.onPageFinished(view, url)
+    override fun onDeckSelected(deck: SelectableDeck?) {
+        if (deck == null) return
+        require(deck is SelectableDeck.Deck)
+        viewModel.handleDeckSelection(deck.deckId)
+    }
+
+    // HACK: detect a successful save; #19443 will provide a better method
+    // backend calls are only made on success; .save() does not notify on failure
+    override suspend fun handlePostRequest(
+        uri: PostRequestUri,
+        bytes: ByteArray,
+    ): ByteArray =
+        super.handlePostRequest(uri, bytes).also {
+            when (uri.backendMethodName) {
+                "addImageOcclusionNote", "updateImageOcclusionNote" -> viewModel.onSaveOperationCompleted()
+            }
+        }
+
+    private fun setupFlows() {
+        fun onDeckNameChanged(name: String) {
+            deckNameView.text = name
+        }
+
+        viewModel.deckNameFlow?.launchCollectionInLifecycleScope(::onDeckNameChanged) ?: run {
+            deckNameView.isVisible = false
+        }
+    }
+
+    // TODO: Move this to an extension method once we have context parameters
+    private fun <T> Flow<T>.launchCollectionInLifecycleScope(block: suspend (T) -> Unit) {
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                this@launchCollectionInLifecycleScope.collect {
+                    if (isRobolectric) {
+                        HandlerUtils.postOnNewHandler { runBlocking { block(it) } }
+                    } else {
+                        block(it)
+                    }
                 }
             }
         }
     }
 
     companion object {
-        private const val ARG_KEY_KIND = "kind"
-        private const val ARG_KEY_ID = "id"
-        private const val ARG_KEY_PATH = "imagePath"
-
-        fun getIntent(context: Context, kind: String, noteOrNotetypeId: Long, imagePath: String?): Intent {
-            val suffix = if (kind == "edit") {
-                "/$noteOrNotetypeId"
-            } else {
-                imagePath
-            }
-            val arguments = bundleOf(
-                ARG_KEY_KIND to kind,
-                ARG_KEY_ID to noteOrNotetypeId,
-                ARG_KEY_PATH to imagePath,
-                PATH_ARG_KEY to "image-occlusion$suffix"
-            )
+        /**
+         * @param args arguments for either adding or editing a note
+         */
+        fun getIntent(
+            context: Context,
+            args: ImageOcclusionArgs,
+        ): Intent {
+            val arguments = bundleOf(IO_ARGS_KEY to args)
             return SingleFragmentActivity.getIntent(context, ImageOcclusion::class, arguments)
         }
     }

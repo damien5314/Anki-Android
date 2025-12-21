@@ -13,35 +13,39 @@
  */
 package com.ichi2.anki
 
+import android.text.InputType
 import androidx.core.content.edit
-import androidx.recyclerview.widget.RecyclerView
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.assertion.ViewAssertions.matches
-import androidx.test.espresso.contrib.RecyclerViewActions
-import androidx.test.espresso.matcher.ViewMatchers.hasDescendant
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
 import androidx.test.espresso.matcher.ViewMatchers.withId
-import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.google.android.material.textfield.TextInputEditText
+import com.ichi2.anki.libanki.Collection
 import com.ichi2.anki.preferences.sharedPrefs
 import com.ichi2.anki.tests.InstrumentedTest
+import com.ichi2.anki.tests.checkWithTimeout
 import com.ichi2.anki.tests.libanki.RetryRule
 import com.ichi2.anki.testutil.GrantStoragePermission.storagePermission
+import com.ichi2.anki.testutil.closeBackupCollectionDialogIfExists
+import com.ichi2.anki.testutil.closeGetStartedScreenIfExists
 import com.ichi2.anki.testutil.grantPermissions
 import com.ichi2.anki.testutil.notificationPermission
-import com.ichi2.libanki.Collection
+import com.ichi2.anki.testutil.reviewDeckWithName
+import com.ichi2.testutils.common.Flaky
+import com.ichi2.testutils.common.OS
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.equalTo
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 
 @RunWith(AndroidJUnit4::class)
 class ReviewerFragmentTest : InstrumentedTest() {
-
     // Launch IntroductionActivity instead of DeckPicker activity because in CI
     // builds, it seems to create IntroductionActivity after the DeckPicker,
     // causing the DeckPicker activity to be destroyed. As a consequence, this
@@ -59,6 +63,7 @@ class ReviewerFragmentTest : InstrumentedTest() {
     val retry = RetryRule(10)
 
     @Test
+    @Flaky(os = OS.ALL, "Fails on CI with timing issues frequently")
     fun testCustomSchedulerWithCustomData() {
         setNewReviewer()
         col.cardStateCustomizer =
@@ -67,15 +72,19 @@ class ReviewerFragmentTest : InstrumentedTest() {
             states.good.normal.review.scheduledDays = 123;
             customData.good.c += 1;
             """
-        val note = addNoteUsingBasicModel("foo", "bar")
+        val note = addNoteUsingBasicNoteType("foo", "bar")
         val card = note.firstCard(col)
-        val deck = col.decks.get(note.notetype.did)!!
+        val deck = col.decks.getLegacy(note.notetype.did)!!
         card.moveToReviewQueue()
         col.backend.updateCards(
             listOf(
-                card.toBackendCard().toBuilder().setCustomData("""{"c":1}""").build()
+                card
+                    .toBackendCard()
+                    .toBuilder()
+                    .setCustomData("""{"c":1}""")
+                    .build(),
             ),
-            true
+            true,
         )
 
         closeGetStartedScreenIfExists()
@@ -96,11 +105,12 @@ class ReviewerFragmentTest : InstrumentedTest() {
     }
 
     @Test
+    @Flaky(os = OS.ALL, "Fails on CI with timing issues frequently")
     fun testCustomSchedulerWithRuntimeError() {
         setNewReviewer()
         // Issue 15035 - runtime errors weren't handled
         col.cardStateCustomizer = "states.this_is_not_defined.normal.review = 12;"
-        addNoteUsingBasicModel()
+        addNoteUsingBasicNoteType()
 
         closeGetStartedScreenIfExists()
         closeBackupCollectionDialogIfExists()
@@ -111,41 +121,53 @@ class ReviewerFragmentTest : InstrumentedTest() {
         ensureAnswerButtonsAreDisplayed()
     }
 
-    private fun closeGetStartedScreenIfExists() {
-        onView(withId(R.id.get_started)).withFailureHandler { _, _ -> }.perform(click())
-    }
+    @Test
+    fun testSelectedKeyboardType() {
+        setNewReviewer()
+        closeGetStartedScreenIfExists()
+        closeBackupCollectionDialogIfExists()
 
-    private fun closeBackupCollectionDialogIfExists() {
-        onView(withText(R.string.button_backup_later))
-            .withFailureHandler { _, _ -> }
-            .perform(click())
-    }
+        val inputTypeNumber =
+            InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED
+        val inputTypeText = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
 
-    private fun clickOnDeckWithName(deckName: String) {
-        onView(withId(R.id.files)).checkWithTimeout(matches(hasDescendant(withText(deckName))))
-        onView(withId(R.id.files)).perform(
-            RecyclerViewActions.actionOnItem<RecyclerView.ViewHolder>(
-                hasDescendant(withText(deckName)),
-                click()
+        val testValues: List<Pair<String, Int>> =
+            listOf(
+                "123" to inputTypeNumber,
+                "-123.45" to inputTypeNumber,
+                "123.45" to inputTypeNumber,
+                "123,45" to inputTypeNumber,
+                "<b>123</b>" to inputTypeNumber,
+                "AnkiDroid" to inputTypeText,
+                "123abc" to inputTypeText,
+                "" to inputTypeText,
             )
-        )
+
+        testValues.forEachIndexed { index, (typedAnswer, _) ->
+            addTypedAnswerNote(answer = typedAnswer).firstCard(col).update {
+                did = col.decks.id("Default$index")
+            }
+        }
+
+        // Check decks after adding all notes to ensure that the deck list is updated with the new cards
+        testValues.forEachIndexed { index, (_, expectedInputType) ->
+            // Ensures that we are in the deckpicker screen to make reviewDeckWithName work
+            if (index > 0) onView(withId(R.id.back_button)).perform(click())
+            checkInputType(expectedInputType, index)
+        }
     }
 
-    private fun clickOnStudyButtonIfExists() {
-        onView(withId(R.id.studyoptions_start))
-            .withFailureHandler { _, _ -> }
-            .perform(click())
-    }
-
-    private fun reviewDeckWithName(deckName: String) {
-        clickOnDeckWithName(deckName)
-        // Adding cards directly to the database while in the Deck Picker screen
-        // will not update the page with correct card counts. Hence, clicking
-        // on the deck will bring us to the study options page where we need to
-        // click on the Study button. If we have added cards to the database
-        // before the Deck Picker screen has fully loaded, then we skip clicking
-        // the Study button
-        clickOnStudyButtonIfExists()
+    fun checkInputType(
+        expectedInputType: Int,
+        index: Int,
+    ) {
+        reviewDeckWithName("Default$index")
+        ensureKeyboardIsDisplayed()
+        onView(withId(R.id.type_answer_edit_text)).check { view, _ ->
+            val editText = view as TextInputEditText
+            val inputType = editText.inputType
+            assertThat(inputType, equalTo(expectedInputType))
+        }
     }
 
     private fun clickShowAnswerAndAnswerGood() {
@@ -155,7 +177,15 @@ class ReviewerFragmentTest : InstrumentedTest() {
     }
 
     private fun clickShowAnswer() {
-        onView(withId(R.id.show_answer)).perform(click())
+        onView(withId(R.id.show_answer_button)).perform(click())
+    }
+
+    private fun ensureKeyboardIsDisplayed() {
+        onView(withId(R.id.type_answer_edit_text)).checkWithTimeout(
+            matches(isDisplayed()),
+            100,
+            30.seconds.inWholeMilliseconds,
+        )
     }
 
     private fun ensureAnswerButtonsAreDisplayed() {
@@ -168,17 +198,20 @@ class ReviewerFragmentTest : InstrumentedTest() {
             100,
             // Increase to a max of 30 seconds because CI builds can be very
             // slow
-            TimeUnit.SECONDS.toMillis(30)
+            TimeUnit.SECONDS.toMillis(30),
         )
     }
 
     private fun setNewReviewer() {
         testContext.sharedPrefs().edit {
             putBoolean("newReviewer", true)
+            putBoolean("newReviewerOptions", true)
         }
     }
 }
 
 private var Collection.cardStateCustomizer: String?
     get() = config.get("cardStateCustomizer")
-    set(value) { config.set("cardStateCustomizer", value) }
+    set(value) {
+        config.set("cardStateCustomizer", value)
+    }
