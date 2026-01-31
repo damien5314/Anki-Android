@@ -104,7 +104,7 @@ abstract class CardViewerFragment(
             with(settings) {
                 javaScriptEnabled = true
                 loadWithOverviewMode = true
-                builtInZoomControls = true
+                builtInZoomControls = false
                 displayZoomControls = false
                 allowFileAccess = true
                 domStorageEnabled = true

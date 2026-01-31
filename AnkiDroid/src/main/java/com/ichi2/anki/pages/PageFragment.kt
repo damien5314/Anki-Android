@@ -117,8 +117,8 @@ abstract class PageFragment(
             with(settings) {
                 javaScriptEnabled = true
                 displayZoomControls = false
-                builtInZoomControls = true
-                setSupportZoom(true)
+                builtInZoomControls = false
+                setSupportZoom(false)
             }
             setWebViewClient(pageWebViewClient)
             setWebChromeClient(PageChromeClient())
