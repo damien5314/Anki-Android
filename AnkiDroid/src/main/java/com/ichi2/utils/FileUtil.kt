@@ -98,7 +98,7 @@ object FileUtil {
         // If we got a real file name, do a copy from it
         val inputStream: InputStream =
             try {
-                contentResolver.openInputStream(uri)!!
+                contentResolver.openInputStreamSafe(uri)!!
             } catch (e: Exception) {
                 Timber.w(e, "internalizeUri() unable to open input stream from content resolver for Uri %s", uri)
                 throw e
@@ -125,21 +125,6 @@ object FileUtil {
     fun listFiles(dir: File): Array<File> =
         dir.listFiles()
             ?: throw IOException("Failed to list the contents of '$dir'")
-
-    /**
-     * Returns a sequence containing the provided file, and its parents
-     * up to the root of the filesystem.
-     */
-    fun File.getParentsAndSelfRecursive() =
-        sequence {
-            var currentPath: File? = this@getParentsAndSelfRecursive.canonicalFile
-            while (currentPath != null) {
-                yield(currentPath)
-                currentPath = currentPath.parentFile?.canonicalFile
-            }
-        }
-
-    fun File.isDescendantOf(ancestor: File) = this.getParentsAndSelfRecursive().drop(1).contains(ancestor)
 }
 
 /**
@@ -220,4 +205,25 @@ fun ContentResolver.openInputStreamSafe(uri: Uri): InputStream? {
         throw SecurityException("java/android/unsafe-content-uri-resolution")
     }
     return openInputStream(uri)
+}
+
+/**
+ * Extension method to safely resolve a child file within this parent directory.
+ * Prevents directory traversal attacks (e.g. "../", symlinks) by verifying canonical paths.
+ *
+ * @throws SecurityException If the resolved path escapes the parent directory.
+ */
+fun File.withFileNameSafe(childName: String): File {
+    val child = File(this, childName)
+    try {
+        val canonicalParent = this.canonicalPath
+        val canonicalChild = child.canonicalPath
+
+        if (!canonicalChild.startsWith(canonicalParent)) {
+            throw SecurityException("Invalid path: $childName traversal attempt detected")
+        }
+    } catch (e: IOException) {
+        throw IllegalArgumentException("Unable to resolve canonical path for $childName", e)
+    }
+    return child
 }

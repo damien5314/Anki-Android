@@ -1078,6 +1078,7 @@ abstract class AbstractFlashcardViewer :
 
     // #5780 - Users could OOM the WebView Renderer. This triggers the same symptoms
     @VisibleForTesting
+    @Suppress("unused")
     fun crashWebViewRenderer() {
         loadUrlInViewer("chrome://crash")
     }
@@ -1443,7 +1444,7 @@ abstract class AbstractFlashcardViewer :
     }
 
     internal val isInNightMode: Boolean
-        get() = Themes.currentTheme.isNightMode
+        get() = Themes.isNightTheme
 
     private fun updateCard(content: RenderedCard) {
         Timber.d("updateCard()")
@@ -1469,7 +1470,7 @@ abstract class AbstractFlashcardViewer :
             Timber.w("media is not played as the activity is inactive")
             return
         }
-        if (!cardMediaPlayer.config.autoplay && !doMediaReplay) return
+        if (cardMediaPlayer.config?.autoplay != true && !doMediaReplay) return
         // Use TTS if TTS preference enabled and no other media source
         val useTTS = tts.enabled && !cardMediaPlayer.hasMedia(displayAnswer)
         // We need to play the media from the proper side of the card
@@ -1484,7 +1485,7 @@ abstract class AbstractFlashcardViewer :
             return
         }
 
-        val replayQuestion = cardMediaPlayer.config.replayQuestion
+        val replayQuestion = cardMediaPlayer.config?.replayQuestion == true
         // Text to speech is in effect here
         // If the question is displayed or if the question should be replayed, read the question
         if (ttsInitialized) {
@@ -1553,7 +1554,7 @@ abstract class AbstractFlashcardViewer :
         content: String,
     ) {
         if (card != null) {
-            card.settings.mediaPlaybackRequiresUserGesture = !cardMediaPlayer.config.autoplay
+            card.settings.mediaPlaybackRequiresUserGesture = cardMediaPlayer.config?.autoplay != true
             card.loadDataWithBaseURL(
                 server.baseUrl(),
                 content,
@@ -2587,7 +2588,7 @@ abstract class AbstractFlashcardViewer :
             }
             try {
                 startActivity(intent)
-            } catch (e: ActivityNotFoundException) {
+            } catch (_: ActivityNotFoundException) {
                 Timber.w("No app found to handle open external url from AbstractFlashcardViewer")
                 showSnackbar(R.string.activity_start_failed)
             }
