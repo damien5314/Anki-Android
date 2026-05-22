@@ -67,20 +67,46 @@
                 android:id="@+id/counts_barrier"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                app:barrierMargin="16dp"
                 app:barrierDirection="end"
                 app:constraint_referenced_ids="study_counts, timer"/>
 
-            <com.ichi2.anki.preferences.reviewer.ReviewerMenuView
-                android:id="@+id/reviewer_menu_view"
+            <androidx.constraintlayout.widget.Guideline
+                android:id="@+id/center_guideline"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:orientation="vertical"
+                app:layout_constraintGuide_percent="0.5" />
+
+            <FrameLayout
+                android:id="@+id/answer_area_container_toolbar"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintWidth_percent="0.6"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintWidth_max="480dp" />
+
+            <com.ichi2.anki.preferences.reviewer.ReviewerMenuView
+                android:id="@+id/reviewer_menu_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toEndOf="@id/counts_barrier"
+                app:layout_constraintHorizontal_bias="1"
                 app:layout_constraintTop_toTopOf="parent"
-                android:layout_marginStart="12dp"/>
+                app:layout_constraintWidth_percent="0.16" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <FrameLayout
+            android:id="@+id/answer_area_container_top"
+            android:layout_width="match_parent"
+            android:layout_marginHorizontal="@dimen/reviewer_side_margin"
+            android:layout_height="wrap_content" />
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/web_view_container"
@@ -178,6 +204,19 @@
                 </com.google.android.material.textfield.TextInputLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <FrameLayout
+                android:id="@+id/answer_area_container_bottom"
+                android:layout_width="match_parent"
+                android:layout_marginHorizontal="@dimen/reviewer_side_margin"
+                android:layout_height="wrap_content">
+
+                <com.ichi2.anki.ui.windows.reviewer.AnswerAreaView
+                    android:id="@+id/answer_area"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+            </FrameLayout>
+
             <androidx.fragment.app.FragmentContainerView
                 android:id="@+id/check_pronunciation_container"
                 android:layout_width="match_parent"
@@ -187,11 +226,6 @@
                 android:elevation="2dp"
                 android:visibility="gone"
                 tools:layout="@layout/fragment_check_pronunciation" />
-
-            <com.ichi2.anki.ui.windows.reviewer.AnswerAreaView
-                android:id="@+id/answer_area"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
 
         </LinearLayout>
     </LinearLayout>

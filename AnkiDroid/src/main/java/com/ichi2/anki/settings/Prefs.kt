@@ -345,6 +345,7 @@ open class PrefsRepository(
     val autoFocusTypeAnswer by booleanPref(R.string.type_in_answer_focus_key, true)
     val showAnswerFeedback by booleanPref(R.string.show_answer_feedback_key, defaultValue = true)
     var showAnswerButtons by booleanPref(R.string.show_answer_buttons_key, true)
+    val answerButtonsPosition by stringPref(R.string.answer_buttons_position_preference, "bottom")
     val keepScreenOn by booleanPref(R.string.keep_screen_on_preference, defaultValue = false)
     val hideHardAndEasyButtons by booleanPref(R.string.hide_hard_and_easy_key, defaultValue = false)
 

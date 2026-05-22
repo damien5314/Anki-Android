@@ -22,6 +22,7 @@ import android.os.Bundle
 import android.view.KeyEvent
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
@@ -30,14 +31,12 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.ActionMenuView
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.isVisible
-import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
@@ -53,7 +52,6 @@ import com.ichi2.anki.DispatchKeyEventListener
 import com.ichi2.anki.Flag
 import com.ichi2.anki.R
 import com.ichi2.anki.android.AnkiShakeDetector
-import com.ichi2.anki.android.back.doubleBackPressCallback
 import com.ichi2.anki.cardviewer.Gesture
 import com.ichi2.anki.common.annotations.NeedsTest
 import com.ichi2.anki.common.utils.android.isRobolectric
@@ -75,6 +73,7 @@ import com.ichi2.anki.scheduling.ForgetCardsDialog
 import com.ichi2.anki.scheduling.SetDueDateDialog
 import com.ichi2.anki.scheduling.registerOnForgetHandler
 import com.ichi2.anki.settings.Prefs
+import com.ichi2.anki.settings.enums.AnswerButtonPosition
 import com.ichi2.anki.settings.enums.FrameStyle
 import com.ichi2.anki.settings.enums.HideSystemBars
 import com.ichi2.anki.settings.enums.ToolbarPosition
@@ -365,6 +364,43 @@ class ReviewerFragment :
             return
         }
 
+        val answerButtonPosition = Prefs.answerButtonsPosition.toAnswerButtonPosition()
+        val toolbarPosition = Prefs.toolbarPosition
+        Timber.d("[dcd] setupAnswerButtonPosition: answerButtons=$answerButtonPosition toolbarPosition=$toolbarPosition")
+
+        val answerButtonInToolbar =
+            when {
+                !isBigScreen || !Prefs.showAnswerButtons -> false
+                else ->
+                    // check if answer button position and toolbarPosition are the same
+                    // if so, the answer button needs to be placed in the container
+                    when (answerButtonPosition) {
+                        AnswerButtonPosition.TOP if toolbarPosition == ToolbarPosition.TOP -> true
+                        AnswerButtonPosition.BOTTOM if toolbarPosition == ToolbarPosition.BOTTOM -> true
+                        else -> false
+                    }
+            }
+
+        Timber.d("[dcd] initializing answer button in container => $answerButtonInToolbar position=$answerButtonPosition")
+        val answerButtonContainer =
+            when (answerButtonInToolbar) {
+                true -> binding.answerAreaContainerToolbar
+                else -> {
+                    when (answerButtonPosition) {
+                        AnswerButtonPosition.TOP -> binding.answerAreaContainerTop
+                        AnswerButtonPosition.BOTTOM -> binding.answerAreaContainerBottom
+                        AnswerButtonPosition.NONE -> null
+                    }
+                }
+            }
+
+        (binding.answerArea.parent as? ViewGroup)?.removeView(binding.answerArea)
+        if (answerButtonContainer == null) {
+            // no-op, leave the answerArea detached
+        } else {
+            answerButtonContainer.addView(binding.answerArea)
+        }
+
         binding.answerArea.setButtonListeners(
             onRatingClicked = { viewModel.answerCard(it) },
             onShowAnswerClicked = { viewModel.onShowAnswer() },
@@ -456,31 +492,16 @@ class ReviewerFragment :
     }
 
     private fun setupToolbarPosition() {
-        when (Prefs.toolbarPosition) {
-            ToolbarPosition.TOP -> return
+        val toolbarPosition = Prefs.toolbarPosition
+        when (toolbarPosition) {
+            ToolbarPosition.TOP -> {
+                // no-op, this is the default from the inflated layout
+            }
             ToolbarPosition.NONE -> binding.toolsLayout.isVisible = false
             ToolbarPosition.BOTTOM -> {
+                // remove & re-add toolsLayout so it's at the bottom of the LinearLayout
                 binding.mainLayout.removeView(binding.toolsLayout)
                 binding.mainLayout.addView(binding.toolsLayout)
-
-                // Put the answer buttons inside the toolbar on big screens
-                if (!isBigScreen || !Prefs.showAnswerButtons) return
-                binding.bottomLayout.removeView(binding.answerArea)
-                binding.toolsLayout.addView(binding.answerArea)
-                binding.answerArea.updateLayoutParams<ConstraintLayout.LayoutParams> {
-                    width = 0
-                    matchConstraintPercentWidth = 0.6F
-                    matchConstraintMaxWidth = 480.dp.toPx(requireContext())
-                    topToTop = ConstraintLayout.LayoutParams.PARENT_ID
-                    bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-                    startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-                    endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-                }
-                binding.reviewerMenuView.updateLayoutParams<ConstraintLayout.LayoutParams> {
-                    width = 0
-                    matchConstraintPercentWidth = 0.16F
-                    startToEnd = ConstraintLayout.LayoutParams.UNSET
-                }
             }
         }
     }
@@ -757,6 +778,14 @@ class ReviewerFragment :
             }
         }
     }
+
+    private fun String?.toAnswerButtonPosition(): AnswerButtonPosition =
+        when (this) {
+            "top" -> AnswerButtonPosition.TOP
+            "bottom" -> AnswerButtonPosition.BOTTOM
+            "none" -> AnswerButtonPosition.NONE
+            else -> AnswerButtonPosition.BOTTOM
+        }
 
     companion object {
         fun getIntent(context: Context): Intent = CardViewerActivity.getIntent(context, ReviewerFragment::class)
