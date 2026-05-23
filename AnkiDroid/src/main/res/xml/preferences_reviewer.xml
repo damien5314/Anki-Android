@@ -108,7 +108,7 @@
             android:entries="@array/answer_buttons_position_labels"
             android:entryValues="@array/answer_buttons_position"
             android:icon="@drawable/ic_shelf_auto_hide"
-            android:key="@string/answer_buttons_position_preference"
+            android:key="@string/answer_buttons_position_key"
             android:title="@string/answer_buttons_position"
             app:useSimpleSummaryProvider="true"/>
 

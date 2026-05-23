@@ -73,7 +73,7 @@ import com.ichi2.anki.scheduling.ForgetCardsDialog
 import com.ichi2.anki.scheduling.SetDueDateDialog
 import com.ichi2.anki.scheduling.registerOnForgetHandler
 import com.ichi2.anki.settings.Prefs
-import com.ichi2.anki.settings.enums.AnswerButtonPosition
+import com.ichi2.anki.settings.enums.AnswerButtonsPosition
 import com.ichi2.anki.settings.enums.FrameStyle
 import com.ichi2.anki.settings.enums.HideSystemBars
 import com.ichi2.anki.settings.enums.ToolbarPosition
@@ -364,9 +364,8 @@ class ReviewerFragment :
             return
         }
 
-        val answerButtonPosition = Prefs.answerButtonsPosition.toAnswerButtonPosition()
+        val answerButtonPosition = Prefs.answerButtonsPosition
         val toolbarPosition = Prefs.toolbarPosition
-        Timber.d("[dcd] setupAnswerButtonPosition: answerButtons=$answerButtonPosition toolbarPosition=$toolbarPosition")
 
         val answerButtonInToolbar =
             when {
@@ -375,21 +374,20 @@ class ReviewerFragment :
                     // check if answer button position and toolbarPosition are the same
                     // if so, the answer button needs to be placed in the container
                     when (answerButtonPosition) {
-                        AnswerButtonPosition.TOP if toolbarPosition == ToolbarPosition.TOP -> true
-                        AnswerButtonPosition.BOTTOM if toolbarPosition == ToolbarPosition.BOTTOM -> true
+                        AnswerButtonsPosition.TOP if toolbarPosition == ToolbarPosition.TOP -> true
+                        AnswerButtonsPosition.BOTTOM if toolbarPosition == ToolbarPosition.BOTTOM -> true
                         else -> false
                     }
             }
 
-        Timber.d("[dcd] initializing answer button in container => $answerButtonInToolbar position=$answerButtonPosition")
         val answerButtonContainer =
             when (answerButtonInToolbar) {
                 true -> binding.answerAreaContainerToolbar
                 else -> {
                     when (answerButtonPosition) {
-                        AnswerButtonPosition.TOP -> binding.answerAreaContainerTop
-                        AnswerButtonPosition.BOTTOM -> binding.answerAreaContainerBottom
-                        AnswerButtonPosition.NONE -> null
+                        AnswerButtonsPosition.TOP -> binding.answerAreaContainerTop
+                        AnswerButtonsPosition.BOTTOM -> binding.answerAreaContainerBottom
+                        AnswerButtonsPosition.NONE -> null
                     }
                 }
             }
@@ -778,14 +776,6 @@ class ReviewerFragment :
             }
         }
     }
-
-    private fun String?.toAnswerButtonPosition(): AnswerButtonPosition =
-        when (this) {
-            "top" -> AnswerButtonPosition.TOP
-            "bottom" -> AnswerButtonPosition.BOTTOM
-            "none" -> AnswerButtonPosition.NONE
-            else -> AnswerButtonPosition.BOTTOM
-        }
 
     companion object {
         fun getIntent(context: Context): Intent = CardViewerActivity.getIntent(context, ReviewerFragment::class)

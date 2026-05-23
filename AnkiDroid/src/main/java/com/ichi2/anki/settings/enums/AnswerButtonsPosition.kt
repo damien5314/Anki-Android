@@ -1,6 +1,6 @@
 package com.ichi2.anki.settings.enums
 
-enum class AnswerButtonPosition {
+enum class AnswerButtonsPosition {
     TOP,
     BOTTOM,
     NONE,
