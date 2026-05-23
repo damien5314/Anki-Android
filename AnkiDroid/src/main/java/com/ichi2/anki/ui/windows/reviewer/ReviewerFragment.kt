@@ -370,7 +370,7 @@ class ReviewerFragment :
         val answerButtonInToolbar =
             when {
                 !isBigScreen || !Prefs.showAnswerButtons -> false
-                else ->
+                else -> {
                     // check if answer button position and toolbarPosition are the same
                     // if so, the answer button needs to be placed in the container
                     when (answerButtonPosition) {
@@ -378,6 +378,7 @@ class ReviewerFragment :
                         AnswerButtonsPosition.BOTTOM if toolbarPosition == ToolbarPosition.BOTTOM -> true
                         else -> false
                     }
+                }
             }
 
         val answerButtonContainer =
