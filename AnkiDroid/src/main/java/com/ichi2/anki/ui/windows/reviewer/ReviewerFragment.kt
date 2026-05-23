@@ -22,6 +22,7 @@ import android.os.Bundle
 import android.view.KeyEvent
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
@@ -75,6 +76,7 @@ import com.ichi2.anki.scheduling.ForgetCardsDialog
 import com.ichi2.anki.scheduling.SetDueDateDialog
 import com.ichi2.anki.scheduling.registerOnForgetHandler
 import com.ichi2.anki.settings.Prefs
+import com.ichi2.anki.settings.enums.AnswerButtonsPosition
 import com.ichi2.anki.settings.enums.FrameStyle
 import com.ichi2.anki.settings.enums.HideSystemBars
 import com.ichi2.anki.settings.enums.ToolbarPosition
@@ -369,6 +371,22 @@ class ReviewerFragment :
             return
         }
 
+        val answerButtonsPosition = Prefs.answerButtonsPosition
+        when (answerButtonsPosition) {
+            AnswerButtonsPosition.TOP -> {
+                // no-op, this is the default from the layout
+            }
+            AnswerButtonsPosition.BOTTOM -> {
+                val answerAreaView = binding.answerArea
+                (answerAreaView.parent as? ViewGroup)?.removeView(answerAreaView)
+                binding.bottomLayout.addView(answerAreaView)
+            }
+            AnswerButtonsPosition.NONE -> {
+                binding.answerArea.isVisible = false
+                return
+            }
+        }
+
         binding.answerArea.setButtonListeners(
             onRatingClicked = { viewModel.answerCard(it) },
             onShowAnswerClicked = { viewModel.onShowAnswer() },
@@ -460,32 +478,52 @@ class ReviewerFragment :
     }
 
     private fun setupToolbarPosition() {
+        val toolbarPosition = Prefs.toolbarPosition
         when (Prefs.toolbarPosition) {
             ToolbarPosition.TOP -> return
             ToolbarPosition.NONE -> binding.toolsLayout.isVisible = false
             ToolbarPosition.BOTTOM -> {
                 binding.mainLayout.removeView(binding.toolsLayout)
                 binding.mainLayout.addView(binding.toolsLayout)
+            }
+        }
 
-                // Put the answer buttons inside the toolbar on big screens
-                if (!isBigScreen || !Prefs.showAnswerButtons) return
-                binding.bottomLayout.removeView(binding.answerArea)
-                binding.toolsLayout.addView(binding.answerArea)
-                binding.answerArea.updateLayoutParams<ConstraintLayout.LayoutParams> {
-                    width = 0
-                    matchConstraintPercentWidth = 0.6F
-                    matchConstraintMaxWidth = 480.dp.toPx(requireContext())
-                    topToTop = ConstraintLayout.LayoutParams.PARENT_ID
-                    bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-                    startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-                    endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-                }
-                binding.reviewerMenuView.updateLayoutParams<ConstraintLayout.LayoutParams> {
-                    width = 0
-                    matchConstraintPercentWidth = 0.16F
-                    startToEnd = ConstraintLayout.LayoutParams.UNSET
+        // Put the answer buttons inside the toolbar on big screens
+        val answerButtonInToolbar by lazy {
+            when {
+                !isBigScreen || !Prefs.showAnswerButtons -> false
+                else -> {
+                    // check if answer button position and toolbarPosition are the same
+                    // if so, the answer button can be placed in the container
+                    when (Prefs.answerButtonsPosition) {
+                        AnswerButtonsPosition.TOP if toolbarPosition == ToolbarPosition.TOP -> true
+                        AnswerButtonsPosition.BOTTOM if toolbarPosition == ToolbarPosition.BOTTOM -> true
+                        else -> false
+                    }
                 }
             }
+        }
+        if (isBigScreen && !Prefs.showAnswerButtons && answerButtonInToolbar) {
+            positionAnswerButtonsInToolbar()
+        }
+    }
+
+    private fun positionAnswerButtonsInToolbar() {
+        binding.bottomLayout.removeView(binding.answerArea)
+        binding.toolsLayout.addView(binding.answerArea)
+        binding.answerArea.updateLayoutParams<ConstraintLayout.LayoutParams> {
+            width = 0
+            matchConstraintPercentWidth = 0.6F
+            matchConstraintMaxWidth = 480.dp.toPx(requireContext())
+            topToTop = ConstraintLayout.LayoutParams.PARENT_ID
+            bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
+            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
+            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
+        }
+        binding.reviewerMenuView.updateLayoutParams<ConstraintLayout.LayoutParams> {
+            width = 0
+            matchConstraintPercentWidth = 0.16F
+            startToEnd = ConstraintLayout.LayoutParams.UNSET
         }
     }
 
