@@ -486,7 +486,9 @@ class ReviewerFragment :
     private fun setupToolbarPosition() {
         val toolbarPosition = Prefs.toolbarPosition
         when (Prefs.toolbarPosition) {
-            ToolbarPosition.TOP -> return
+            ToolbarPosition.TOP -> {
+                // no-op, this is the default in the inflated layout
+            }
             ToolbarPosition.NONE -> binding.toolsLayout.isVisible = false
             ToolbarPosition.BOTTOM -> {
                 binding.mainLayout.removeView(binding.toolsLayout)
@@ -496,28 +498,24 @@ class ReviewerFragment :
 
         // Put the answer buttons inside the toolbar on big screens
         val answerButtonInToolbar by lazy {
-            when {
-                !isBigScreen || !Prefs.showAnswerButtons -> false
-                else -> {
-                    // check if answer button position and toolbarPosition are the same
-                    // if so, the answer button can be placed in the container
-                    when (Prefs.answerButtonsPosition) {
-                        AnswerButtonsPosition.TOP if toolbarPosition == ToolbarPosition.TOP -> true
-                        AnswerButtonsPosition.BOTTOM if toolbarPosition == ToolbarPosition.BOTTOM -> true
-                        else -> false
-                    }
-                }
+            // check if answer button position and toolbarPosition are the same
+            // if so, the answer button can be placed in the container
+            when (Prefs.answerButtonsPosition) {
+                AnswerButtonsPosition.TOP if toolbarPosition == ToolbarPosition.TOP -> true
+                AnswerButtonsPosition.BOTTOM if toolbarPosition == ToolbarPosition.BOTTOM -> true
+                else -> false
             }
         }
-        if (isBigScreen && !Prefs.showAnswerButtons && answerButtonInToolbar) {
+        if (isBigScreen && Prefs.showAnswerButtons && answerButtonInToolbar) {
             positionAnswerButtonsInToolbar()
         }
     }
 
     private fun positionAnswerButtonsInToolbar() {
-        binding.bottomLayout.removeView(binding.answerArea)
-        binding.toolsLayout.addView(binding.answerArea)
-        binding.answerArea.updateLayoutParams<ConstraintLayout.LayoutParams> {
+        val answerAreaView = binding.answerArea
+        (answerAreaView.parent as? ViewGroup)?.removeView(answerAreaView)
+        binding.toolsLayout.addView(answerAreaView)
+        answerAreaView.updateLayoutParams<ConstraintLayout.LayoutParams> {
             width = 0
             matchConstraintPercentWidth = 0.6F
             matchConstraintMaxWidth = 480.dp.toPx(requireContext())
