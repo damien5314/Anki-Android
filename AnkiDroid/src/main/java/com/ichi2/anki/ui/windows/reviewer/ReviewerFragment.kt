@@ -39,6 +39,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.core.view.updateMargins
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
@@ -380,6 +381,11 @@ class ReviewerFragment :
                 val answerAreaView = binding.answerArea
                 (answerAreaView.parent as? ViewGroup)?.removeView(answerAreaView)
                 binding.bottomLayout.addView(answerAreaView)
+                binding.answerArea.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    // binding.bottomLayout already supplies a margin,
+                    // we don't need one on this view now
+                    updateMargins(left = 0, right = 0)
+                }
             }
             AnswerButtonsPosition.NONE -> {
                 binding.answerArea.isVisible = false
@@ -515,6 +521,7 @@ class ReviewerFragment :
             width = 0
             matchConstraintPercentWidth = 0.6F
             matchConstraintMaxWidth = 480.dp.toPx(requireContext())
+            updateMargins(left = 0, right = 0)
             topToTop = ConstraintLayout.LayoutParams.PARENT_ID
             bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
             startToStart = ConstraintLayout.LayoutParams.PARENT_ID

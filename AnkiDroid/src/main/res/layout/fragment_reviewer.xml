@@ -84,6 +84,7 @@
 
         <com.ichi2.anki.ui.windows.reviewer.AnswerAreaView
             android:id="@+id/answer_area"
+            android:layout_margin="@dimen/reviewer_side_margin"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
 
